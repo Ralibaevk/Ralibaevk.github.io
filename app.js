@@ -1,5 +1,5 @@
 // === ВСТАВЬТЕ ССЫЛКУ ИЗ CODE.GS (ВАЖНО!) ===
-const API_URL = "https://script.google.com/macros/s/AKfycby7D3JcC2lI3kP4BOney3oZqtkMiSbRZcHTf28FDjnTn1x1gECJEf5igWfOiyLFi5I/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycby3_tTB_xnlLqDcgJP5PeNBDG5z09DYrlN__-cU96BnypaDMfY6lgNwZrojd8EhWAvi/exec";
 
 // === API ===
 const api = {
@@ -39,6 +39,7 @@ const api = {
 // === ГЛАВНОЕ ПРИЛОЖЕНИЕ ===
 const app = {
   suppliers: [],
+  user: null,
 
   async init() {
     // 1. ТЕЛЕГРАМ (ОТПРАВЛЯЕМ ТИХО, БЕЗ ЛОАДЕРА)
@@ -52,6 +53,7 @@ const app = {
 
       const user = window.Telegram.WebApp.initDataUnsafe?.user;
       if (user) {
+        this.user = user;
         // Четвертый параметр 'false' означает "НЕ ПОКАЗЫВАТЬ ЛОАДЕР"
         api.call('saveTelegramUser', { user: user }, 'POST', false).catch(console.error);
       }
@@ -92,7 +94,8 @@ const app = {
   async refreshDashboard(useLoader = true) {
     try {
       // Передаем useLoader в api.call
-      const data = await api.call('getProjectsSummary', {}, 'GET', useLoader);
+      const userId = this.user ? this.user.id : '';
+      const data = await api.call('getProjectsSummary', { userId: userId }, 'GET', useLoader);
       ['new', 'active', 'done'].forEach(id => {
         const el = document.getElementById('list-' + id);
         if (el) el.innerHTML = '';
@@ -326,7 +329,12 @@ const manager = {
     const name = document.getElementById('mgrName').value;
     if (!name) return alert('Введите имя!');
     const arr = this.data.map(i => [i.id || "", i.art, i.name, i.qty, i.unit, i.price, i.qty * i.price, i.supplier, i.note || "", i.done || false]);
-    await api.call('saveProject', { sheetName: name, data: arr, status: 'active' }, 'POST');
+    await api.call('saveProject', {
+      sheetName: name,
+      data: arr,
+      status: 'active',
+      userId: userId // <--- ВАЖНО
+    }, 'POST');
     alert('Сохранено!');
     app.goHome();
   },
@@ -568,6 +576,15 @@ const buyer = {
         btn.innerText = oldText;
         btn.disabled = false;
       }, 1000);
+
+      const userId = app.user ? app.user.id : ''; // Получаем ID
+
+      await api.call('saveProject', {
+        sheetName: this.currentSheet,
+        data: arrayData,
+        status: 'active',
+        userId: userId // <--- Передаем
+      }, 'POST');
 
     } catch (e) {
       alert("Ошибка: " + e.message);
