@@ -1,5 +1,5 @@
 // === ВСТАВЬТЕ ССЫЛКУ ИЗ CODE.GS (ВАЖНО!) ===
-const API_URL = "https://script.google.com/macros/s/AKfycbyxplUZwI3gOlQjMGBcNG0pRV4RmfJMNGiTQIGMeL-oMvNsgnMhTwX3xgyV2Lzxg9DJ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbw7pv99D98ggUZKvYTGU7e-TQ_cuuW7rc6fplA_bdVHY_NT8T9xwweBnYAd4AAJxdvN/exec";
 
 // === API ===
 const api = {
