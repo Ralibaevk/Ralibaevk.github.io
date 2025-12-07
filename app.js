@@ -1,5 +1,5 @@
 // === ВСТАВЬТЕ ССЫЛКУ ИЗ CODE.GS (ВАЖНО!) ===
-const API_URL = "https://script.google.com/macros/s/AKfycbxpqCOmXgDab0-nFxoXIEPXdjgOnTB36q0Zje8NDKxsJ7AmGvFDlwAm6dYw0_ORtGA0/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycby7D3JcC2lI3kP4BOney3oZqtkMiSbRZcHTf28FDjnTn1x1gECJEf5igWfOiyLFi5I/exec";
 
 // === API ===
 const api = {
@@ -33,6 +33,32 @@ const app = {
   suppliers: [],
 
   async init() {
+
+    // 1. ВСТАВЛЯЕМ КОД ТЕЛЕГРАМА В САМОЕ НАЧАЛО
+    if (window.Telegram && window.Telegram.WebApp) {
+      // Сообщаем телеграму, что приложение готово
+      window.Telegram.WebApp.ready();
+      // Раскрываем на весь экран
+      window.Telegram.WebApp.expand();
+
+      // Настройка отступа (для iPhone с челкой/островом)
+      document.documentElement.style.setProperty(
+        '--tg-safe-area-inset-top',
+        (window.Telegram.WebApp.contentSafeAreaInset?.top || 20) + 'px'
+      );
+
+      // Получаем данные пользователя
+      const user = window.Telegram.WebApp.initDataUnsafe?.user;
+
+      // Если пользователь есть — отправляем его данные в таблицу
+      if (user) {
+        // 'POST' запрос, чтобы не ждать ответа и не тормозить загрузку
+        api.call('saveTelegramUser', { user: user }, 'POST').catch(console.error);
+        console.log("TG User sent:", user);
+      }
+    }
+
+    // 2. ДАЛЬШЕ ИДЕТ ВАШ СТАРЫЙ КОД (БЕЗ ИЗМЕНЕНИЙ)
     this.refreshDashboard();
     try { this.suppliers = await api.call('getSuppliers'); } catch (e) { }
 
