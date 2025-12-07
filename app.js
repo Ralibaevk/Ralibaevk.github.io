@@ -329,6 +329,7 @@ const manager = {
     const name = document.getElementById('mgrName').value;
     if (!name) return alert('Введите имя!');
     const arr = this.data.map(i => [i.id || "", i.art, i.name, i.qty, i.unit, i.price, i.qty * i.price, i.supplier, i.note || "", i.done || false]);
+    const userId = app.user ? app.user.id : ''; // Получаем ID
     await api.call('saveProject', {
       sheetName: name,
       data: arr,
