@@ -93,20 +93,41 @@ const app = {
 
   async refreshDashboard(useLoader = true) {
     try {
-      // Передаем useLoader в api.call
-      const userId = this.user ? this.user.id : '';
+      // ИСПРАВЛЕНИЕ: Получаем userId безопасно
+      let userId = '';
+
+      if (this.user && this.user.id) {
+        userId = String(this.user.id); // Приводим к строке
+        console.log('🔍 Загружаем проекты для пользователя:', userId);
+      } else {
+        console.warn('⚠️ Пользователь не авторизован в Telegram');
+        // Можно показать сообщение пользователю
+        const el = document.getElementById('list-new');
+        if (el) {
+          el.innerHTML = '<div style="color:#999; text-align:center; padding:20px;">Откройте приложение через Telegram для просмотра проектов</div>';
+        }
+        return; // Выходим, не загружаем проекты
+      }
+
+      // Передаем userId в API
       const data = await api.call('getProjectsSummary', { userId: userId }, 'GET', useLoader);
+
+      console.log('📦 Получено проектов:', data.length);
+
+      // Очищаем все колонки
       ['new', 'active', 'done'].forEach(id => {
         const el = document.getElementById('list-' + id);
         if (el) el.innerHTML = '';
       });
 
+      // Если проектов нет
       if (data.length === 0) {
         const el = document.getElementById('list-new');
         if (el) el.innerHTML = '<div style="color:#999; text-align:center;">Нет проектов</div>';
         return;
       }
 
+      // Рендерим проекты
       data.forEach(p => {
         const status = p.status || 'new';
         const container = document.getElementById(`list-${status}`);
@@ -123,35 +144,37 @@ const app = {
         card.draggable = true;
         card.ondragstart = (e) => app.drag(e, p.name);
 
-        // Форматируем сумму (например: 150 000 ₸)
         const sumFormatted = (p.sum || 0).toLocaleString() + ' ₸';
 
         card.innerHTML = `
-          <div class="pc-top">
-            <span class="pc-name">${p.name}</span>
-            <div class="pc-right-col">
-               <span class="pc-sum">${sumFormatted}</span>
-               <button onclick="app.deleteProject('${p.name}')" class="btn-del-mini">×</button>
-            </div>
+        <div class="pc-top">
+          <span class="pc-name">${p.name}</span>
+          <div class="pc-right-col">
+             <span class="pc-sum">${sumFormatted}</span>
+             <button onclick="app.deleteProject('${p.name}')" class="btn-del-mini">×</button>
           </div>
-          <div class="pc-ind">${badgeHtml}</div>
-          
-          <div class="pc-actions">
-            <button class="btn btn-def" onclick="manager.open('${p.name}')">✏️</button>
-            <button class="btn btn-def" onclick="buyer.open('${p.name}')">🛒</button>
-          </div>
-          ${archiveBtn}
+        </div>
+        <div class="pc-ind">${badgeHtml}</div>
+        
+        <div class="pc-actions">
+          <button class="btn btn-def" onclick="manager.open('${p.name}')">✏️</button>
+          <button class="btn btn-def" onclick="buyer.open('${p.name}')">🛒</button>
+        </div>
+        ${archiveBtn}
 
-          <select class="mob-status-btn" onchange="app.moveProject('${p.name}', this.value)">
-            <option value="new" ${status == 'new' ? 'selected' : ''}>Формируется</option>
-            <option value="active" ${status == 'active' ? 'selected' : ''}>В закуп</option>
-            <option value="done" ${status == 'done' ? 'selected' : ''}>Завершен</option>
-          </select>
-        `;
+        <select class="mob-status-btn" onchange="app.moveProject('${p.name}', this.value)">
+          <option value="new" ${status == 'new' ? 'selected' : ''}>Формируется</option>
+          <option value="active" ${status == 'active' ? 'selected' : ''}>В закуп</option>
+          <option value="done" ${status == 'done' ? 'selected' : ''}>Завершен</option>
+        </select>
+      `;
         container.appendChild(card);
       });
-    } catch (e) { console.error(e); }
-  },
+    } catch (e) {
+      console.error('❌ Ошибка загрузки проектов:', e);
+      alert('Ошибка загрузки проектов: ' + e.message);
+    }
+  }
 
   async archiveProject(name) {
     if (!confirm(`В архив "${name}"?`)) return;
