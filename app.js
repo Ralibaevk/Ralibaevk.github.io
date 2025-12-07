@@ -1,5 +1,5 @@
 // === ВСТАВЬТЕ ССЫЛКУ ИЗ CODE.GS (ВАЖНО!) ===
-const API_URL = "https://script.google.com/macros/s/AKfycby3_tTB_xnlLqDcgJP5PeNBDG5z09DYrlN__-cU96BnypaDMfY6lgNwZrojd8EhWAvi/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyxplUZwI3gOlQjMGBcNG0pRV4RmfJMNGiTQIGMeL-oMvNsgnMhTwX3xgyV2Lzxg9DJ/exec";
 
 // === API ===
 const api = {
@@ -595,4 +595,14 @@ const buyer = {
     }
   },
 
-  window.onload = () => app.init();
+  checkClose() {
+    if (this.hasChanges) {
+      if (confirm("Есть несохраненные изменения. Выйти?")) app.goHome();
+    } else {
+      app.goHome();
+    }
+  }
+}; // <--- ЗДЕСЬ ЗАКРЫВАЕТСЯ ОБЪЕКТ buyer
+
+// А ВОТ ЗДЕСЬ УЖЕ ЗАПУСК ПРИЛОЖЕНИЯ (ВНЕ ОБЪЕКТА)
+window.onload = () => app.init();
