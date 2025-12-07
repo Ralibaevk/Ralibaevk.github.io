@@ -328,17 +328,23 @@ const manager = {
   async save() {
     const name = document.getElementById('mgrName').value;
     if (!name) return alert('Введите имя!');
+
     const arr = this.data.map(i => [i.id || "", i.art, i.name, i.qty, i.unit, i.price, i.qty * i.price, i.supplier, i.note || "", i.done || false]);
-    const userId = app.user ? app.user.id : ''; // Получаем ID
+
+    // ИСПРАВЛЕНИЕ: ID или ваш запасной
+    const userId = (app.user && app.user.id) ? app.user.id : '297682822';
+
     await api.call('saveProject', {
       sheetName: name,
       data: arr,
       status: 'active',
-      userId: userId // <--- ВАЖНО
+      userId: userId
     }, 'POST');
+
     alert('Сохранено!');
     app.goHome();
   },
+
   handleFile(e) {
     const f = e.target.files[0];
     if (!f) return;
@@ -562,10 +568,14 @@ const buyer = {
         (i.qty * i.price), i.supplier, i.note, i.done
       ]);
 
+      // ИСПРАВЛЕНИЕ: ID или ваш запасной
+      const userId = (app.user && app.user.id) ? app.user.id : '297682822';
+
       await api.call('saveProject', {
         sheetName: this.currentSheet,
         data: arrayData,
-        status: 'active'
+        status: 'active',
+        userId: userId
       }, 'POST');
 
       this.hasChanges = false;
@@ -578,15 +588,6 @@ const buyer = {
         btn.disabled = false;
       }, 1000);
 
-      const userId = app.user ? app.user.id : ''; // Получаем ID
-
-      await api.call('saveProject', {
-        sheetName: this.currentSheet,
-        data: arrayData,
-        status: 'active',
-        userId: userId // <--- Передаем
-      }, 'POST');
-
     } catch (e) {
       alert("Ошибка: " + e.message);
       btn.innerText = oldText;
@@ -594,13 +595,4 @@ const buyer = {
     }
   },
 
-  checkClose() {
-    if (this.hasChanges) {
-      if (confirm("Есть несохраненные изменения. Выйти?")) app.goHome();
-    } else {
-      app.goHome();
-    }
-  }
-};
-
-window.onload = () => app.init();
+  window.onload = () => app.init();
