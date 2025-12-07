@@ -174,7 +174,7 @@ const app = {
       console.error('❌ Ошибка загрузки проектов:', e);
       alert('Ошибка загрузки проектов: ' + e.message);
     }
-  }
+  },
 
   async archiveProject(name) {
     if (!confirm(`В архив "${name}"?`)) return;
