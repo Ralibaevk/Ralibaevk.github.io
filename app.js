@@ -332,13 +332,15 @@ const manager = {
     const arr = this.data.map(i => [i.id || "", i.art, i.name, i.qty, i.unit, i.price, i.qty * i.price, i.supplier, i.note || "", i.done || false]);
 
     // ИСПРАВЛЕНИЕ: ID или ваш запасной
-    const userId = (app.user && app.user.id) ? app.user.id : '297682822';
+    if (!app.user || !app.user.id) {
+      return alert("Ошибка: Не удалось определить пользователя Telegram. Зайдите через приложение.");
+    }
 
     await api.call('saveProject', {
       sheetName: name,
       data: arr,
       status: 'active',
-      userId: userId
+      userId: app.user.id // Только реальный ID
     }, 'POST');
 
     alert('Сохранено!');
@@ -569,7 +571,11 @@ const buyer = {
       ]);
 
       // ИСПРАВЛЕНИЕ: ID или ваш запасной
-      const userId = (app.user && app.user.id) ? app.user.id : '297682822';
+      if (!app.user || !app.user.id) {
+        document.querySelector('#unsavedBar .save-btn').disabled = false;
+        return alert("Ошибка: Вы не авторизованы в Telegram.");
+      }
+      const userId = app.user.id;
 
       await api.call('saveProject', {
         sheetName: this.currentSheet,
