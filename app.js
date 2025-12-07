@@ -3,24 +3,32 @@ const API_URL = "https://script.google.com/macros/s/AKfycby7D3JcC2lI3kP4BOney3oZ
 
 // === API ===
 const api = {
-  async call(action, params = {}, method = 'GET') {
-    document.getElementById('loader').classList.remove('hidden');
+  // Добавили аргумент useLoader = true
+  async call(action, params = {}, method = 'GET', useLoader = true) {
+    // Показываем лоадер только если useLoader === true
+    if (useLoader) document.getElementById('loader').classList.remove('hidden');
+
     let url = `${API_URL}?action=${action}`;
     let opts = { method };
+
     if (method === 'POST') {
       opts.body = JSON.stringify(params);
       opts.headers = { "Content-Type": "text/plain;charset=utf-8" };
     } else {
       for (let k in params) url += `&${k}=${encodeURIComponent(params[k])}`;
     }
+
     try {
       const res = await fetch(url, opts);
       const json = await res.json();
-      document.getElementById('loader').classList.add('hidden');
+
+      // Скрываем лоадер только если мы его показывали
+      if (useLoader) document.getElementById('loader').classList.add('hidden');
+
       if (json.error) throw new Error(json.error);
       return json;
     } catch (e) {
-      document.getElementById('loader').classList.add('hidden');
+      if (useLoader) document.getElementById('loader').classList.add('hidden');
       if (!e.message.includes("storage")) alert("Ошибка связи: " + e.message);
       console.error(e);
       throw e;
@@ -33,34 +41,44 @@ const app = {
   suppliers: [],
 
   async init() {
-
-    // 1. ВСТАВЛЯЕМ КОД ТЕЛЕГРАМА В САМОЕ НАЧАЛО
+    // 1. ТЕЛЕГРАМ (ОТПРАВЛЯЕМ ТИХО, БЕЗ ЛОАДЕРА)
     if (window.Telegram && window.Telegram.WebApp) {
-      // Сообщаем телеграму, что приложение готово
       window.Telegram.WebApp.ready();
-      // Раскрываем на весь экран
       window.Telegram.WebApp.expand();
-
-      // Настройка отступа (для iPhone с челкой/островом)
       document.documentElement.style.setProperty(
         '--tg-safe-area-inset-top',
         (window.Telegram.WebApp.contentSafeAreaInset?.top || 20) + 'px'
       );
 
-      // Получаем данные пользователя
       const user = window.Telegram.WebApp.initDataUnsafe?.user;
-
-      // Если пользователь есть — отправляем его данные в таблицу
       if (user) {
-        // 'POST' запрос, чтобы не ждать ответа и не тормозить загрузку
-        api.call('saveTelegramUser', { user: user }, 'POST').catch(console.error);
-        console.log("TG User sent:", user);
+        // Четвертый параметр 'false' означает "НЕ ПОКАЗЫВАТЬ ЛОАДЕР"
+        api.call('saveTelegramUser', { user: user }, 'POST', false).catch(console.error);
       }
     }
 
-    // 2. ДАЛЬШЕ ИДЕТ ВАШ СТАРЫЙ КОД (БЕЗ ИЗМЕНЕНИЙ)
-    this.refreshDashboard();
-    try { this.suppliers = await api.call('getSuppliers'); } catch (e) { }
+    // 2. ПАРАЛЛЕЛЬНАЯ ЗАГРУЗКА ДАННЫХ (УСКОРЕНИЕ)
+    // Запускаем оба запроса одновременно
+    try {
+      // Показываем лоадер один раз вручную перед началом
+      document.getElementById('loader').classList.remove('hidden');
+
+      const [suppliersData, _] = await Promise.all([
+        // Запрос поставщиков (тихий, так как лоадер уже горит)
+        api.call('getSuppliers', {}, 'GET', false),
+        // Запрос проектов (внутри refreshDashboard тоже надо будет поправить, см. ниже, 
+        // но пока оставим как есть, просто вызовем refreshDashboard)
+        this.refreshDashboard(false) // Передаем false (см. Шаг 3)
+      ]);
+
+      this.suppliers = suppliersData;
+
+    } catch (e) {
+      console.error(e);
+    } finally {
+      // Скрываем лоадер, когда ВСЁ загрузилось
+      document.getElementById('loader').classList.add('hidden');
+    }
 
     // ПРИВЯЗКА ЗАГРУЗКИ ФАЙЛА
     const input = document.getElementById('xlsInput');
@@ -71,9 +89,10 @@ const app = {
     }
   },
 
-  async refreshDashboard() {
+  async refreshDashboard(useLoader = true) {
     try {
-      const data = await api.call('getProjectsSummary');
+      // Передаем useLoader в api.call
+      const data = await api.call('getProjectsSummary', {}, 'GET', useLoader);
       ['new', 'active', 'done'].forEach(id => {
         const el = document.getElementById('list-' + id);
         if (el) el.innerHTML = '';
