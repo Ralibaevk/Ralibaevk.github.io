@@ -557,7 +557,7 @@ const manager = {
       document.getElementById('loader').classList.add('hidden');
       alert("Ошибка чтения файла");
     };
-  },
+  }
 
 };
 
