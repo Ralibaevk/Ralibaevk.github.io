@@ -68,6 +68,12 @@
       <input type="text" id="mgrName" placeholder="Название проекта" class="header-input">
       <button class="btn btn-primary" onclick="manager.save()">💾 Сохранить</button>
     </div>
+
+    <!-- НОВЫЙ БЛОК: КАТЕГОРИИ (ТАБЫ) -->
+    <div class="tabs-scroll-container" id="mgrCategoryTabs">
+      <!-- Кнопки генерируются JS-ом -->
+    </div>
+
     <div class="mgr-toolbar">
       <input type="file" id="xlsInput" hidden>
       <button class="btn btn-def" onclick="document.getElementById('xlsInput').click()">📂 Импорт</button>
@@ -87,6 +93,8 @@
         <thead>
           <tr>
             <th class="chk"><input type="checkbox" id="mgrAll" onchange="manager.toggleAll(this.checked)"></th>
+            <!-- НОВАЯ КОЛОНКА -->
+            <th style="width: 120px;">Категория</th>
             <th>Артикул</th>
             <th>Наименование</th>
             <th>Кол-во</th>

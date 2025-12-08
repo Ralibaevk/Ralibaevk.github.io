@@ -1,6 +1,5 @@
 // === ВСТАВЬТЕ ССЫЛКУ ИЗ CODE.GS (ВАЖНО!) ===
-const API_URL = "https://script.google.com/macros/s/AKfycbw7pv99D98ggUZKvYTGU7e-TQ_cuuW7rc6fplA_bdVHY_NT8T9xwweBnYAd4AAJxdvN/exec";
-
+const API_URL = "https://script.google.com/macros/s/AKfycbxsI8q7uTPqlCUy9BkjGzWL81DcntZdNVv8-FIzfZWLH0SFTtw0e51gwmiH6wEt9n9g/exec";
 // === API ===
 const api = {
   // Добавили аргумент useLoader = true
@@ -260,15 +259,38 @@ const app = {
 // === MANAGER LOGIC ===
 const manager = {
   data: [],
+  // 1. СПИСОК КАТЕГОРИЙ
+  categories: [
+    "Фурнитура",
+    "Листовые материалы",
+    "Фасады",
+    "Услуги",
+    "Прочий закуп",
+    "Рекламации"
+  ],
+  // 2. ТЕКУЩАЯ КАТЕГОРИЯ
+  currentCategory: "Фурнитура",
+
   async open(name) {
     document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
     document.getElementById('view-manager').classList.remove('hidden');
     document.getElementById('mgrName').value = '';
+
+    // Сброс на первую категорию при открытии
+    this.currentCategory = this.categories[0];
+    this.renderTabs(); // Рисуем кнопки табов
+
     if (name) {
       document.getElementById('mgrName').value = name;
       try {
         const sData = await api.call('getProjectData', { sheetName: name });
-        this.data = sData.map(i => ({ ...i, checked: false, note: i.note || "" }));
+        this.data = sData.map(i => ({
+          ...i,
+          checked: false,
+          note: i.note || "",
+          // Если категории нет (старый проект), ставим первую
+          category: i.category || this.categories[0]
+        }));
       } catch (e) { this.data = []; }
     } else {
       document.getElementById('mgrName').value = `Заказ ${new Date().toLocaleDateString()}`;
@@ -276,16 +298,42 @@ const manager = {
     }
     this.render();
   },
+
+  // 3. РЕНДЕРИНГ ТАБОВ
+  renderTabs() {
+    const container = document.getElementById('mgrCategoryTabs');
+    container.innerHTML = this.categories.map(cat => {
+      const activeClass = (cat === this.currentCategory) ? 'active' : '';
+      // Используем onclick="manager.setCategory(...)"
+      return `<button class="cat-tab-btn ${activeClass}" onclick="manager.setCategory('${cat}')">${cat}</button>`;
+    }).join('');
+  },
+
+  setCategory(cat) {
+    this.currentCategory = cat;
+    this.renderTabs(); // Обновляем активную кнопку
+    this.render();     // Перерисовываем таблицу
+  },
+
   render() {
     const tbody = document.getElementById('mgrBody');
     tbody.innerHTML = '';
     const filter = document.getElementById('mgrSearch').value.toLowerCase();
     let total = 0;
+
+    // Опции для выпадающего списка поставщиков
     const supOpts = `<option value="">-</option>` + app.suppliers.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
 
+    // Опции для выпадающего списка категорий (для переноса)
+    const catOpts = this.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
     this.data.forEach((item, i) => {
+      // 4. ФИЛЬТР: Показываем только если категория совпадает с текущим табом
+      if (item.category !== this.currentCategory) return;
+
       const searchStr = (item.name + ' ' + item.art + ' ' + item.supplier).toLowerCase();
       if (filter && !searchStr.includes(filter)) return;
+
       item.sum = item.qty * item.price;
       total += item.sum;
 
@@ -295,6 +343,14 @@ const manager = {
 
       tr.innerHTML = `
         <td class="chk"><input type="checkbox" ${item.checked ? 'checked' : ''} onchange="manager.check(${i},this.checked)"></td>
+        
+        <!-- ДРОПДАУН КАТЕГОРИИ (ПРИ СМЕНЕ ТОВАР УЛЕТИТ В ДРУГОЙ ТАБ) -->
+        <td>
+           <select class="cat-select-table" onchange="manager.changeCategory(${i}, this.value)">
+             ${catOpts.replace(`"${item.category}"`, `"${item.category}" selected`)}
+           </select>
+        </td>
+
         <td><input value="${item.art || ''}" onchange="manager.upd(${i},'art',this.value)"></td>
         <td><input value="${item.name}" onchange="manager.upd(${i},'name',this.value)"></td>
         <td><input type="number" value="${item.qty}" onchange="manager.upd(${i},'qty',this.value)"></td>
@@ -306,15 +362,61 @@ const manager = {
       `;
       tbody.appendChild(tr);
     });
+
+    // Показываем итог только по текущей категории или общий? 
+    // Обычно удобнее видеть итог страницы.
     document.getElementById('mgrTotal').innerText = total.toLocaleString() + ' ₸';
   },
+
+  // Смена категории через дропдаун
+  changeCategory(index, newCat) {
+    this.data[index].category = newCat;
+    // Товар должен исчезнуть из текущего списка
+    this.render();
+  },
+
   upd(i, f, v) { if (f === 'qty' || f === 'price') v = parseFloat(v) || 0; this.data[i][f] = v; if (f === 'qty' || f === 'price') this.render(); },
   check(i, v) { this.data[i].checked = v; this.render(); },
-  toggleAll(v) { const f = document.getElementById('mgrSearch').value.toLowerCase(); this.data.forEach(i => { if (!f || i.name.toLowerCase().includes(f)) i.checked = v }); this.render(); },
-  sort() { this.data.sort((a, b) => (a.supplier && !b.supplier) ? -1 : (b.supplier && !a.supplier) ? 1 : a.name.localeCompare(b.name)); this.render(); },
-  delSel() { if (confirm('Удалить?')) { this.data = this.data.filter(i => !i.checked); document.getElementById('mgrAll').checked = false; this.render(); } },
-  addRow() { this.data.unshift({ id: "", art: "", name: "Новая", qty: 1, unit: "шт", price: 0, supplier: "", note: "", done: false }); this.render(); },
+  toggleAll(v) {
+    // Чекбокс "Все" теперь выделяет только видимые в текущей категории
+    const f = document.getElementById('mgrSearch').value.toLowerCase();
+    this.data.forEach(i => {
+      if (i.category === this.currentCategory && (!f || i.name.toLowerCase().includes(f))) {
+        i.checked = v;
+      }
+    });
+    this.render();
+  },
 
+  sort() { this.data.sort((a, b) => (a.supplier && !b.supplier) ? -1 : (b.supplier && !a.supplier) ? 1 : a.name.localeCompare(b.name)); this.render(); },
+
+  delSel() {
+    if (confirm('Удалить выбранные?')) {
+      this.data = this.data.filter(i => !i.checked);
+      document.getElementById('mgrAll').checked = false;
+      this.render();
+    }
+  },
+
+  addRow() {
+    // Новая строка создается СРАЗУ в текущей категории
+    this.data.unshift({
+      id: "",
+      art: "",
+      name: "Новая",
+      qty: 1,
+      unit: "шт",
+      price: 0,
+      supplier: "",
+      note: "",
+      done: false,
+      category: this.currentCategory
+    });
+    this.render();
+  },
+
+  // ... (методы openMerge, applyMerge, openSup, applySup - остаются без изменений, 
+  // но они будут работать с this.data, где уже есть поле category, так что все ок)
   openMerge() {
     const sel = this.data.filter(i => i.checked);
     if (sel.length < 2) return alert('Выберите 2+');
@@ -348,22 +450,35 @@ const manager = {
     document.getElementById('mgrAll').checked = false;
     this.render();
   },
+
   async save() {
     const name = document.getElementById('mgrName').value;
     if (!name) return alert('Введите имя!');
 
-    const arr = this.data.map(i => [i.id || "", i.art, i.name, i.qty, i.unit, i.price, i.qty * i.price, i.supplier, i.note || "", i.done || false]);
+    // ВАЖНО: При сохранении передаем 11 элементов массива (добавили i.category)
+    const arr = this.data.map(i => [
+      i.id || "",
+      i.art,
+      i.name,
+      i.qty,
+      i.unit,
+      i.price,
+      i.qty * i.price,
+      i.supplier,
+      i.note || "",
+      i.done || false,
+      i.category || "Фурнитура" // 11-й элемент
+    ]);
 
-    // ИСПРАВЛЕНИЕ: ID или ваш запасной
     if (!app.user || !app.user.id) {
-      return alert("Ошибка: Не удалось определить пользователя Telegram. Зайдите через приложение.");
+      return alert("Ошибка: Не удалось определить пользователя Telegram.");
     }
 
     await api.call('saveProject', {
       sheetName: name,
       data: arr,
       status: 'active',
-      userId: app.user.id // Только реальный ID
+      userId: app.user.id
     }, 'POST');
 
     alert('Сохранено!');
@@ -384,6 +499,31 @@ const manager = {
     };
     reader.readAsArrayBuffer(f);
   }
+};
+
+// --- В ОБЪЕКТЕ mapper.apply НУЖНО ДОБАВИТЬ КАТЕГОРИЮ ПО УМОЛЧАНИЮ ---
+mapper.apply = function () {
+  const m = {};
+  document.querySelectorAll('.map-sel').forEach(s => { if (s.value) m[s.value] = parseInt(s.dataset.col); });
+  if (m.name === undefined) return alert('Где Название?');
+  manager.data = []; // Очищаем или добавляем? Обычно импорт очищает текущий вид или добавляет. Тут как было.
+  this.raw.forEach(r => {
+    if (!r[m.name]) return;
+    manager.data.push({
+      id: "",
+      art: r[m.art] != undefined ? String(r[m.art]) : "",
+      name: String(r[m.name]),
+      qty: m.qty != undefined ? (parseFloat(String(r[m.qty]).replace(',', '.')) || 1) : 1,
+      unit: m.unit != undefined ? String(r[m.unit]) : "шт",
+      price: m.price != undefined ? (parseFloat(String(r[m.price]).replace(',', '.')) || 0) : 0,
+      supplier: m.supplier != undefined ? String(r[m.supplier]) : "",
+      note: m.note != undefined ? String(r[m.note]) : "",
+      done: false,
+      category: manager.currentCategory // Импортированные попадают в текущую вкладку!
+    });
+  });
+  document.getElementById('modal').style.display = 'none';
+  manager.render();
 };
 
 const mapper = {
