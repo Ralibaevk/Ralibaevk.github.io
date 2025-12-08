@@ -1,5 +1,5 @@
 // === ВСТАВЬТЕ ССЫЛКУ ИЗ CODE.GS (ВАЖНО!) ===
-const API_URL = "https://script.google.com/macros/s/AKfycbwSvQL9SXZgNtJH3cS-C1-dz0lc8nyL41umq4dLUHjfkk2UBPZmRB9XZU-FxypC-1rP/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyz0Z696GwH_HNcNKOWPR_lRBtOttN8hPJNT0BeQJAtpouNz3tawA433Q1dFK_K0oYq/exec";
 // === API ===
 const api = {
   // Добавили аргумент useLoader = true
@@ -839,4 +839,5 @@ const buyer = {
 }; // <--- ВАЖНО: ЭТА СКОБКА ЗАКРЫВАЕТ ОБЪЕКТ buyer
 
 // === ЗАПУСК (СТРОГО ПОСЛЕ ЗАКРЫВАЮЩЕЙ СКОБКИ) ===
+
 window.onload = () => app.init();
