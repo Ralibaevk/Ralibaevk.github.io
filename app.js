@@ -727,7 +727,8 @@ const buyer = {
     try {
       const arrayData = this.localData.map(i => [
         i.id, i.art, i.name, i.qty, i.unit, i.price,
-        (i.qty * i.price), i.supplier, i.note, i.done
+        (i.qty * i.price), i.supplier, i.note, i.done,
+        i.category || "Фурнитура" // <--- ОБЯЗАТЕЛЬНО ДОБАВИТЬ ЭТУ СТРОКУ (11-я колонка)
       ]);
 
       // ИСПРАВЛЕНИЕ: ID или ваш запасной
