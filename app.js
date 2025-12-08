@@ -501,31 +501,6 @@ const manager = {
   }
 };
 
-// --- В ОБЪЕКТЕ mapper.apply НУЖНО ДОБАВИТЬ КАТЕГОРИЮ ПО УМОЛЧАНИЮ ---
-mapper.apply = function () {
-  const m = {};
-  document.querySelectorAll('.map-sel').forEach(s => { if (s.value) m[s.value] = parseInt(s.dataset.col); });
-  if (m.name === undefined) return alert('Где Название?');
-  manager.data = []; // Очищаем или добавляем? Обычно импорт очищает текущий вид или добавляет. Тут как было.
-  this.raw.forEach(r => {
-    if (!r[m.name]) return;
-    manager.data.push({
-      id: "",
-      art: r[m.art] != undefined ? String(r[m.art]) : "",
-      name: String(r[m.name]),
-      qty: m.qty != undefined ? (parseFloat(String(r[m.qty]).replace(',', '.')) || 1) : 1,
-      unit: m.unit != undefined ? String(r[m.unit]) : "шт",
-      price: m.price != undefined ? (parseFloat(String(r[m.price]).replace(',', '.')) || 0) : 0,
-      supplier: m.supplier != undefined ? String(r[m.supplier]) : "",
-      note: m.note != undefined ? String(r[m.note]) : "",
-      done: false,
-      category: manager.currentCategory // Импортированные попадают в текущую вкладку!
-    });
-  });
-  document.getElementById('modal').style.display = 'none';
-  manager.render();
-};
-
 const mapper = {
   raw: [],
 
