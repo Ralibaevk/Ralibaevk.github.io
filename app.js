@@ -528,9 +528,14 @@ mapper.apply = function () {
 
 const mapper = {
   raw: [],
+
   show() {
     const tbl = document.getElementById('mapTable');
     tbl.innerHTML = '';
+
+    // Если файл пустой или с ошибкой
+    if (!this.raw || !this.raw.length) return;
+
     const maxCols = this.raw.reduce((a, b) => Math.max(a, b.length), 0);
     let html = '<tr>';
     for (let i = 0; i < maxCols; i++) {
@@ -541,30 +546,47 @@ const mapper = {
       </select></th>`;
     }
     html += '</tr>';
+
+    // Показываем первые 20 строк для предпросмотра
     this.raw.slice(0, 20).forEach(r => {
       html += '<tr>' + Array.from({ length: maxCols }).map((_, i) => `<td style="padding:5px; border:1px solid #eee;">${r[i] || ""}</td>`).join('') + '</tr>';
     });
     tbl.innerHTML = html;
-    const m = document.getElementById('modal'); m.classList.remove('hidden'); m.style.display = 'flex';
+
+    const m = document.getElementById('modal');
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
   },
+
   apply() {
     const m = {};
     document.querySelectorAll('.map-sel').forEach(s => { if (s.value) m[s.value] = parseInt(s.dataset.col); });
-    if (m.name === undefined) return alert('Где Название?');
+
+    if (m.name === undefined) return alert('Ошибка: Вы не выбрали колонку "Название"!');
+
+    // ВАЖНО: Мы не очищаем manager.data полностью, если хотим добавить к существующим.
+    // Но по логике приложения сейчас (manager.open), мы работаем с полным списком.
+    // Если нужно заменить список:
     manager.data = [];
+
     this.raw.forEach(r => {
-      if (!r[m.name]) return;
+      if (!r[m.name]) return; // Пропускаем пустые названия
+
       manager.data.push({
-        id: "", art: r[m.art] != undefined ? String(r[m.art]) : "",
+        id: "",
+        art: m.art !== undefined ? String(r[m.art]) : "",
         name: String(r[m.name]),
-        qty: m.qty != undefined ? (parseFloat(String(r[m.qty]).replace(',', '.')) || 1) : 1,
-        unit: m.unit != undefined ? String(r[m.unit]) : "шт",
-        price: m.price != undefined ? (parseFloat(String(r[m.price]).replace(',', '.')) || 0) : 0,
-        supplier: m.supplier != undefined ? String(r[m.supplier]) : "",
-        note: m.note != undefined ? String(r[m.note]) : "",
-        done: false
+        qty: m.qty !== undefined ? (parseFloat(String(r[m.qty]).replace(',', '.')) || 1) : 1,
+        unit: m.unit !== undefined ? String(r[m.unit]) : "шт",
+        price: m.price !== undefined ? (parseFloat(String(r[m.price]).replace(',', '.')) || 0) : 0,
+        supplier: m.supplier !== undefined ? String(r[m.supplier]) : "",
+        note: m.note !== undefined ? String(r[m.note]) : "",
+        done: false,
+        // САМОЕ ГЛАВНОЕ: Импортируемые товары попадают в ТЕКУЩУЮ открытую вкладку категории
+        category: manager.currentCategory
       });
     });
+
     document.getElementById('modal').style.display = 'none';
     manager.render();
   }
