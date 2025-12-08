@@ -1,5 +1,5 @@
 // === ВСТАВЬТЕ ССЫЛКУ ИЗ CODE.GS (ВАЖНО!) ===
-const API_URL = "https://script.google.com/macros/s/AKfycbwuo0oY5B45DGp0nKRbSSjN7NVBR9S_utf98tlREGhGunsy2UGkQ0AFe66udiG71Eww/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwSvQL9SXZgNtJH3cS-C1-dz0lc8nyL41umq4dLUHjfkk2UBPZmRB9XZU-FxypC-1rP/exec";
 // === API ===
 const api = {
   // Добавили аргумент useLoader = true
@@ -324,13 +324,14 @@ const manager = {
     // Опции для выпадающего списка поставщиков
     const supOpts = `<option value="">-</option>` + app.suppliers.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
 
-    // Опции для выпадающего списка категорий (для переноса)
+    // Опции для выпадающего списка категорий
     const catOpts = this.categories.map(c => `<option value="${c}">${c}</option>`).join('');
 
     this.data.forEach((item, i) => {
-      // 4. ФИЛЬТР: Показываем только если категория совпадает с текущим табом
+      // 1. Фильтр по категории
       if (item.category !== this.currentCategory) return;
 
+      // 2. Фильтр поиска
       const searchStr = (item.name + ' ' + item.art + ' ' + item.supplier).toLowerCase();
       if (filter && !searchStr.includes(filter)) return;
 
@@ -341,30 +342,35 @@ const manager = {
       if (item.supplier) tr.classList.add('has-supplier');
       if (item.checked) tr.style.background = '#fff9c4';
 
+      // ВАЖНОЕ ИЗМЕНЕНИЕ НИЖЕ:
+      // Для текстовых полей (Артикул, Имя, Ед., Прим.) используем oninput вместо onchange.
+      // Это сохраняет данные мгновенно при вводе.
       tr.innerHTML = `
         <td class="chk"><input type="checkbox" ${item.checked ? 'checked' : ''} onchange="manager.check(${i},this.checked)"></td>
         
-        <!-- ДРОПДАУН КАТЕГОРИИ (ПРИ СМЕНЕ ТОВАР УЛЕТИТ В ДРУГОЙ ТАБ) -->
         <td>
            <select class="cat-select-table" onchange="manager.changeCategory(${i}, this.value)">
              ${catOpts.replace(`"${item.category}"`, `"${item.category}" selected`)}
            </select>
         </td>
 
-        <td><input value="${item.art || ''}" onchange="manager.upd(${i},'art',this.value)"></td>
-        <td><input value="${item.name}" onchange="manager.upd(${i},'name',this.value)"></td>
+        <!-- Используем oninput для мгновенного сохранения -->
+        <td><input value="${item.art || ''}" oninput="manager.upd(${i},'art',this.value)"></td>
+        <td><input value="${item.name}" oninput="manager.upd(${i},'name',this.value)"></td>
+        
+        <!-- Для цифр оставляем onchange, чтобы фокус не слетал при пересчете -->
         <td><input type="number" value="${item.qty}" onchange="manager.upd(${i},'qty',this.value)"></td>
-        <td><input value="${item.unit}" onchange="manager.upd(${i},'unit',this.value)"></td>
+        
+        <td><input value="${item.unit}" oninput="manager.upd(${i},'unit',this.value)"></td>
         <td><input type="number" value="${item.price}" onchange="manager.upd(${i},'price',this.value)"></td>
+        
         <td>${item.sum.toLocaleString()}</td>
         <td><select onchange="manager.upd(${i},'supplier',this.value)">${supOpts.replace(`"${item.supplier}"`, `"${item.supplier}" selected`)}</select></td>
-        <td><input value="${item.note || ''}" placeholder="..." onchange="manager.upd(${i},'note',this.value)"></td>
+        <td><input value="${item.note || ''}" placeholder="..." oninput="manager.upd(${i},'note',this.value)"></td>
       `;
       tbody.appendChild(tr);
     });
 
-    // Показываем итог только по текущей категории или общий? 
-    // Обычно удобнее видеть итог страницы.
     document.getElementById('mgrTotal').innerText = total.toLocaleString() + ' ₸';
   },
 
@@ -833,5 +839,4 @@ const buyer = {
 }; // <--- ВАЖНО: ЭТА СКОБКА ЗАКРЫВАЕТ ОБЪЕКТ buyer
 
 // === ЗАПУСК (СТРОГО ПОСЛЕ ЗАКРЫВАЮЩЕЙ СКОБКИ) ===
-
 window.onload = () => app.init();
