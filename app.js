@@ -1,5 +1,5 @@
 // === ВСТАВЬТЕ ССЫЛКУ ИЗ CODE.GS (ВАЖНО!) ===
-const API_URL = "https://script.google.com/macros/s/AKfycbxsI8q7uTPqlCUy9BkjGzWL81DcntZdNVv8-FIzfZWLH0SFTtw0e51gwmiH6wEt9n9g/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycby_GTLDH4RgvHFFhLvjLnby5-tifTCngw_5LBiBMzKOqKV3N_LnTYYXskTqwDEPie5B/exec";
 // === API ===
 const api = {
   // Добавили аргумент useLoader = true
@@ -498,7 +498,67 @@ const manager = {
       } catch (err) { alert(err); } finally { e.target.value = ''; }
     };
     reader.readAsArrayBuffer(f);
-  }
+  },
+
+  async uploadFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    // Лимит 5 МБ
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Файл слишком большой (макс 5 МБ)");
+      input.value = '';
+      return;
+    }
+
+    // Визуальная индикация (меняем текст кнопки временно, если хотите, или просто лоадер)
+    document.getElementById('loader').classList.remove('hidden');
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = async () => {
+      try {
+        const base64 = reader.result.split(',')[1];
+
+        const res = await api.call('uploadFile', {
+          data: base64,
+          name: file.name,
+          mime: file.type
+        }, 'POST', false); // false - чтобы не дублировать лоадер, мы его уже включили или он не нужен
+
+        if (res.url) {
+          // ДОБАВЛЯЕМ НОВУЮ СТРОКУ С ФАЙЛОМ
+          this.data.unshift({
+            id: "",
+            art: "",
+            name: "📎 Файл: " + file.name, // Имя файла в название
+            qty: 1,
+            unit: "шт",
+            price: 0,
+            supplier: "",
+            note: res.url, // Ссылка в примечание
+            done: false,
+            category: this.currentCategory // ВАЖНО: Добавляем в ТЕКУЩУЮ категорию
+          });
+
+          this.render(); // Обновляем таблицу
+          alert("Файл добавлен!");
+        }
+      } catch (e) {
+        alert("Ошибка загрузки: " + e.message);
+      } finally {
+        document.getElementById('loader').classList.add('hidden');
+        input.value = ''; // Сброс инпута
+      }
+    };
+
+    reader.onerror = () => {
+      document.getElementById('loader').classList.add('hidden');
+      alert("Ошибка чтения файла");
+    };
+  },
+
 };
 
 const mapper = {

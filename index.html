@@ -75,8 +75,14 @@
     </div>
 
     <div class="mgr-toolbar">
+      <!-- Существующий импорт Excel -->
       <input type="file" id="xlsInput" hidden>
       <button class="btn btn-def" onclick="document.getElementById('xlsInput').click()">📂 Импорт</button>
+
+      <!-- НОВОЕ: Загрузка файла в категорию -->
+      <input type="file" id="catFileInput" hidden onchange="manager.uploadFile(this)">
+      <button class="btn btn-def" onclick="document.getElementById('catFileInput').click()">📎 Файл</button>
+
       <button class="btn btn-def" onclick="manager.addRow()">➕ Стр.</button>
       <div class="sep"></div>
       <button class="btn btn-p" onclick="manager.sort()">🔃 Сорт.</button>
