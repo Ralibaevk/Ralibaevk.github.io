@@ -276,6 +276,8 @@ const api = {
 const app = {
   suppliers: [],
   user: null,
+  projectsData: [],
+  currentDashTab: 'new',
 
   async init() {
     // 1. ТЕЛЕГРАМ (ОТПРАВЛЯЕМ ТИХО, БЕЗ ЛОАДЕРА)
@@ -329,86 +331,25 @@ const app = {
 
   async refreshDashboard(useLoader = true) {
     try {
-      // ИСПРАВЛЕНИЕ: Получаем userId безопасно
       let userId = '';
+      if (this.user && this.user.id) userId = String(this.user.id);
 
-      if (this.user && this.user.id) {
-        userId = String(this.user.id); // Приводим к строке
-        console.log('🔍 Загружаем проекты для пользователя:', userId);
-      } else {
-        console.warn('⚠️ Пользователь не авторизован в Telegram');
-        // Можно показать сообщение пользователю
-        const el = document.getElementById('list-new');
-        if (el) {
-          el.innerHTML = '<div style="color:#999; text-align:center; padding:20px;">Откройте приложение через Telegram для просмотра проектов</div>';
-        }
-        return; // Выходим, не загружаем проекты
-      }
-
-      // Передаем userId в API
+      // 1. Получаем данные
       const data = await api.call('getProjectsSummary', { userId: userId }, 'GET', useLoader);
-
       console.log('📦 Получено проектов:', data.length);
 
-      // Очищаем все колонки
-      ['new', 'active', 'done'].forEach(id => {
-        const el = document.getElementById('list-' + id);
-        if (el) el.innerHTML = '';
-      });
+      // 2. Сохраняем в память
+      this.projectsData = data;
 
-      // Если проектов нет
-      if (data.length === 0) {
-        const el = document.getElementById('list-new');
-        if (el) el.innerHTML = '<div style="color:#999; text-align:center;">Нет проектов</div>';
-        return;
-      }
+      // 3. Обновляем цифры на табах
+      this.updateBadges();
 
-      // Рендерим проекты
-      data.forEach(p => {
-        const status = p.status || 'new';
-        const container = document.getElementById(`list-${status}`);
-        if (!container) return;
+      // 4. Рисуем сетку
+      this.renderProjectsGrid();
 
-        const notBought = p.total - p.done;
-        let badgeHtml = notBought > 0 ? `<span class="ind-bad"><i class="fas fa-circle"></i> ${notBought}</span>` :
-          (p.total > 0 ? `<span class="ind-good"><i class="fas fa-check-circle"></i> Готово</span>` : `<span style="color:#999;">Пусто</span>`);
-
-        let archiveBtn = status === 'done' ? `<button class="p-btn p-btn-arc" onclick="app.archiveProject('${p.name}')" style="background:#607d8b; color:white; margin-top:5px; width:100%;">📦 В Архив</button>` : '';
-
-        const card = document.createElement('div');
-        card.className = 'p-card';
-        card.draggable = true;
-        card.ondragstart = (e) => app.drag(e, p.name);
-
-        const sumFormatted = (p.sum || 0).toLocaleString() + ' ₸';
-
-        card.innerHTML = `
-        <div class="pc-top">
-          <span class="pc-name">${p.name}</span>
-          <div class="pc-right-col">
-             <span class="pc-sum">${sumFormatted}</span>
-             <button onclick="app.deleteProject('${p.name}')" class="btn-del-mini">×</button>
-          </div>
-        </div>
-        <div class="pc-ind">${badgeHtml}</div>
-        
-        <div class="pc-actions">
-          <button class="btn btn-def" onclick="manager.open('${p.name}')">✏️</button>
-          <button class="btn btn-def" onclick="buyer.open('${p.name}')">🛒</button>
-        </div>
-        ${archiveBtn}
-
-        <select class="mob-status-btn" onchange="app.moveProject('${p.name}', this.value)">
-          <option value="new" ${status == 'new' ? 'selected' : ''}>Формируется</option>
-          <option value="active" ${status == 'active' ? 'selected' : ''}>В закуп</option>
-          <option value="done" ${status == 'done' ? 'selected' : ''}>Завершен</option>
-        </select>
-      `;
-        container.appendChild(card);
-      });
     } catch (e) {
-      console.error('❌ Ошибка загрузки проектов:', e);
-      alert('Ошибка загрузки проектов: ' + e.message);
+      console.error(e);
+      alert('Ошибка: ' + e.message);
     }
   },
 
@@ -440,16 +381,127 @@ const app = {
     this.goHome();
   },
 
-  drag(ev, name) { ev.dataTransfer.setData("text", name); },
-  allowDrop(ev) { ev.preventDefault(); },
-  async drop(ev, newStatus) {
-    ev.preventDefault();
-    const name = ev.dataTransfer.getData("text");
-    await this.moveProject(name, newStatus);
+  renderProjectsGrid() {
+    const grid = document.getElementById('projectsGrid');
+    if (!grid) return console.warn('Элемент #projectsGrid не найден в HTML');
+
+    grid.innerHTML = '';
+
+    const filterText = (document.getElementById('dashSearch')?.value || '').toLowerCase();
+    const targetStatus = this.currentDashTab;
+
+    // Фильтруем: Статус == Текущий Таб И Имя содержит Поиск
+    const filtered = this.projectsData.filter(p => {
+      const pStatus = p.status || 'new';
+      const matchesTab = (pStatus === targetStatus);
+      const matchesSearch = p.name.toLowerCase().includes(filterText);
+      return matchesTab && matchesSearch;
+    });
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `
+          <div style="grid-column: 1/-1; text-align:center; padding:40px; color:#999;">
+             <i class="fas fa-folder-open" style="font-size:40px; margin-bottom:10px;"></i><br>
+             В этой категории пусто
+          </div>`;
+      return;
+    }
+
+    filtered.forEach(p => {
+      // Считаем прогресс
+      const total = p.total || 0;
+      const done = p.done || 0;
+      const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+      const sumFormatted = (p.sum || 0).toLocaleString() + ' ₸';
+
+      // Определяем тег
+      let tagText = 'Новый';
+      let statusClass = 'new';
+      if (percent === 100) { tagText = 'Завершен'; statusClass = 'done'; }
+      else if (percent > 0) { tagText = `Прогресс ${percent}%`; statusClass = 'active'; }
+
+      const card = document.createElement('div');
+      card.className = 'p-card';
+      // Клик по карточке открывает менеджер
+      card.onclick = (e) => {
+        if (!e.target.closest('button') && !e.target.closest('select')) manager.open(p.name);
+      };
+
+      card.innerHTML = `
+            <div class="card-header">
+                <span class="card-tag">${tagText}</span>
+                <button class="btn btn-text" onclick="event.stopPropagation(); app.deleteProject('${p.name}')">
+                    <i class="fas fa-trash" style="color:#faa;"></i>
+                </button>
+            </div>
+            
+            <h3 class="card-title">${p.name}</h3>
+            <div class="card-desc">
+               Сумма: <b>${sumFormatted}</b><br>
+               Позиций: ${total} (Куплено: ${done})
+            </div>
+
+            <div class="card-footer">
+               <div class="card-avatars">
+                  <div class="card-avatar"><i class="fas fa-user"></i></div>
+               </div>
+               
+               <div style="display:flex; gap:5px;">
+                  <button class="btn btn-def" onclick="event.stopPropagation(); buyer.open('${p.name}')" style="padding:4px 8px;">
+                    <i class="fas fa-shopping-cart"></i>
+                  </button>
+                  
+                  <!-- Смена статуса -->
+                  <select onclick="event.stopPropagation()" onchange="app.moveProject('${p.name}', this.value)" style="border:1px solid #eee; border-radius:6px; font-size:11px;">
+                      <option value="new" ${p.status == 'new' ? 'selected' : ''}>В работе</option>
+                      <option value="active" ${p.status == 'active' ? 'selected' : ''}>Закуп</option>
+                      <option value="done" ${p.status == 'done' ? 'selected' : ''}>Готово</option>
+                  </select>
+               </div>
+            </div>
+        `;
+      grid.appendChild(card);
+    });
   },
+
+  switchTab(tabName) {
+    this.currentDashTab = tabName;
+
+    // Обновляем UI кнопок
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(t => t.classList.remove('active'));
+
+    if (tabName === 'new') document.getElementById('tab-btn-new')?.classList.add('active');
+    if (tabName === 'active') document.getElementById('tab-btn-active')?.classList.add('active');
+    if (tabName === 'done') document.getElementById('tab-btn-done')?.classList.add('active');
+
+    this.renderProjectsGrid();
+  },
+
+  updateBadges() {
+    const counts = { new: 0, active: 0, done: 0 };
+    this.projectsData.forEach(p => {
+      const s = p.status || 'new';
+      if (counts[s] !== undefined) counts[s]++;
+      else counts['new']++;
+    });
+
+    if (document.getElementById('count-new')) document.getElementById('count-new').innerText = counts.new;
+    if (document.getElementById('count-active')) document.getElementById('count-active').innerText = counts.active;
+    if (document.getElementById('count-done')) document.getElementById('count-done').innerText = counts.done;
+  },
+
+  filterDashboard() {
+    this.renderProjectsGrid();
+  },
+
   async moveProject(name, status) {
     await api.call('updateStatus', { sheetName: name, status: status }, 'POST');
-    this.refreshDashboard();
+    // Обновляем локально без перезагрузки
+    const proj = this.projectsData.find(p => p.name === name);
+    if (proj) proj.status = status;
+    this.updateBadges();
+    this.renderProjectsGrid();
   },
 
   openSuppliersEdit() {
