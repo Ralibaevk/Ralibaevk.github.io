@@ -408,7 +408,7 @@ const app = {
     }
 
     filtered.forEach(p => {
-      // Считаем прогресс
+      // ... (код подсчета процентов и sumFormatted оставляем как был) ...
       const total = p.total || 0;
       const done = p.done || 0;
       const percent = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -416,47 +416,51 @@ const app = {
 
       // Определяем тег
       let tagText = 'Новый';
-      let statusClass = 'new';
-      if (percent === 100) { tagText = 'Завершен'; statusClass = 'done'; }
-      else if (percent > 0) { tagText = `Прогресс ${percent}%`; statusClass = 'active'; }
+      if (percent === 100) tagText = 'Завершен';
+      else if (percent > 0) tagText = `Прогресс ${percent}%`;
 
       const card = document.createElement('div');
       card.className = 'p-card';
-      // Клик по карточке открывает менеджер
-      card.onclick = (e) => {
-        if (!e.target.closest('button') && !e.target.closest('select')) manager.open(p.name);
-      };
+      // Клик по телу карточки открывает менеджер (для удобства)
 
       card.innerHTML = `
             <div class="card-header">
                 <span class="card-tag">${tagText}</span>
-                <button class="btn btn-text" onclick="event.stopPropagation(); app.deleteProject('${p.name}')">
-                    <i class="fas fa-trash" style="color:#faa;"></i>
+                <button class="btn-trash" onclick="event.stopPropagation(); app.deleteProject('${p.name}')" title="Удалить">
+                    <i class="fas fa-trash"></i>
                 </button>
             </div>
             
-            <h3 class="card-title">${p.name}</h3>
-            <div class="card-desc">
-               Сумма: <b>${sumFormatted}</b><br>
-               Позиций: ${total} (Куплено: ${done})
+            <div class="card-body" onclick="manager.open('${p.name}')">
+                <h3 class="card-title">${p.name}</h3>
+                <div class="card-desc">
+                   <div class="desc-row">
+                      <i class="fas fa-coins" style="color:#cbd5e1; font-size:12px;"></i> 
+                      <b>${sumFormatted}</b>
+                   </div>
+                   <div class="desc-row">
+                      <i class="fas fa-list-ul" style="color:#cbd5e1; font-size:12px;"></i> 
+                      <span>Позиций: ${total} (Куплено: ${done})</span>
+                   </div>
+                </div>
             </div>
 
             <div class="card-footer">
-               <div class="card-avatars">
-                  <div class="card-avatar"><i class="fas fa-user"></i></div>
-               </div>
+               <!-- Слева: Селект статуса -->
+               <select onclick="event.stopPropagation()" onchange="app.moveProject('${p.name}', this.value)" class="status-select">
+                   <option value="new" ${p.status == 'new' ? 'selected' : ''}>В работе</option>
+                   <option value="active" ${p.status == 'active' ? 'selected' : ''}>Закуп</option>
+                   <option value="done" ${p.status == 'done' ? 'selected' : ''}>Готово</option>
+               </select>
                
-               <div style="display:flex; gap:5px;">
-                  <button class="btn btn-def" onclick="event.stopPropagation(); buyer.open('${p.name}')" style="padding:4px 8px;">
+               <!-- Справа: Кнопки действий -->
+               <div class="card-actions">
+                  <button class="btn-action btn-edit" onclick="event.stopPropagation(); manager.open('${p.name}')" title="Редактировать">
+                    <i class="fas fa-pencil-alt"></i>
+                  </button>
+                  <button class="btn-action btn-buy" onclick="event.stopPropagation(); buyer.open('${p.name}')" title="Закуп">
                     <i class="fas fa-shopping-cart"></i>
                   </button>
-                  
-                  <!-- Смена статуса -->
-                  <select onclick="event.stopPropagation()" onchange="app.moveProject('${p.name}', this.value)" style="border:1px solid #eee; border-radius:6px; font-size:11px;">
-                      <option value="new" ${p.status == 'new' ? 'selected' : ''}>В работе</option>
-                      <option value="active" ${p.status == 'active' ? 'selected' : ''}>Закуп</option>
-                      <option value="done" ${p.status == 'done' ? 'selected' : ''}>Готово</option>
-                  </select>
                </div>
             </div>
         `;

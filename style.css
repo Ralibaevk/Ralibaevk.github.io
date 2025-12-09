@@ -316,114 +316,154 @@ body {
   padding-top: 20px;
 }
 
+/* NEW CARD STYLE */
 .p-card {
   background: var(--bg-card);
-  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  padding: 24px;
+  /* Больше воздуха внутри */
+  box-shadow: var(--shadow);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* Отступ между элементами карточки */
+  position: relative;
 }
 
 .p-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow);
-  border-color: #d1d5db;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1);
+  border-color: rgba(59, 130, 246, 0.1);
 }
 
-.pc-header {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
 }
 
-.pc-title {
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--text-main);
-  line-height: 1.4;
-  margin-bottom: 4px;
-}
-
-.pc-meta {
-  font-size: 13px;
-  color: var(--text-sec);
-}
-
-.pc-status {
+.card-tag {
+  background: var(--primary-light);
+  color: var(--primary);
   font-size: 11px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 6px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 20px;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-body {
+  cursor: pointer;
+}
+
+.card-title {
+  font-size: 18px;
+  /* Чуть крупнее заголовок */
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+}
+
+.card-desc {
+  font-size: 14px;
+  color: var(--text-sec);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.desc-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-footer {
+  margin-top: auto;
+  padding-top: 20px;
+  /* Больше воздуха перед футером */
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Стили для селекта статуса (Слева) */
+.status-select {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 10px;
+  color: var(--text-sec);
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: 0.2s;
+}
+
+.status-select:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Контейнер для кнопок (Справа) */
+.card-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Кнопки действий (Редактировать и Закуп) */
+.btn-action {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: 0.2s;
+  font-size: 14px;
+}
+
+.btn-edit {
   background: #f3f4f6;
   color: #4b5563;
 }
 
-.pc-status.new {
-  background: #eff6ff;
+.btn-edit:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.btn-buy {
+  background: var(--primary-light);
   color: var(--primary);
 }
 
-.pc-status.active {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.pc-status.done {
-  background: #d1fae5;
-  color: #059669;
-}
-
-.pc-body {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pc-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: var(--text-sec);
-}
-
-.pc-val {
-  font-weight: 500;
-  color: var(--text-main);
-}
-
-.pc-footer {
-  margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid #f3f4f6;
-  display: flex;
-  gap: 8px;
-}
-
-.card-btn {
-  flex: 1;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: white;
-  color: var(--text-main);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  text-align: center;
-}
-
-.card-btn:hover {
-  background: #f9fafb;
-}
-
-.card-btn.primary {
+.btn-buy:hover {
   background: var(--primary);
   color: white;
-  border-color: var(--primary);
+}
+
+/* Кнопка удаления (мусорка) */
+.btn-trash {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 5px;
+  transition: 0.2s;
+}
+
+.btn-trash:hover {
+  color: #ef4444;
 }
 
 /* === MANAGER & OLDER SCREENS FIXES === */
