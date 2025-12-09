@@ -1,7 +1,7 @@
 // === SUPABASE CONFIG ===
 const SUPABASE_URL = 'https://lonhhlcqjlcxnvyhkxgp.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvbmhobGNxamxjeG52eWhreGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyNjEwNTMsImV4cCI6MjA4MDgzNzA1M30.0mrmsU4V3gvtTRCjjlwiwlwyrbxCuiskKkdzzC3ijcI';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_KEY = 'sb_publishable_65C3sRlkllmaUK8IBFVc0w_0rQDMHTa';
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Глобальная переменная для хранения ID компании текущего пользователя
 let CURRENT_COMPANY_ID = null;
@@ -143,7 +143,7 @@ const api = {
       .select('id')
       .eq('name', projectName)
       .eq('company_id', CURRENT_COMPANY_ID)
-      .single();
+      .maybeSingle();
 
     if (!project) return []; // Новый проект
 
@@ -185,7 +185,7 @@ const api = {
       .select('id')
       .eq('name', projectName)
       .eq('company_id', CURRENT_COMPANY_ID)
-      .single();
+      .maybeSingle();
 
     let projectId;
 
@@ -1076,6 +1076,4 @@ const buyer = {
 }; // <--- ВАЖНО: ЭТА СКОБКА ЗАКРЫВАЕТ ОБЪЕКТ buyer
 
 // === ЗАПУСК (СТРОГО ПОСЛЕ ЗАКРЫВАЮЩЕЙ СКОБКИ) ===
-
 window.onload = () => app.init();
-
