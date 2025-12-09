@@ -838,20 +838,23 @@ const mapper = {
 
   apply() {
     const m = {};
-    document.querySelectorAll('.map-sel').forEach(s => { if (s.value) m[s.value] = parseInt(s.dataset.col); });
+    // Собираем выбранные колонки
+    document.querySelectorAll('.map-sel').forEach(s => {
+      if (s.value) m[s.value] = parseInt(s.dataset.col);
+    });
 
     if (m.name === undefined) return alert('Ошибка: Вы не выбрали колонку "Название"!');
 
-    // ВАЖНО: Мы не очищаем manager.data полностью, если хотим добавить к существующим.
-    // Но по логике приложения сейчас (manager.open), мы работаем с полным списком.
-    // Если нужно заменить список:
-    manager.data = [];
+    // ❌ УДАЛЕНА СТРОКА: manager.data = []; 
+    // Теперь новые данные будут добавляться в конец существующего списка
+
+    let addedCount = 0;
 
     this.raw.forEach(r => {
-      if (!r[m.name]) return; // Пропускаем пустые названия
+      if (!r[m.name]) return; // Пропускаем строки без названия
 
       manager.data.push({
-        id: "",
+        id: "", // Генерируется базой при сохранении
         art: m.art !== undefined ? String(r[m.art]) : "",
         name: String(r[m.name]),
         qty: m.qty !== undefined ? (parseFloat(String(r[m.qty]).replace(',', '.')) || 1) : 1,
@@ -860,13 +863,17 @@ const mapper = {
         supplier: m.supplier !== undefined ? String(r[m.supplier]) : "",
         note: m.note !== undefined ? String(r[m.note]) : "",
         done: false,
-        // САМОЕ ГЛАВНОЕ: Импортируемые товары попадают в ТЕКУЩУЮ открытую вкладку категории
+        // Импортируем в ТЕКУЩУЮ открытую категорию
         category: manager.currentCategory
       });
+      addedCount++;
     });
 
     document.getElementById('modal').style.display = 'none';
     manager.render();
+
+    // Небольшое уведомление для удобства
+    alert(`Добавлено строк: ${addedCount}`);
   }
 };
 
