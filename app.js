@@ -1,37 +1,274 @@
-// === ВСТАВЬТЕ ССЫЛКУ ИЗ CODE.GS (ВАЖНО!) ===
-const API_URL = "https://script.google.com/macros/s/AKfycbyz0Z696GwH_HNcNKOWPR_lRBtOttN8hPJNT0BeQJAtpouNz3tawA433Q1dFK_K0oYq/exec";
-// === API ===
+// === SUPABASE CONFIG ===
+const SUPABASE_URL = 'https://lonhhlcqjlcxnvyhkxgp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_65C3sRlkllmaUK8IBFVc0w_0rQDMHTa';
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Глобальная переменная для хранения ID компании текущего пользователя
+let CURRENT_COMPANY_ID = null;
+
+// === API ЗАМЕНА ===
 const api = {
-  // Добавили аргумент useLoader = true
+  // Универсальный метод-диспетчер, чтобы не ломать старый код
   async call(action, params = {}, method = 'GET', useLoader = true) {
-    // Показываем лоадер только если useLoader === true
     if (useLoader) document.getElementById('loader').classList.remove('hidden');
 
-    let url = `${API_URL}?action=${action}`;
-    let opts = { method };
-
-    if (method === 'POST') {
-      opts.body = JSON.stringify(params);
-      opts.headers = { "Content-Type": "text/plain;charset=utf-8" };
-    } else {
-      for (let k in params) url += `&${k}=${encodeURIComponent(params[k])}`;
-    }
-
     try {
-      const res = await fetch(url, opts);
-      const json = await res.json();
+      let result = null;
 
-      // Скрываем лоадер только если мы его показывали
-      if (useLoader) document.getElementById('loader').classList.add('hidden');
+      switch (action) {
+        case 'saveTelegramUser':
+          result = await this._saveUser(params.user);
+          break;
+        case 'getSuppliers':
+          result = await this._getSuppliers();
+          break;
+        case 'getProjectsSummary':
+          result = await this._getProjectsSummary(params.userId);
+          break;
+        case 'getProjectData':
+          result = await this._getProjectData(params.sheetName);
+          break;
+        case 'saveProject':
+          result = await this._saveProject(params);
+          break;
+        case 'updateStatus':
+          result = await this._updateStatus(params.sheetName, params.status);
+          break;
+        case 'deleteProject':
+          result = await this._deleteProject(params.sheetName);
+          break;
+        case 'archiveProject':
+        case 'unarchiveProject':
+          // Реализуем через смену статуса
+          const newStatus = action === 'archiveProject' ? 'archived' : 'new';
+          const name = action === 'archiveProject' ? params.sheetName : null;
+          // Для unarchive ID передается сложнее в старой логике, упростим пока до смены статуса
+          if (name) result = await this._updateStatus(name, newStatus);
+          break;
+        default:
+          console.warn(`Action ${action} not implemented in Supabase migration yet.`);
+          result = {};
+      }
 
-      if (json.error) throw new Error(json.error);
-      return json;
+      return result;
     } catch (e) {
-      if (useLoader) document.getElementById('loader').classList.add('hidden');
-      if (!e.message.includes("storage")) alert("Ошибка связи: " + e.message);
-      console.error(e);
+      console.error("Supabase Error:", e);
+      if (!e.message.includes("The user aborted a request")) {
+        alert("Ошибка базы данных: " + e.message);
+      }
       throw e;
+    } finally {
+      if (useLoader) document.getElementById('loader').classList.add('hidden');
     }
+  },
+
+  // --- ВНУТРЕННИЕ МЕТОДЫ ---
+
+  async _saveUser(user) {
+    if (!user) return;
+    // Проверяем, есть ли пользователь, чтобы получить company_id
+    let { data: existingUser } = await supabase.from('users').select('*').eq('id', user.id).single();
+
+    // Если пользователя нет, создаем (company_id будет null, пока админ не назначит)
+    if (!existingUser) {
+      const { error } = await supabase.from('users').insert([{
+        id: user.id,
+        username: user.username,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        language: user.language_code,
+        last_login: new Date()
+      }]);
+      if (error) throw error;
+    } else {
+      // Обновляем last_login
+      await supabase.from('users').update({ last_login: new Date() }).eq('id', user.id);
+      CURRENT_COMPANY_ID = existingUser.company_id;
+    }
+    return { success: true };
+  },
+
+  async _getSuppliers() {
+    const { data, error } = await supabase.from('suppliers').select('name, phone').order('name');
+    if (error) throw error;
+    return data;
+  },
+
+  async _getProjectsSummary(userId) {
+    // 1. Убеждаемся, что знаем company_id
+    if (!CURRENT_COMPANY_ID && userId) {
+      const { data } = await supabase.from('users').select('company_id').eq('id', userId).single();
+      if (data) CURRENT_COMPANY_ID = data.company_id;
+    }
+
+    if (!CURRENT_COMPANY_ID) {
+      console.warn("Пользователь не привязан к компании.");
+      return [];
+    }
+
+    // 2. Получаем проекты и их позиции одним запросом
+    const { data: projects, error } = await supabase
+      .from('projects')
+      .select(`
+            id, name, status,
+            project_items ( id, price, qty, done )
+        `)
+      .eq('company_id', CURRENT_COMPANY_ID)
+      .neq('status', 'archived'); // Скрываем архивные из дашборда
+
+    if (error) throw error;
+
+    // 3. Форматируем под старый формат App.js
+    return projects.map(p => {
+      const items = p.project_items || [];
+      const total = items.length;
+      const done = items.filter(i => i.done).length;
+      const sum = items.reduce((acc, i) => acc + (i.qty * i.price), 0);
+      return {
+        name: p.name, // Старый код использует имя как ID
+        status: p.status || 'new',
+        total: total,
+        done: done,
+        sum: sum
+      };
+    });
+  },
+
+  async _getProjectData(projectName) {
+    // Ищем проект по имени и компании
+    if (!CURRENT_COMPANY_ID) throw new Error("Нет доступа к компании");
+
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('name', projectName)
+      .eq('company_id', CURRENT_COMPANY_ID)
+      .single();
+
+    if (!project) return []; // Новый проект
+
+    // Получаем позиции
+    const { data: items, error } = await supabase
+      .from('project_items')
+      .select('*')
+      .eq('project_id', project.id)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    // Маппинг данных Supabase -> App.js
+    return items.map(item => ({
+      id: item.id,
+      art: item.art || "",
+      name: item.name,
+      qty: item.qty || 0,
+      unit: item.unit || "шт",
+      price: item.price || 0,
+      sum: (item.qty || 0) * (item.price || 0),
+      supplier: item.supplier || "",
+      note: item.note || "",
+      done: item.done || false,
+      category: item.category || "Фурнитура"
+    }));
+  },
+
+  async _saveProject(params) {
+    // params: { sheetName, data (Array of Arrays), status, userId }
+    if (!CURRENT_COMPANY_ID) throw new Error("Ошибка: Не определена компания пользователя");
+
+    const projectName = params.sheetName;
+
+    // 1. Создаем или обновляем проект (Header)
+    // Сначала ищем ID проекта
+    let { data: project } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('name', projectName)
+      .eq('company_id', CURRENT_COMPANY_ID)
+      .single();
+
+    let projectId;
+
+    if (project) {
+      projectId = project.id;
+      // Обновляем статус если передан
+      if (params.status) {
+        await supabase.from('projects').update({ status: params.status }).eq('id', projectId);
+      }
+    } else {
+      // Создаем новый
+      const { data: newProj, error } = await supabase
+        .from('projects')
+        .insert({
+          name: projectName,
+          company_id: CURRENT_COMPANY_ID,
+          status: params.status || 'active'
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      projectId = newProj.id;
+    }
+
+    // 2. Подготовка items (строк)
+    // manager.data приходит как массив массивов: 
+    // [id(0), art(1), name(2), qty(3), unit(4), price(5), sum(6), supplier(7), note(8), done(9), category(10)]
+    const upsertData = params.data.map(row => {
+      const itemObj = {
+        project_id: projectId,
+        art: row[1],
+        name: row[2],
+        qty: parseFloat(row[3]) || 0,
+        unit: row[4],
+        price: parseFloat(row[5]) || 0,
+        // sum считается в БД, но можно и передать если колонка не generated
+        supplier: row[7],
+        note: row[8],
+        done: row[9] === true || row[9] === 'true',
+        category: row[10] || 'Фурнитура'
+      };
+      // Если есть ID (row[0]), добавляем его для обновления, иначе создастся новый UUID
+      if (row[0] && row[0].length > 5) {
+        itemObj.id = row[0];
+      }
+      return itemObj;
+    });
+
+    // 3. Сохранение строк
+    const { error: itemsError } = await supabase
+      .from('project_items')
+      .upsert(upsertData);
+
+    if (itemsError) throw itemsError;
+
+    // 4. (Опционально) Удаление удаленных строк
+    // Сложно реализовать без списка ID, пока оставим только upsert
+    // В идеале: передавать список ID для удаления отдельно
+
+    return { success: true };
+  },
+
+  async _updateStatus(name, status) {
+    if (!CURRENT_COMPANY_ID) return;
+    await supabase
+      .from('projects')
+      .update({ status: status })
+      .eq('name', name)
+      .eq('company_id', CURRENT_COMPANY_ID);
+    return { success: true };
+  },
+
+  async _deleteProject(name) {
+    if (!CURRENT_COMPANY_ID) return;
+    // Каскадное удаление items настроено в БД, удаляем только проект
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('name', name)
+      .eq('company_id', CURRENT_COMPANY_ID);
+
+    if (error) throw error;
+    return { success: true };
   }
 };
 
@@ -839,5 +1076,4 @@ const buyer = {
 }; // <--- ВАЖНО: ЭТА СКОБКА ЗАКРЫВАЕТ ОБЪЕКТ buyer
 
 // === ЗАПУСК (СТРОГО ПОСЛЕ ЗАКРЫВАЮЩЕЙ СКОБКИ) ===
-
 window.onload = () => app.init();
