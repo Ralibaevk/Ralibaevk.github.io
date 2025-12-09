@@ -143,7 +143,7 @@ const api = {
       .select('id')
       .eq('name', projectName)
       .eq('company_id', CURRENT_COMPANY_ID)
-      .maybeSingle();
+      .single();
 
     if (!project) return []; // Новый проект
 
@@ -185,7 +185,7 @@ const api = {
       .select('id')
       .eq('name', projectName)
       .eq('company_id', CURRENT_COMPANY_ID)
-      .maybeSingle();
+      .single();
 
     let projectId;
 
