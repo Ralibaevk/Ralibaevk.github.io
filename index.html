@@ -195,19 +195,23 @@
   </div>
 
   <div id="supEditModal" class="modal-overlay hidden">
-    <div class="modal-box">
+    <div class="modal-box" style="width:500px; max-width:95%;">
       <h3>👥 Поставщики</h3>
-      <div style="max-height:400px; overflow:auto;">
-        <table style="width:100%;">
-          <tbody id="supEditBody"></tbody>
-        </table>
-        <button class="btn btn-def" style="width:100%; margin-top:10px;" onclick="app.addSupplierRow()">+
-          Добавить</button>
-      </div>
-      <div style="text-align:right; margin-top:20px;">
-        <button class="btn btn-text"
-          onclick="document.getElementById('supEditModal').classList.add('hidden')">Закрыть</button>
-        <button class="btn btn-primary" onclick="app.saveSuppliers()">Сохранить</button>
+
+      <!-- Контейнер для списка -->
+      <div id="supListContainer" class="sup-list"></div>
+
+      <button class="btn-add-sup" onclick="app.addSupplierRow()">
+        <i class="fas fa-plus"></i> Добавить поставщика
+      </button>
+
+      <div style="text-align:right; margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-text" onclick="document.getElementById('supEditModal').classList.add('hidden')">
+          Отмена
+        </button>
+        <button class="btn btn-primary" onclick="app.saveSuppliers()">
+          Сохранить
+        </button>
       </div>
     </div>
   </div>

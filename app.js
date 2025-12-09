@@ -19,6 +19,9 @@ const api = {
         case 'saveTelegramUser':
           result = await this._saveUser(params.user);
           break;
+        case 'saveSuppliers':
+          result = await this._saveSuppliers(params.list);
+          break;
         case 'getSuppliers':
           result = await this._getSuppliers();
           break;
@@ -89,9 +92,42 @@ const api = {
   },
 
   async _getSuppliers() {
-    const { data, error } = await supabase.from('suppliers').select('name, phone').order('name');
+    if (!CURRENT_COMPANY_ID) return [];
+
+    // Фильтруем ТОЛЬКО по текущей компании
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*') // Берем все поля, включая ID
+      .eq('company_id', CURRENT_COMPANY_ID)
+      .order('name');
+
     if (error) throw error;
     return data;
+  },
+
+  async _saveSuppliers(list) {
+    if (!CURRENT_COMPANY_ID) throw new Error("Нет доступа к компании");
+
+    // 1. Подготавливаем данные для Upsert (Вставка/Обновление)
+    const upsertData = list.map(item => ({
+      id: item.id || undefined, // Если нет ID, Supabase создаст новый UUID
+      name: item.name,
+      phone: item.phone,
+      company_id: CURRENT_COMPANY_ID // ПРИВЯЗКА К КОМПАНИИ
+    }));
+
+    if (upsertData.length > 0) {
+      const { error } = await supabase.from('suppliers').upsert(upsertData);
+      if (error) throw error;
+    }
+
+    // ПРИМЕЧАНИЕ: 
+    // Сейчас мы только добавляем/обновляем. Удаление мы пока не реализовали на сервере 
+    // (чтобы случайно не удалить историю). 
+    // Кнопка "Удалить" в модалке просто не сохранит поставщика в следующий раз, 
+    // но в базе он останется "висеть". Для MVP это безопаснее.
+
+    return { success: true };
   },
 
   async _getProjectsSummary(userId) {
@@ -509,33 +545,57 @@ const app = {
   },
 
   openSuppliersEdit() {
-    const tbody = document.getElementById('supEditBody');
-    tbody.innerHTML = '';
-    this.suppliers.forEach((s) => app.addSupplierRow(s.name, s.phone));
+    // Очищаем контейнер
+    const listContainer = document.getElementById('supListContainer');
+    listContainer.innerHTML = '';
+
+    // Рисуем строки
+    // (Передаем ID, Имя, Телефон)
+    this.suppliers.forEach((s) => app.addSupplierRow(s.id, s.name, s.phone));
+
     const m = document.getElementById('supEditModal');
-    m.classList.remove('hidden'); m.style.display = 'flex';
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
   },
-  addSupplierRow(name = '', phone = '') {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input class="sup-name-inp" value="${name}" placeholder="Имя" style="width:100%; padding:5px;"></td>
-      <td><input class="sup-phone-inp" value="${phone}" placeholder="Тел" style="width:100%; padding:5px;"></td>
-      <td><button onclick="this.closest('tr').remove()" style="color:red; border:none; background:none;">×</button></td>
+
+  addSupplierRow(id = '', name = '', phone = '') {
+    const listContainer = document.getElementById('supListContainer');
+
+    const div = document.createElement('div');
+    div.className = 'sup-row';
+    // Сохраняем ID в data-атрибут, если он есть
+    if (id) div.dataset.id = id;
+
+    div.innerHTML = `
+      <input class="sup-input name" value="${name}" placeholder="Имя / Название">
+      <input class="sup-input phone" value="${phone}" placeholder="Телефон">
+      <button onclick="this.closest('.sup-row').remove()" class="btn-icon-del">
+        <i class="fas fa-trash"></i>
+      </button>
     `;
-    document.getElementById('supEditBody').appendChild(tr);
+    listContainer.appendChild(div);
   },
+
   async saveSuppliers() {
-    const rows = document.querySelectorAll('#supEditBody tr');
+    const rows = document.querySelectorAll('.sup-row');
     const newList = [];
-    rows.forEach(tr => {
-      const name = tr.querySelector('.sup-name-inp').value.trim();
-      const phone = tr.querySelector('.sup-phone-inp').value.trim();
-      if (name) newList.push({ name, phone });
+
+    rows.forEach(div => {
+      const id = div.dataset.id || null; // Если был ID, берем его
+      const name = div.querySelector('.name').value.trim();
+      const phone = div.querySelector('.phone').value.trim();
+
+      if (name) {
+        newList.push({ id, name, phone });
+      }
     });
+
     await api.call('saveSuppliers', { list: newList }, 'POST');
-    this.suppliers = newList;
+
+    // Обновляем локальный список
+    this.suppliers = await api.call('getSuppliers'); // Перезапрашиваем чистые данные
     document.getElementById('supEditModal').style.display = 'none';
-    alert('Сохранено');
+    alert('Поставщики сохранены');
   },
 
   newProject() { manager.open(''); },
