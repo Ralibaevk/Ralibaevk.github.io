@@ -1125,49 +1125,54 @@ const buyer = {
       if (item.done) doneCount++;
       totalSum += (item.qty * item.price);
 
-      // 1. Фильтр по ВКЛАДКЕ
+      // Фильтры
       if (this.currentTab === 'todo' && item.done) return;
       if (this.currentTab === 'done' && !item.done) return;
-
-      // 2. Фильтр по ПОСТАВЩИКУ
       if (this.currentFilter === 'NONE') { if (item.supplier) return; }
       else if (this.currentFilter !== 'ALL') { if (item.supplier !== this.currentFilter) return; }
 
       visibleCount++;
 
       const div = document.createElement('div');
+      // Добавляем класс done, если куплено
       div.className = `b-card ${item.done ? 'done' : ''}`;
 
+      // Рендерим карточку С КНОПКОЙ
       div.innerHTML = `
-        <div class="b-row-top">
+        <div class="b-top">
           <div class="b-name">${item.name}</div>
-          <div class="b-check-btn" onclick="buyer.toggle(${item.rowIndex})">
-            ${item.done ? '<i class="fas fa-check"></i>' : ''}
-          </div>
+          
+          <!-- ВОТ ОНА, КНОПКА КУПИТЬ 👇 -->
+          <button class="b-check-btn ${item.done ? 'active' : ''}" onclick="buyer.toggle(${item.rowIndex})">
+             <i class="fas fa-${item.done ? 'check' : 'circle'}" style="${!item.done ? 'color:#eee;' : ''}"></i>
+          </button>
         </div>
-        <div class="b-row-mid">
+
+        <div class="b-mid">
           <span class="b-badge">${item.qty} ${item.unit}</span>
-          ${item.supplier ? `<span class="b-supplier"><i class="fas fa-truck"></i> ${item.supplier}</span>` : ''}
+          ${item.supplier ? `<span class="b-sup-tag"><i class="fas fa-truck"></i> ${item.supplier}</span>` : ''}
         </div>
+        
         ${item.note ? `<div style="font-size:12px; color:#888; margin-top:5px;">${item.note}</div>` : ''}
-        <div class="b-row-bot">
-          <input type="number" class="b-price-inp" 
+
+        <div class="b-bot">
+          <input type="number" class="b-price-input" 
             value="${item.price > 0 ? item.price : ''}" 
             placeholder="Цена" 
             onchange="buyer.updatePrice(${item.rowIndex}, this.value)">
-          <div style="font-weight:bold; font-size:14px; color:#555;">₸</div>
+          <span style="font-weight:bold; color:#555;">₸</span>
         </div>
       `;
       container.appendChild(div);
     });
 
     if (visibleCount === 0) {
-      const msg = this.currentTab === 'todo' ? 'Всё куплено! 🎉' : 'Пока ничего не куплено';
+      const msg = this.currentTab === 'todo' ? 'Всё куплено! 🎉' : 'Здесь пока пусто';
       container.innerHTML = `<div style="text-align:center; padding:40px; color:#999;">${msg}</div>`;
     }
 
-    document.getElementById('buyProgressText').innerText = `${doneCount} / ${totalCount}`;
-    document.getElementById('buyTotalSum').innerText = totalSum.toLocaleString() + ' ₸';
+    // Обновляем статистику (если нужно, можно вывести в шапку, но пока просто считаем)
+    // console.log(`Прогресс: ${doneCount}/${totalCount}, Сумма: ${totalSum}`);
   },
 
   toggle(rowIndex) {

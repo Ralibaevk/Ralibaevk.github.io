@@ -151,29 +151,38 @@
         </div>
       </div>
 
-      <!-- 4. BUYER -->
+      <!-- 4. BUYER (ОБНОВЛЕННЫЙ ДИЗАЙН) -->
       <div id="view-buyer" class="screen hidden">
-        <div class="buy-header">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-            <span style="font-weight:800; font-size:20px; color:white;" id="buyTitle">Закуп</span>
-            <button class="btn btn-text" style="color:white;" onclick="buyer.checkClose()">✕ Закрыть</button>
+
+        <!-- Фиксированная шапка -->
+        <div class="buy-tools-wrapper">
+          <div class="buy-nav-row">
+            <span class="buy-title" id="buyTitle">Загрузка...</span>
+            <button class="btn-close-app" onclick="buyer.checkClose()"
+              style="background:#f3f4f6; color:#333; border:none; padding:8px 12px; border-radius:8px; cursor:pointer;">
+              ✕ Закрыть
+            </button>
           </div>
+
+          <!-- Табы -->
           <div class="buy-tabs">
             <button id="tab-todo" class="buy-tab active" onclick="buyer.setTab('todo')">🛒 В работе</button>
             <button id="tab-done" class="buy-tab" onclick="buyer.setTab('done')">✅ Куплено</button>
           </div>
-          <div class="filter-scroll" id="buyFilters" style="margin-top: 10px;"></div>
-          <div class="buy-progress-wrap"
-            style="color:white; margin-top:10px; display:flex; justify-content:space-between;">
-            <span id="buyProgressText">0 / 0</span>
-            <span id="buyTotalSum" style="font-weight:bold;">0 ₸</span>
-          </div>
+
+          <!-- Фильтры -->
+          <div class="filter-scroll" id="buyFilters"></div>
         </div>
+
+        <!-- Скроллящийся список -->
         <div class="buy-list" id="buyList"></div>
-        <div id="unsavedBar"
-          style="padding:10px; background:#fff3cd; display:none; justify-content:space-between; align-items:center;">
+
+        <!-- Панель сохранения -->
+        <div id="unsavedBar">
           <span>Есть изменения</span>
-          <button class="btn btn-primary" onclick="buyer.saveBatch()">💾 Сохранить</button>
+          <button class="save-btn" onclick="buyer.saveBatch()"
+            style="border:none; background:#22c55e; color:white; padding:8px 16px; border-radius:20px; font-weight:600; cursor:pointer;">💾
+            Сохранить</button>
         </div>
       </div>
 
