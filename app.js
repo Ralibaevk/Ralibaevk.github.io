@@ -1,7 +1,7 @@
 // === SUPABASE CONFIG ===
 const SUPABASE_URL = 'https://lonhhlcqjlcxnvyhkxgp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_65C3sRlkllmaUK8IBFVc0w_0rQDMHTa';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Глобальная переменная для хранения ID компании текущего пользователя
 let CURRENT_COMPANY_ID = null;
@@ -1076,4 +1076,5 @@ const buyer = {
 }; // <--- ВАЖНО: ЭТА СКОБКА ЗАКРЫВАЕТ ОБЪЕКТ buyer
 
 // === ЗАПУСК (СТРОГО ПОСЛЕ ЗАКРЫВАЮЩЕЙ СКОБКИ) ===
+
 window.onload = () => app.init();
