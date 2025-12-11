@@ -105,8 +105,12 @@
           <div style="display:flex; gap:10px; margin-bottom:10px;">
             <button class="btn btn-text" onclick="app.goHome()"><i class="fas fa-arrow-left"></i> Назад</button>
             <input type="text" id="mgrName" placeholder="Название проекта" class="search-input"
-              style="max-width:300px;">
-            <button class="btn btn-primary" onclick="manager.save()">💾 Сохранить</button>
+              oninput="manager.triggerAutoSave()" style="max-width:300px;">
+            <!-- Индикатор сохранения -->
+            <div id="saveStatus"
+              style="color:#888; font-size:13px; font-weight:500; display:flex; align-items:center; gap:5px;">
+              <i class="fas fa-check-circle" style="color:#10b981;"></i> Сохранено
+            </div>
           </div>
         </div>
 

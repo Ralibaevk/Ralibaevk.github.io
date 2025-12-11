@@ -616,17 +616,29 @@ const app = {
 // === MANAGER LOGIC ===
 const manager = {
   data: [],
-  // 1. СПИСОК КАТЕГОРИЙ
-  categories: [
-    "Фурнитура",
-    "Листовые материалы",
-    "Фасады",
-    "Услуги",
-    "Прочий закуп",
-    "Рекламации"
-  ],
-  // 2. ТЕКУЩАЯ КАТЕГОРИЯ
+  categories: ["Фурнитура", "Листовые материалы", "Фасады", "Услуги", "Прочий закуп", "Рекламации"],
   currentCategory: "Фурнитура",
+
+  // === НОВЫЕ ПЕРЕМЕННЫЕ ===
+  saveTimeout: null, // Таймер
+  isSaving: false,
+
+  // === НОВЫЙ МЕТОД: ЗАПУСК АВТОСОХРАНЕНИЯ ===
+  triggerAutoSave() {
+    const statusEl = document.getElementById('saveStatus');
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="fas fa-sync fa-spin"></i> Сохранение...';
+      statusEl.style.color = '#f59e0b'; // Оранжевый
+    }
+
+    // Сбрасываем предыдущий таймер (если пользователь продолжает печатать)
+    if (this.saveTimeout) clearTimeout(this.saveTimeout);
+
+    // Ставим новый таймер на 1 секунду
+    this.saveTimeout = setTimeout(() => {
+      this.save(true); // true = Тихое сохранение
+    }, 1000);
+  },
 
   async open(name) {
     document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
@@ -798,8 +810,19 @@ const manager = {
     this.render();
   },
 
-  upd(i, f, v) { if (f === 'qty' || f === 'price') v = parseFloat(v) || 0; this.data[i][f] = v; if (f === 'qty' || f === 'price') this.render(); },
-  check(i, v) { this.data[i].checked = v; this.render(); },
+  upd(i, f, v) {
+    if (f === 'qty' || f === 'price') v = parseFloat(v) || 0;
+    this.data[i][f] = v;
+    if (f === 'qty' || f === 'price') this.render();
+
+    this.triggerAutoSave();
+  },
+  check(i, v) {
+    this.data[i].checked = v;
+    this.render();
+    // Чекбоксы обычно не сохраняем в базу, но если надо - раскомментируйте:
+    // this.triggerAutoSave(); 
+  },
   toggleAll(v) {
     // Чекбокс "Все" теперь выделяет только видимые в текущей категории
     const f = document.getElementById('mgrSearch').value.toLowerCase();
@@ -818,6 +841,7 @@ const manager = {
       this.data = this.data.filter(i => !i.checked);
       document.getElementById('mgrAll').checked = false;
       this.render();
+      this.triggerAutoSave();
     }
   },
 
@@ -836,6 +860,7 @@ const manager = {
       category: this.currentCategory
     });
     this.render();
+    this.triggerAutoSave();
   },
 
   // ... (методы openMerge, applyMerge, openSup, applySup - остаются без изменений, 
@@ -874,38 +899,54 @@ const manager = {
     this.render();
   },
 
-  async save() {
+  async save(isAuto = false) {
     const name = document.getElementById('mgrName').value;
-    if (!name) return alert('Введите имя!');
+    if (!name) return; // Если имени нет, тихо выходим
 
-    // ВАЖНО: При сохранении передаем 11 элементов массива (добавили i.category)
+    this.isSaving = true;
+
+    // Подготовка данных (как и раньше)
     const arr = this.data.map(i => [
-      i.id || "",
-      i.art,
-      i.name,
-      i.qty,
-      i.unit,
-      i.price,
-      i.qty * i.price,
-      i.supplier,
-      i.note || "",
-      i.done || false,
-      i.category || "Фурнитура" // 11-й элемент
+      i.id || "", i.art, i.name, i.qty, i.unit, i.price,
+      i.qty * i.price, i.supplier, i.note || "",
+      i.done || false, i.category || "Фурнитура"
     ]);
 
-    if (!app.user || !app.user.id) {
-      return alert("Ошибка: Не удалось определить пользователя Telegram.");
+    try {
+      if (!app.user || !app.user.id) throw new Error("Нет авторизации");
+
+      // Вызов API
+      await api.call('saveProject', {
+        sheetName: name,
+        data: arr,
+        status: 'active',
+        userId: app.user.id
+      }, 'POST', !isAuto); // Показываем лоадер только если это НЕ автосохранение
+
+      // Обновляем статус визуально
+      const statusEl = document.getElementById('saveStatus');
+      if (statusEl) {
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Сохранено';
+        statusEl.style.color = '#10b981'; // Зеленый
+      }
+
+      // Если это ручное нажатие (старый метод), то уходим домой. 
+      // Если авто - остаемся.
+      if (!isAuto) {
+        alert('Сохранено!');
+        app.goHome();
+      }
+
+    } catch (e) {
+      console.error(e);
+      const statusEl = document.getElementById('saveStatus');
+      if (statusEl) {
+        statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Ошибка';
+        statusEl.style.color = '#ef4444';
+      }
+    } finally {
+      this.isSaving = false;
     }
-
-    await api.call('saveProject', {
-      sheetName: name,
-      data: arr,
-      status: 'active',
-      userId: app.user.id
-    }, 'POST');
-
-    alert('Сохранено!');
-    app.goHome();
   },
 
   handleFile(e) {
@@ -966,6 +1007,7 @@ const manager = {
           });
 
           this.render(); // Обновляем таблицу
+          this.triggerAutoSave();
           alert("Файл добавлен!");
         }
       } catch (e) {
