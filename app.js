@@ -108,24 +108,28 @@ const api = {
   async _saveSuppliers(list) {
     if (!CURRENT_COMPANY_ID) throw new Error("Нет доступа к компании");
 
-    // 1. Подготавливаем данные для Upsert (Вставка/Обновление)
-    const upsertData = list.map(item => ({
-      id: item.id || undefined, // Если нет ID, Supabase создаст новый UUID
-      name: item.name,
-      phone: item.phone,
-      company_id: CURRENT_COMPANY_ID // ПРИВЯЗКА К КОМПАНИИ
-    }));
+    const upsertData = list.map(item => {
+      // Создаем объект только с нужными полями
+      const payload = {
+        name: item.name,
+        phone: item.phone,
+        company_id: CURRENT_COMPANY_ID
+      };
+
+      // Добавляем ID только если он реальный (не пустой и не null)
+      // Для новых строк item.id будет пустым, и мы его НЕ отправляем вообще.
+      // Тогда база данных сама сгенерирует UUID (благодаря SQL команде выше).
+      if (item.id && item.id.length > 5) {
+        payload.id = item.id;
+      }
+
+      return payload;
+    });
 
     if (upsertData.length > 0) {
       const { error } = await supabase.from('suppliers').upsert(upsertData);
       if (error) throw error;
     }
-
-    // ПРИМЕЧАНИЕ: 
-    // Сейчас мы только добавляем/обновляем. Удаление мы пока не реализовали на сервере 
-    // (чтобы случайно не удалить историю). 
-    // Кнопка "Удалить" в модалке просто не сохранит поставщика в следующий раз, 
-    // но в базе он останется "висеть". Для MVP это безопаснее.
 
     return { success: true };
   },
