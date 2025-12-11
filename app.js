@@ -92,7 +92,16 @@ const api = {
   },
 
   async _getSuppliers() {
-    if (!CURRENT_COMPANY_ID) return [];
+    // Страховка: если ID компании нет, попробуем найти его через пользователя
+    if (!CURRENT_COMPANY_ID && app.user && app.user.id) {
+      const { data } = await supabase.from('users').select('company_id').eq('id', app.user.id).single();
+      if (data) CURRENT_COMPANY_ID = data.company_id;
+    }
+
+    if (!CURRENT_COMPANY_ID) {
+      console.warn("Поставщики не загружены: нет ID компании");
+      return [];
+    }
 
     // Фильтруем ТОЛЬКО по текущей компании
     const { data, error } = await supabase
@@ -340,23 +349,20 @@ const app = {
     // 2. ПАРАЛЛЕЛЬНАЯ ЗАГРУЗКА ДАННЫХ (УСКОРЕНИЕ)
     // Запускаем оба запроса одновременно
     try {
-      // Показываем лоадер один раз вручную перед началом
+      // Показываем лоадер
       document.getElementById('loader').classList.remove('hidden');
 
-      const [suppliersData, _] = await Promise.all([
-        // Запрос поставщиков (тихий, так как лоадер уже горит)
-        api.call('getSuppliers', {}, 'GET', false),
-        // Запрос проектов (внутри refreshDashboard тоже надо будет поправить, см. ниже, 
-        // но пока оставим как есть, просто вызовем refreshDashboard)
-        this.refreshDashboard(false) // Передаем false (см. Шаг 3)
-      ]);
+      // 1. СНАЧАЛА загружаем Дашборд. 
+      // Внутри этой функции мы узнаем User ID и Company ID.
+      await this.refreshDashboard(false);
 
+      // 2. И ТОЛЬКО ТЕПЕРЬ, когда Company ID известен, загружаем поставщиков.
+      const suppliersData = await api.call('getSuppliers', {}, 'GET', false);
       this.suppliers = suppliersData;
 
     } catch (e) {
       console.error(e);
     } finally {
-      // Скрываем лоадер, когда ВСЁ загрузилось
       document.getElementById('loader').classList.add('hidden');
     }
 
