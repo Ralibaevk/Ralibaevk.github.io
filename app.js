@@ -19,6 +19,9 @@ const api = {
         case 'saveTelegramUser':
           result = await this._saveUser(params.user);
           break;
+        case 'getCatalog':
+          result = await this._getCatalog();
+          break;
         case 'saveSuppliers':
           result = await this._saveSuppliers(params.list);
           break;
@@ -294,6 +297,18 @@ const api = {
     // Сложно реализовать без списка ID, пока оставим только upsert
     // В идеале: передавать список ID для удаления отдельно
 
+    // === АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ ПРАЙСА ===
+    // Берем данные из params.data и отправляем в каталог
+    // Формат params.data: [id, art, name, qty, unit, price, sum, supplier...]
+    const catalogUpdates = params.data.map(row => ({
+      name: row[2],
+      unit: row[4],
+      price: row[5],
+      supplier: row[7]
+    }));
+    // Запускаем фоном (без await, чтобы не тормозить интерфейс)
+    this._updateCatalog(catalogUpdates).catch(console.error);
+
     return { success: true };
   },
 
@@ -318,12 +333,42 @@ const api = {
 
     if (error) throw error;
     return { success: true };
+  },
+
+  async _getCatalog() {
+    if (!CURRENT_COMPANY_ID) return [];
+    const { data } = await supabase
+      .from('catalog_items')
+      .select('name, price, supplier, unit')
+      .eq('company_id', CURRENT_COMPANY_ID);
+    return data;
+  },
+
+  async _updateCatalog(items) {
+    if (!CURRENT_COMPANY_ID || !items.length) return;
+
+    // Подготавливаем данные для Upsert
+    const catalogItems = items
+      .filter(i => i.name && i.name.trim().length > 0) // Только если есть имя
+      .map(i => ({
+        company_id: CURRENT_COMPANY_ID,
+        name: i.name.trim(),
+        price: parseFloat(i.price) || 0,
+        supplier: i.supplier,
+        unit: i.unit
+      }));
+
+    if (catalogItems.length > 0) {
+      // onConflict: 'company_id, name' означает: если такой товар уже есть - обнови цену
+      await supabase.from('catalog_items').upsert(catalogItems, { onConflict: 'company_id, name' });
+    }
   }
 };
 
 // === ГЛАВНОЕ ПРИЛОЖЕНИЕ ===
 const app = {
   suppliers: [],
+  catalog: [], // Список товаров
   user: null,
   projectsData: [],
   currentDashTab: 'new',
@@ -357,8 +402,17 @@ const app = {
       await this.refreshDashboard(false);
 
       // 2. И ТОЛЬКО ТЕПЕРЬ, когда Company ID известен, загружаем поставщиков.
-      const suppliersData = await api.call('getSuppliers', {}, 'GET', false);
+      // 2. Загружаем справочники (Поставщики + Каталог товаров)
+      const [suppliersData, catalogData] = await Promise.all([
+        api.call('getSuppliers', {}, 'GET', false),
+        api.call('getCatalog', {}, 'GET', false)
+      ]);
+
       this.suppliers = suppliersData;
+      this.catalog = catalogData || [];
+
+      // Генерируем подсказки для инпутов
+      manager.updateDatalist();
 
     } catch (e) {
       console.error(e);
@@ -629,6 +683,21 @@ const manager = {
   saveTimeout: null, // Таймер
   isSaving: false,
 
+  updateDatalist() {
+    // Ищем или создаем datalist в HTML
+    let dl = document.getElementById('catalogList');
+    if (!dl) {
+      dl = document.createElement('datalist');
+      dl.id = 'catalogList';
+      document.body.appendChild(dl);
+    }
+
+    // Заполняем его товарами из app.catalog
+    dl.innerHTML = app.catalog.map(item =>
+      `<option value="${item.name}">${item.price}₸ (${item.supplier || '-'})</option>`
+    ).join('');
+  },
+
   // === НОВЫЙ МЕТОД: ЗАПУСК АВТОСОХРАНЕНИЯ ===
   triggerAutoSave() {
     const statusEl = document.getElementById('saveStatus');
@@ -762,7 +831,7 @@ const manager = {
             </td>
 
             <!-- Материал (храним в name) -->
-            <td><input value="${item.name}" placeholder="МДФ..." oninput="manager.upd(${i},'name',this.value)"></td>
+            <td><input value="${item.name}" list="catalogList" autocomplete="off" placeholder="МДФ..." oninput="manager.upd(${i},'name',this.value)"></td>
             
             <!-- Фрезеровка (храним в art) -->
             <td><input value="${item.art || ''}" placeholder="Мыло..." oninput="manager.upd(${i},'art',this.value)"></td>
@@ -794,7 +863,7 @@ const manager = {
                </select>
             </td>
             <td><input value="${item.art || ''}" oninput="manager.upd(${i},'art',this.value)"></td>
-            <td><input value="${item.name}" oninput="manager.upd(${i},'name',this.value)"></td>
+            <td><input value="${item.name}" list="catalogList" autocomplete="off" oninput="manager.upd(${i},'name',this.value)"></td>
             <td><input type="number" value="${item.qty}" onchange="manager.upd(${i},'qty',this.value)"></td>
             <td><input value="${item.unit}" oninput="manager.upd(${i},'unit',this.value)"></td>
             <td><input type="number" value="${item.price}" onchange="manager.upd(${i},'price',this.value)"></td>
@@ -819,6 +888,18 @@ const manager = {
   upd(i, f, v) {
     if (f === 'qty' || f === 'price') v = parseFloat(v) || 0;
     this.data[i][f] = v;
+
+    // === АВТОПОДСТАНОВКА ЦЕНЫ И ПОСТАВЩИКА ===
+    if (f === 'name') {
+      const match = app.catalog.find(c => c.name.toLowerCase() === String(v).toLowerCase());
+      if (match) {
+        if (this.data[i].price === 0) this.data[i].price = match.price;
+        if (!this.data[i].supplier) this.data[i].supplier = match.supplier;
+        if (this.data[i].unit === 'шт' && match.unit) this.data[i].unit = match.unit;
+        this.render();
+      }
+    }
+
     if (f === 'qty' || f === 'price') this.render();
 
     this.triggerAutoSave();
@@ -1066,42 +1147,67 @@ const mapper = {
 
   apply() {
     const m = {};
-    // Собираем выбранные колонки
+    // Собираем индексы выбранных колонок
     document.querySelectorAll('.map-sel').forEach(s => {
       if (s.value) m[s.value] = parseInt(s.dataset.col);
     });
 
     if (m.name === undefined) return alert('Ошибка: Вы не выбрали колонку "Название"!');
 
-    // ❌ УДАЛЕНА СТРОКА: manager.data = []; 
-    // Теперь новые данные будут добавляться в конец существующего списка
-
     let addedCount = 0;
+    // Флаг, чтобы понять, были ли изменения
+    let hasChanges = false;
 
     this.raw.forEach(r => {
-      if (!r[m.name]) return; // Пропускаем строки без названия
+      // Имя из Excel
+      const rawName = String(r[m.name]);
+      if (!rawName || rawName.trim() === "") return; // Пропускаем пустые
 
+      // Данные из Excel
+      let price = m.price !== undefined ? (parseFloat(String(r[m.price]).replace(',', '.')) || 0) : 0;
+      let supplier = m.supplier !== undefined ? String(r[m.supplier]) : "";
+      let unit = m.unit !== undefined ? String(r[m.unit]) : "шт";
+
+      // === УМНАЯ ПОДСТАНОВКА (Фича) ===
+      // Если в Excel нет цены или поставщика, ищем их в нашем справочнике
+      if (price === 0 || supplier === "") {
+        const match = app.catalog.find(c => c.name.toLowerCase() === rawName.toLowerCase());
+
+        if (match) {
+          if (price === 0) price = match.price;
+          if (supplier === "") supplier = match.supplier;
+          if (unit === "шт" && match.unit) unit = match.unit;
+        }
+      }
+
+      // Добавляем строку в таблицу
       manager.data.push({
-        id: "", // Генерируется базой при сохранении
+        id: "",
         art: m.art !== undefined ? String(r[m.art]) : "",
-        name: String(r[m.name]),
+        name: rawName,
         qty: m.qty !== undefined ? (parseFloat(String(r[m.qty]).replace(',', '.')) || 1) : 1,
-        unit: m.unit !== undefined ? String(r[m.unit]) : "шт",
-        price: m.price !== undefined ? (parseFloat(String(r[m.price]).replace(',', '.')) || 0) : 0,
-        supplier: m.supplier !== undefined ? String(r[m.supplier]) : "",
+        unit: unit,
+        price: price,
+        supplier: supplier,
         note: m.note !== undefined ? String(r[m.note]) : "",
         done: false,
-        // Импортируем в ТЕКУЩУЮ открытую категорию
         category: manager.currentCategory
       });
+
       addedCount++;
+      hasChanges = true;
     });
 
     document.getElementById('modal').style.display = 'none';
-    manager.render();
 
-    // Небольшое уведомление для удобства
-    alert(`Добавлено строк: ${addedCount}`);
+    if (hasChanges) {
+      manager.render();
+      // === ГЛАВНОЕ: Сразу запускаем сохранение ===
+      manager.triggerAutoSave();
+      alert(`Импортировано строк: ${addedCount}.\nДанные обновлены и сохранены в справочник.`);
+    } else {
+      alert("Ничего не добавлено (возможно, пустой файл)");
+    }
   }
 };
 
