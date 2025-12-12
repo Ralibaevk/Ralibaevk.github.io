@@ -40,11 +40,24 @@
         <div class="nav-item" onclick="app.openSuppliersEdit()">
           <i class="fas fa-users" style="width:20px;"></i> Поставщики
         </div>
+        <div class="nav-item" onclick="profile.open()">
+          <i class="fas fa-user-circle" style="width:20px;"></i> Профиль
+        </div>
       </nav>
     </div>
 
     <!-- CONTENT AREA -->
     <div class="content-area">
+
+      <!-- 5. PROFILE SCREEN -->
+      <div id="view-profile" class="screen hidden" style="overflow-y:auto;">
+        <div class="dash-header">
+          <h1 class="page-title">Профиль</h1>
+        </div>
+        <div class="dash-content">
+          <div id="profileContent" style="max-width: 600px; margin: 0 auto;"></div>
+        </div>
+      </div>
 
       <!-- 1. DASHBOARD GRID -->
       <div id="view-dashboard" class="screen">
@@ -254,6 +267,10 @@
       <i class="fas fa-users"></i>
       <span>Поставщики</span>
     </div>
+    <div class="b-nav-item" onclick="profile.open()">
+      <i class="fas fa-user-circle"></i>
+      <span>Профиль</span>
+    </div>
     <div class="b-nav-item" style="color:#ef4444;" onclick="alert('Логика выхода')">
       <i class="fas fa-sign-out-alt"></i>
       <span>Выйти</span>
@@ -326,6 +343,7 @@
   <script src="js/buyer.js"></script>
   <script src="js/design.js"></script>
   <script src="js/settings.js"></script>
+  <script src="js/profile.js"></script>
   <script src="js/app.js"></script>
 </body>
 
