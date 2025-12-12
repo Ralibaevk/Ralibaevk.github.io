@@ -51,11 +51,22 @@
         <div class="dash-header">
           <div class="header-top-row">
             <h1 class="page-title">Проекты</h1>
-            <button class="btn btn-primary" onclick="app.newProject()">
+            <!-- Кнопка "Новый проект" только для десктопа -->
+            <button class="btn btn-primary desktop-only-btn" style="display: flex;" onclick="app.newProject()">
               <i class="fas fa-plus"></i> Новый проект
             </button>
           </div>
 
+          <!-- Поиск -->
+          <div style="margin-top: 16px;">
+            <div class="search-wrap">
+              <i class="fas fa-search search-icon"></i>
+              <input type="text" class="search-input" id="dashSearch" placeholder="Поиск проектов..."
+                oninput="app.renderProjectsGrid()">
+            </div>
+          </div>
+
+          <!-- Табы -->
           <div class="tabs-row">
             <button class="tab-btn active" onclick="app.switchTab('new')" id="tab-btn-new">
               В работе <span class="tab-count" id="count-new">0</span>
@@ -67,20 +78,10 @@
               Завершен <span class="tab-count" id="count-done">0</span>
             </button>
           </div>
-
-          <div style="margin-top: 16px;">
-            <div class="search-wrap">
-              <i class="fas fa-search search-icon"></i>
-              <input type="text" class="search-input" id="dashSearch" placeholder="Поиск проектов..."
-                oninput="app.renderProjectsGrid()">
-            </div>
-          </div>
         </div>
 
         <div class="dash-content">
-          <div id="projectsGrid" class="grid-container">
-            <!-- Cards will be injected here -->
-          </div>
+          <div id="projectsGrid" class="grid-container"></div>
         </div>
       </div>
 
@@ -203,6 +204,31 @@
   </div> <!-- End Main Layout -->
 
   <!-- === MODALS === -->
+  <!-- === MOBILE FLOATING BUTTON (FAB) === -->
+  <button class="fab-btn" onclick="app.newProject()">
+    <i class="fas fa-plus"></i>
+  </button>
+
+  <!-- === MOBILE BOTTOM NAVIGATION === -->
+  <div class="bottom-nav">
+    <div class="b-nav-item active" onclick="app.goHome()">
+      <i class="fas fa-th-large"></i>
+      <span>Проекты</span>
+    </div>
+    <div class="b-nav-item" onclick="app.openArchive()">
+      <i class="fas fa-archive"></i>
+      <span>Архив</span>
+    </div>
+    <div class="b-nav-item" onclick="app.openSuppliersEdit()">
+      <i class="fas fa-users"></i>
+      <span>Поставщики</span>
+    </div>
+    <div class="b-nav-item" style="color:#ef4444;" onclick="alert('Логика выхода')">
+      <i class="fas fa-sign-out-alt"></i>
+      <span>Выйти</span>
+    </div>
+  </div>
+
   <div id="modal" class="hidden">
     <div class="dash-header">
       <h2>Импорт</h2>
@@ -261,7 +287,15 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- APP MODULES (Order Matters!) -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/manager.js"></script>
+  <script src="js/buyer.js"></script>
+  <script src="js/design.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/app.js"></script>
 </body>
 
 </html>
