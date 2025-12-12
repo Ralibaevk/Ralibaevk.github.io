@@ -86,7 +86,7 @@ const api = {
 
     const { data: projects, error } = await supabase
       .from('projects')
-      .select(`id, name, status, total_sum, project_items ( id, price, qty, done )`)
+      .select(`id, name, status, project_items ( id, price, qty, done )`)
       .eq('company_id', window.CURRENT_COMPANY_ID)
       .neq('status', 'archived');
     if (error) throw error;
