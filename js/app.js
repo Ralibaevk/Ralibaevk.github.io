@@ -13,18 +13,25 @@ const app = {
             window.Telegram.WebApp.expand();
             document.documentElement.style.setProperty('--tg-safe-area-inset-top', (window.Telegram.WebApp.contentSafeAreaInset?.top || 20) + 'px');
             this.user = window.Telegram.WebApp.initDataUnsafe?.user;
-            if (this.user) api.call('saveTelegramUser', { user: this.user }, 'POST', false).catch(console.error);
         }
 
         try {
             document.getElementById('loader').classList.remove('hidden');
-            await this.refreshDashboard(false);
-            const [suppliersData, catalogData] = await Promise.all([
-                api.call('getSuppliers', {}, 'GET', false),
-                api.call('getCatalog', {}, 'GET', false)
-            ]);
-            this.suppliers = suppliersData;
-            this.catalog = catalogData || [];
+            // 2. Если компания есть - грузим дашборд и справочники
+            if (window.CURRENT_COMPANY_ID) {
+                await this.refreshDashboard(false);
+                const [suppliersData, catalogData] = await Promise.all([
+                    api.call('getSuppliers', {}, 'GET', false),
+                    api.call('getCatalog', {}, 'GET', false)
+                ]);
+                this.suppliers = suppliersData;
+                this.catalog = catalogData || [];
+            } else {
+                // Если компании нет - можно сразу открыть профиль или показать пустой дашборд
+                console.log("Пользователь без компании");
+                if (window.profile) profile.open(); // Optional: auto-open profile
+            }
+
             if (window.manager) manager.updateDatalist();
 
             const input = document.getElementById('xlsInput');

@@ -21,6 +21,13 @@ const api = {
         case 'getArchivedList': result = await this._getArchivedList(); break;
         case 'uploadFile': result = await this._uploadFile(params.data, params.name, params.mime); break;
         case 'getCatalog': result = await this._getCatalog(); break;
+        case 'initSession': result = await this._initSession(params.userId); break;
+        case 'createCompany': result = await this._createCompany(params.name, params.userId); break;
+        case 'joinCompany': result = await this._joinCompany(params.code, params.userId); break;
+        case 'getCompanyMembers': result = await this._getCompanyMembers(); break;
+        case 'createInvite': result = await this._createInvite(params.userId); break;
+        case 'updateMemberRole': result = await this._updateMemberRole(params.targetId, params.newRole); break;
+        case 'leaveCompany': result = await this._leaveCompany(params.userId); break;
         default: console.warn(`Action ${action} not implemented.`); result = {};
       }
       return result;
@@ -238,5 +245,128 @@ const api = {
     const { data } = await supabase.from('projects').select('id, name, created_at').eq('company_id', window.CURRENT_COMPANY_ID).eq('status', 'archived').order('created_at', { ascending: false });
     // Map to old format
     return data.map(p => ({ id: p.name, name: p.name, date: utils.formatDate(p.created_at) }));
+  },
+
+  // 1. Инициализация сессии (вызывается при старте)
+  async _initSession(userId) {
+    // Ищем компании, где состоит юзер
+    const { data: memberships } = await supabase
+      .from('company_members')
+      .select('company_id, role, companies(name)')
+      .eq('user_id', userId);
+
+    if (memberships && memberships.length > 0) {
+      // Берем первую (активную) компанию
+      const active = memberships[0];
+
+      window.CURRENT_COMPANY_ID = active.company_id;
+      window.CURRENT_COMPANY_NAME = active.companies?.name || "Моя компания";
+      window.CURRENT_USER_ROLE = active.role;
+
+      return true; // У юзера есть компания
+    }
+
+    return false; // Юзер безработный
+  },
+
+  // 2. Создать компанию
+  async _createCompany(name, userId) {
+    // Создаем саму компанию
+    const { data: company, error } = await supabase
+      .from('companies')
+      .insert({ name: name, owner_id: userId })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Создаем связь "Владелец"
+    await supabase.from('company_members').insert({
+      user_id: userId,
+      company_id: company.id,
+      role: 'owner'
+    });
+
+    // Обновляем сессию сразу
+    window.CURRENT_COMPANY_ID = company.id;
+    window.CURRENT_COMPANY_NAME = company.name;
+    window.CURRENT_USER_ROLE = 'owner';
+
+    return { success: true };
+  },
+
+  // 3. Создать инвайт-код
+  async _createInvite(userId) {
+    if (!window.CURRENT_COMPANY_ID) throw new Error("Нет компании");
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    await supabase.from('invitations').insert({
+      company_id: window.CURRENT_COMPANY_ID,
+      code: code,
+      created_by: userId
+    });
+    return { code };
+  },
+
+  // 4. Вступить по коду
+  async _joinCompany(code, userId) {
+    const { data: invite } = await supabase.from('invitations').select('*').eq('code', code).maybeSingle();
+    if (!invite) throw new Error("Неверный код");
+
+    // Проверка на дубликат
+    const { error } = await supabase.from('company_members').insert({
+      user_id: userId,
+      company_id: invite.company_id,
+      role: 'employee'
+    });
+
+    if (error) {
+      if (error.code === '23505') throw new Error("Вы уже в этой компании");
+      throw error;
+    }
+
+    // После входа нужно перезагрузить страницу или обновить сессию
+    return { success: true };
+  },
+
+  // 5. Получить список сотрудников
+  async _getCompanyMembers() {
+    if (!window.CURRENT_COMPANY_ID) return [];
+
+    const { data } = await supabase
+      .from('company_members')
+      .select('role, user_id, users(first_name, last_name, username)')
+      .eq('company_id', window.CURRENT_COMPANY_ID);
+
+    return data.map(m => ({
+      id: m.user_id, // ID юзера
+      role: m.role,
+      first_name: m.users?.first_name || 'Без имени',
+      last_name: m.users?.last_name || '',
+      username: m.users?.username
+    }));
+  },
+
+  // 6. Изменить роль сотрудника
+  async _updateMemberRole(targetUserId, newRole) {
+    if (!window.CURRENT_COMPANY_ID) return;
+    await supabase.from('company_members')
+      .update({ role: newRole })
+      .eq('user_id', targetUserId)
+      .eq('company_id', window.CURRENT_COMPANY_ID);
+    return { success: true };
+  },
+
+  // 7. Покинуть компанию
+  async _leaveCompany(userId) {
+    if (!window.CURRENT_COMPANY_ID) return;
+    await supabase.from('company_members')
+      .delete()
+      .eq('user_id', userId)
+      .eq('company_id', window.CURRENT_COMPANY_ID);
+
+    window.CURRENT_COMPANY_ID = null;
+    window.CURRENT_COMPANY_NAME = null;
+    return { success: true };
   }
 };
