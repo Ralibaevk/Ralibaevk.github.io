@@ -557,6 +557,242 @@ body {
 }
 
 
+/* === MANAGER SCREEN (STRICT REDESIGN) === */
+
+/* Шапка Менеджера */
+.dash-header {
+  padding: 32px 40px 16px 40px;
+  /* Большие отступы для десктопа */
+  background: var(--bg-body);
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .dash-header {
+    padding: calc(var(--tg-safe-area-inset-top) + 20px) 20px 10px 20px;
+  }
+}
+
+/* Строгий стиль Табов (Категории) */
+.tabs-scroll-container {
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 0 40px;
+  background: var(--bg-body);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 24px;
+  /* Расстояние между табами */
+}
+
+@media (max-width: 768px) {
+  .tabs-scroll-container {
+    padding: 0 20px;
+  }
+}
+
+.cat-tab-btn {
+  display: inline-block;
+  padding: 12px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-sec);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  transition: 0.2s;
+}
+
+.cat-tab-btn:hover {
+  color: var(--text-main);
+}
+
+.cat-tab-btn.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.cat-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--primary);
+}
+
+/* Панель инструментов (Toolbar) */
+.mgr-toolbar {
+  background: var(--bg-card);
+  padding: 12px 40px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .mgr-toolbar {
+    padding: 12px 20px;
+  }
+}
+
+/* Новые строгие кнопки */
+.toolbar-btn {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.toolbar-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.toolbar-btn i {
+  font-size: 14px;
+  color: var(--text-sec);
+}
+
+.toolbar-btn-primary {
+  background: #eff6ff;
+  /* Светло-синий фон */
+  border: 1px dashed var(--primary);
+  color: var(--primary);
+}
+
+.toolbar-btn-primary i {
+  color: var(--primary);
+}
+
+.toolbar-btn-primary:hover {
+  background: #dbeafe;
+}
+
+.toolbar-btn-danger {
+  color: #ef4444;
+}
+
+.toolbar-btn-danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.toolbar-btn-danger i {
+  color: #ef4444;
+}
+
+/* Таблица (Excel Style) */
+.mgr-grid {
+  flex: 1;
+  overflow: auto;
+  background: var(--bg-card);
+  padding: 0 40px 40px 40px;
+}
+
+@media (max-width: 768px) {
+  .mgr-grid {
+    padding: 0 20px 80px 20px;
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  padding: 12px;
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-sec);
+  font-weight: 700;
+  border-bottom: 2px solid var(--border);
+  z-index: 10;
+}
+
+td {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  height: 44px;
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+/* Инпуты внутри таблицы (на всю ширину) */
+td input,
+td select {
+  width: 100%;
+  height: 100%;
+  border: 2px solid transparent;
+  padding: 0 12px;
+  background: transparent;
+  font-size: 13px;
+  outline: none;
+  color: inherit;
+  border-radius: 0;
+}
+
+td input:focus,
+td select:focus {
+  background: white;
+  border-color: var(--primary);
+  position: relative;
+  z-index: 2;
+}
+
+/* Чекбоксы */
+th.chk,
+td.chk {
+  width: 40px;
+  text-align: center;
+}
+
+td.chk input {
+  width: 16px;
+  height: 16px;
+  margin: auto;
+}
+
+/* Ячейка суммы (не инпут) */
+.sum-cell {
+  background: #f9fafb;
+  padding: 0 12px;
+  vertical-align: middle;
+  font-weight: 600;
+}
+
+/* === BUYER SCREEN (RE-DESIGN 2.0) === */
+
+/* Главный контейнер: фиксирует высоту и включает Flex-колонку */
+#view-buyer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-body);
+  position: relative;
+  overflow: hidden;
+  /* Важно: убирает двойной скролл */
+}
+
 /* ШАПКА (Фиксированная) */
 .buy-tools-wrapper {
   background: var(--bg-card);
