@@ -201,6 +201,22 @@ const manager = {
         dl.innerHTML = app.catalog.map(item => `<option value="${item.name}">${item.price}₸ (${item.supplier || '-'})</option>`).join('');
     },
 
+    handleFile(e) {
+        const f = e.target.files[0];
+        if (!f) return;
+        if (typeof XLSX === 'undefined') return alert("Библиотека Excel не готова");
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+                // Сохраняем "сырые" данные в mapper
+                mapper.raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+                if (mapper.raw.length) mapper.show(); else alert("Файл пустой");
+            } catch (err) { alert(err); } finally { e.target.value = ''; }
+        };
+        reader.readAsArrayBuffer(f);
+    },
+
     async uploadFile(input) {
         const file = input.files[0];
         if (!file) return;
