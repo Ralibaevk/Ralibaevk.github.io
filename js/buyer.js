@@ -25,9 +25,11 @@ const buyer = {
         this.setTab('todo');
 
         try {
-            const serverData = await api.call('getProjectData', { sheetName: name });
-            this.data = JSON.parse(JSON.stringify(serverData));
-            this.localData = JSON.parse(JSON.stringify(serverData));
+            const response = await api.call('getProjectData', { sheetName: name });
+            // Берем только .items из ответа
+            const items = response.items || [];
+            this.data = JSON.parse(JSON.stringify(items));
+            this.localData = JSON.parse(JSON.stringify(items));
             this.renderCategories();
             this.renderSuppliers();
             this.render();

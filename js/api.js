@@ -102,42 +102,82 @@ const api = {
 
   async _getProjectData(projectName) {
     if (!window.CURRENT_COMPANY_ID) throw new Error("Нет доступа");
-    const { data: project } = await supabase.from('projects').select('id').eq('name', projectName).eq('company_id', window.CURRENT_COMPANY_ID).maybeSingle();
-    if (!project) return [];
-    const { data: items, error } = await supabase.from('project_items').select('*').eq('project_id', project.id).order('created_at', { ascending: true });
+
+    // Ищем проект
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('name', projectName)
+      .eq('company_id', window.CURRENT_COMPANY_ID)
+      .maybeSingle();
+
+    if (!project) return { items: [], projectId: null }; // <--- Возвращаем объект
+
+    // Загружаем позиции
+    const { data: items, error } = await supabase
+      .from('project_items')
+      .select('*')
+      .eq('project_id', project.id)
+      .order('created_at', { ascending: true });
+
     if (error) throw error;
-    return items.map(item => ({
+
+    const mappedItems = items.map(item => ({
       id: item.id, art: item.art || "", name: item.name, qty: item.qty || 0, unit: item.unit || "шт",
       price: item.price || 0, sum: (item.qty || 0) * (item.price || 0), supplier: item.supplier || "",
       note: item.note || "", done: item.done || false, category: item.category || "Фурнитура"
     }));
+
+    return { items: mappedItems, projectId: project.id }; // <--- Возвращаем ID проекта
   },
 
   async _saveProject(params) {
     if (!window.CURRENT_COMPANY_ID) throw new Error("Ошибка: Не определена компания");
+
     const projectName = params.sheetName;
+    let projectId = params.projectId; // <--- Получаем ID из параметров
 
-    // 1. Project Header
-    let { data: project } = await supabase.from('projects').select('id').eq('name', projectName).eq('company_id', window.CURRENT_COMPANY_ID).maybeSingle();
-    let projectId;
+    // 1. Создание или Обновление Проекта (Заголовка)
+    if (projectId) {
+      // Если ID есть - обновляем имя и статус у существующего
+      const updatePayload = { name: projectName };
+      if (params.status) updatePayload.status = params.status;
 
-    if (project) {
-      projectId = project.id;
-      if (params.status) await supabase.from('projects').update({ status: params.status }).eq('id', projectId);
+      await supabase.from('projects')
+        .update(updatePayload)
+        .eq('id', projectId)
+        .eq('company_id', window.CURRENT_COMPANY_ID);
     } else {
-      const { data: newProj, error } = await supabase.from('projects').insert({ name: projectName, company_id: window.CURRENT_COMPANY_ID, status: params.status || 'active' }).select().single();
-      if (error) throw error;
-      projectId = newProj.id;
+      // Если ID нет - создаем новый
+      // Проверка на дубликат имени при создании нового
+      let { data: existing } = await supabase.from('projects').select('id').eq('name', projectName).eq('company_id', window.CURRENT_COMPANY_ID).maybeSingle();
+
+      if (existing) {
+        projectId = existing.id; // Если имя занято, используем этот проект
+      } else {
+        const { data: newProj, error } = await supabase
+          .from('projects')
+          .insert({
+            name: projectName,
+            company_id: window.CURRENT_COMPANY_ID,
+            status: params.status || 'new'
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        projectId = newProj.id;
+      }
     }
 
-    // 2. Catalog Update (Auto-learn prices)
+    // 2. Обновление каталога цен (без изменений)
     const catalogUpdates = params.data.map(row => ({ name: row[2], unit: row[4], price: row[5], supplier: row[7] }));
     this._updateCatalog(catalogUpdates).catch(console.error);
 
-    // 3. Project Items
+    // 3. Сохранение позиций
     const upsertData = params.data.map(row => {
       const itemObj = {
-        project_id: projectId, art: row[1], name: row[2], qty: parseFloat(row[3]) || 0, unit: row[4],
+        project_id: projectId, // Привязываем к ID
+        art: row[1], name: row[2], qty: parseFloat(row[3]) || 0, unit: row[4],
         price: parseFloat(row[5]) || 0, supplier: row[7], note: row[8], done: row[9] === true || row[9] === 'true',
         category: row[10] || 'Фурнитура'
       };
@@ -147,7 +187,9 @@ const api = {
 
     const { error: itemsError } = await supabase.from('project_items').upsert(upsertData);
     if (itemsError) throw itemsError;
-    return { success: true };
+
+    // Возвращаем ID проекта, чтобы менеджер его запомнил
+    return { success: true, projectId: projectId };
   },
 
   async _updateStatus(name, status) {

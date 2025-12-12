@@ -6,19 +6,24 @@ const manager = {
     currentCategory: "Фурнитура",
     saveTimeout: null,
     isSaving: false,
+    currentProjectId: null, // <--- НОВАЯ ПЕРЕМЕННАЯ
 
     async open(name) {
         document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
         document.getElementById('view-manager').classList.remove('hidden');
         document.getElementById('mgrName').value = '';
+
         this.currentCategory = this.categories[0];
+        this.currentProjectId = null; // Сброс ID
         this.renderTabs();
 
         if (name) {
             document.getElementById('mgrName').value = name;
             try {
-                const sData = await api.call('getProjectData', { sheetName: name });
-                this.data = sData.map(i => ({ ...i, checked: false, note: i.note || "", category: i.category || this.categories[0] }));
+                // Теперь получаем объект { items, projectId }
+                const response = await api.call('getProjectData', { sheetName: name });
+                this.data = response.items.map(i => ({ ...i, checked: false, note: i.note || "", category: i.category || this.categories[0] }));
+                this.currentProjectId = response.projectId; // Запоминаем ID
             } catch (e) { this.data = []; }
         } else {
             document.getElementById('mgrName').value = `Заказ ${new Date().toLocaleDateString()}`;
@@ -181,10 +186,29 @@ const manager = {
         const name = document.getElementById('mgrName').value;
         if (!name) return;
         this.isSaving = true;
+
         const arr = this.data.map(i => [i.id || "", i.art, i.name, i.qty, i.unit, i.price, i.qty * i.price, i.supplier, i.note || "", i.done || false, i.category || "Фурнитура"]);
+
         try {
             if (!app.user || !app.user.id) throw new Error("Нет авторизации");
-            await api.call('saveProject', { sheetName: name, data: arr, status: 'active', userId: app.user.id }, 'POST', !isAuto);
+
+            // Если проект новый (нет ID) -> ставим статус 'new'
+            // Если проект старый -> отправляем undefined (чтобы API не менял текущий статус)
+            const statusToSend = this.currentProjectId ? undefined : 'new';
+
+            await api.call('saveProject', {
+                sheetName: name,
+                projectId: this.currentProjectId,
+                data: arr,
+                status: statusToSend,
+                userId: app.user.id
+            }, 'POST', !isAuto);
+
+            // Если это был новый проект, запоминаем его ID, чтобы следующее автосохранение не создавало дубликат
+            if (res && res.projectId) {
+                this.currentProjectId = res.projectId;
+            }
+
             const statusEl = document.getElementById('saveStatus');
             if (statusEl) { statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Сохранено'; statusEl.style.color = '#10b981'; }
             if (!isAuto) { alert('Сохранено!'); app.goHome(); }
