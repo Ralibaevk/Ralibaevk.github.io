@@ -161,18 +161,33 @@
         <!-- Фиксированная шапка -->
         <div class="buy-tools-wrapper">
           <div class="buy-nav-row">
-            <span class="buy-title" id="buyTitle">Загрузка...</span>
+            <div style="display:flex; flex-direction:column; overflow:hidden;">
+              <span class="buy-title" id="buyTitle">Загрузка...</span>
+              <!-- НОВЫЙ ИНДИКАТОР -->
+              <div id="buySaveStatus" style="font-size:12px; color:#10b981; font-weight:500; margin-top:2px;">
+                <i class="fas fa-check-circle"></i> Сохранено
+              </div>
+            </div>
+
             <button class="btn-close-app" onclick="buyer.checkClose()"
-              style="background:#f3f4f6; color:#333; border:none; padding:8px 12px; border-radius:8px; cursor:pointer;">
+              style="background:#f3f4f6; color:#333; border:none;">
               ✕ Закрыть
             </button>
           </div>
 
           <!-- Табы -->
+          <!-- Табы (В работе / Куплено) -->
           <div class="buy-tabs">
             <button id="tab-todo" class="buy-tab active" onclick="buyer.setTab('todo')">🛒 В работе</button>
             <button id="tab-done" class="buy-tab" onclick="buyer.setTab('done')">✅ Куплено</button>
           </div>
+
+          <!-- НОВОЕ: Фильтр Категорий (Крупный) -->
+          <div class="filter-label">Категория:</div>
+          <div class="filter-scroll" id="buyCategoryFilters"></div>
+
+          <!-- Фильтр Поставщиков (Мелкий) -->
+          <div class="filter-label" style="margin-top:5px;">Поставщик:</div>
 
           <!-- Фильтры -->
           <div class="filter-scroll" id="buyFilters"></div>
@@ -181,13 +196,7 @@
         <!-- Скроллящийся список -->
         <div class="buy-list" id="buyList"></div>
 
-        <!-- Панель сохранения -->
-        <div id="unsavedBar">
-          <span>Есть изменения</span>
-          <button class="save-btn" onclick="buyer.saveBatch()"
-            style="border:none; background:#22c55e; color:white; padding:8px 16px; border-radius:20px; font-weight:600; cursor:pointer;">💾
-            Сохранить</button>
-        </div>
+
       </div>
 
     </div> <!-- End Content Area -->

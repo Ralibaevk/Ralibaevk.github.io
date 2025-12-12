@@ -776,29 +776,7 @@ td select:focus {
 }
 
 /* Плашка "Есть изменения" */
-#unsavedBar {
-  position: absolute;
-  /* Внутри контейнера */
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(150%);
-  background: #1f2937;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 30px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-  z-index: 100;
-  transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  width: 90%;
-  max-width: 400px;
-}
 
-#unsavedBar.visible {
-  transform: translateX(-50%) translateY(0);
-}
 
 /* LOADER & MODALS */
 #loader {
@@ -929,4 +907,73 @@ td select:focus {
 
 .btn-add-sup:hover {
   background: #dbeafe;
+}
+
+/* Заголовок для группы фильтров (мелкий текст) */
+.filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-left: 4px;
+}
+
+/* Общий контейнер скролла */
+.filter-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+  /* Место под скроллбар */
+  scrollbar-width: none;
+  padding-top: 0;
+}
+
+/* === СТИЛЬ 1: КАТЕГОРИИ (Главный фильтр) === */
+.cat-chip {
+  background: white;
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 12px;
+  /* Более квадратные скругления */
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.cat-chip.active {
+  background: var(--text-main);
+  /* Черный/Темный фон для активной категории */
+  color: white;
+  border-color: var(--text-main);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* === СТИЛЬ 2: ПОСТАВЩИКИ (Вторичный фильтр) === */
+.filter-chip {
+  background: #f3f4f6;
+  /* Серый фон */
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  border-radius: 20px;
+  /* Полностью круглые */
+  font-size: 12px;
+  color: var(--text-sec);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.filter-chip.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  font-weight: 600;
 }

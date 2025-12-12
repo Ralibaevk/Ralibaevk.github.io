@@ -1215,29 +1215,42 @@ const mapper = {
 const buyer = {
   data: [],
   localData: [],
-  hasChanges: false,
-  currentFilter: 'ALL',
-  currentTab: 'todo', // 'todo' или 'done'
+
+  // Состояния фильтров
+  currentTab: 'todo',
+  currentCategory: 'ALL', // Новое состояние
+  currentSupplier: 'ALL', // Переименовали currentFilter в currentSupplier для ясности
+
   currentSheet: '',
+  saveTimeout: null,
 
   async open(name) {
-    if (this.hasChanges && !confirm("Сбросить изменения?")) return;
     this.currentSheet = name;
     document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
     document.getElementById('view-buyer').classList.remove('hidden');
     document.getElementById('buyTitle').innerText = name;
 
-    this.hasChanges = false;
-    this.toggleSaveBar(false);
+    const statusEl = document.getElementById('buySaveStatus');
+    if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Загружено';
+
     document.getElementById('buyList').innerHTML = '<div style="text-align:center; padding:40px; color:#999;">Загрузка...</div>';
+
+    // Сброс фильтров при открытии
+    this.currentCategory = 'ALL';
+    this.currentSupplier = 'ALL';
     this.setTab('todo');
 
     try {
       const serverData = await api.call('getProjectData', { sheetName: name });
+      // Add rowIndex for UI logic to ensure toggle/update works properly
+      serverData.forEach((item, idx) => item.rowIndex = idx);
+
       this.data = JSON.parse(JSON.stringify(serverData));
       this.localData = JSON.parse(JSON.stringify(serverData));
-      this.renderFilters();
-      this.render();
+
+      this.renderCategories(); // Рисуем категории
+      this.renderSuppliers();  // Рисуем поставщиков
+      this.render();           // Рисуем список
     } catch (e) {
       alert("Ошибка загрузки: " + e.message);
       app.goHome();
@@ -1252,67 +1265,107 @@ const buyer = {
     this.render();
   },
 
-  renderFilters() {
-    const container = document.getElementById('buyFilters');
-    const uniqueSuppliers = [...new Set(this.localData.map(i => i.supplier).filter(s => s && s.trim() !== ""))].sort();
+  // === 1. РЕНДЕР КАТЕГОРИЙ ===
+  renderCategories() {
+    const container = document.getElementById('buyCategoryFilters');
+    if (!container) return;
 
-    let html = `<div class="filter-chip ${this.currentFilter === 'ALL' ? 'active' : ''}" onclick="buyer.setFilter('ALL')">Все</div>`;
-    if (this.localData.some(i => !i.supplier)) {
-      html += `<div class="filter-chip ${this.currentFilter === 'NONE' ? 'active' : ''}" onclick="buyer.setFilter('NONE')">Не назначено</div>`;
-    }
-    uniqueSuppliers.forEach(sup => {
-      const active = this.currentFilter === sup ? 'active' : '';
-      html += `<div class="filter-chip ${active}" onclick="buyer.setFilter('${sup}')">${sup}</div>`;
+    // Собираем уникальные категории из данных
+    const uniqueCats = [...new Set(this.localData.map(i => i.category || 'Без категории'))].sort();
+
+    let html = `<div class="cat-chip ${this.currentCategory === 'ALL' ? 'active' : ''}" onclick="buyer.setCategory('ALL')">Все категории</div>`;
+
+    uniqueCats.forEach(cat => {
+      const active = this.currentCategory === cat ? 'active' : '';
+      html += `<div class="cat-chip ${active}" onclick="buyer.setCategory('${cat}')">${cat}</div>`;
     });
     container.innerHTML = html;
   },
 
-  setFilter(filter) {
-    this.currentFilter = filter;
-    this.renderFilters();
+  setCategory(cat) {
+    this.currentCategory = cat;
+    this.currentSupplier = 'ALL'; // Сбрасываем поставщика при смене категории
+
+    this.renderCategories(); // Обновляем активную кнопку категорий
+    this.renderSuppliers();  // Перерисовываем поставщиков (показываем только релевантных)
+    this.render();           // Фильтруем список
+  },
+
+  // === 2. РЕНДЕР ПОСТАВЩИКОВ (Умный) ===
+  renderSuppliers() {
+    const container = document.getElementById('buyFilters');
+    if (!container) return;
+
+    // Фильтруем данные для сбора поставщиков:
+    // Берем только те товары, которые подходят под текущую категорию
+    const relevantItems = this.currentCategory === 'ALL'
+      ? this.localData
+      : this.localData.filter(i => (i.category || 'Без категории') === this.currentCategory);
+
+    // Собираем поставщиков только из этих товаров
+    const uniqueSuppliers = [...new Set(relevantItems.map(i => i.supplier).filter(s => s && s.trim() !== ""))].sort();
+
+    let html = `<div class="filter-chip ${this.currentSupplier === 'ALL' ? 'active' : ''}" onclick="buyer.setSupplier('ALL')">Все</div>`;
+
+    // Добавляем "Не назначено", если есть такие товары в текущей выборке
+    if (relevantItems.some(i => !i.supplier)) {
+      html += `<div class="filter-chip ${this.currentSupplier === 'NONE' ? 'active' : ''}" onclick="buyer.setSupplier('NONE')">Не назначено</div>`;
+    }
+
+    uniqueSuppliers.forEach(sup => {
+      const active = this.currentSupplier === sup ? 'active' : '';
+      html += `<div class="filter-chip ${active}" onclick="buyer.setSupplier('${sup}')">${sup}</div>`;
+    });
+
+    container.innerHTML = html;
+  },
+
+  setSupplier(sup) {
+    this.currentSupplier = sup;
+    this.renderSuppliers(); // Обновляем активную кнопку
     this.render();
   },
 
+  // === 3. ГЛАВНЫЙ РЕНДЕР СПИСКА ===
   render() {
     const container = document.getElementById('buyList');
+    if (!container) return;
+
     container.innerHTML = '';
-    let totalSum = 0, totalCount = 0, doneCount = 0, visibleCount = 0;
+    let visibleCount = 0;
 
     this.localData.forEach(item => {
-      totalCount++;
-      if (item.done) doneCount++;
-      totalSum += (item.qty * item.price);
-
-      // Фильтры
+      // 1. Фильтр Табов (В работе / Куплено)
       if (this.currentTab === 'todo' && item.done) return;
       if (this.currentTab === 'done' && !item.done) return;
-      if (this.currentFilter === 'NONE') { if (item.supplier) return; }
-      else if (this.currentFilter !== 'ALL') { if (item.supplier !== this.currentFilter) return; }
+
+      // 2. Фильтр Категорий
+      const itemCat = item.category || 'Без категории';
+      if (this.currentCategory !== 'ALL' && itemCat !== this.currentCategory) return;
+
+      // 3. Фильтр Поставщиков
+      if (this.currentSupplier === 'NONE') { if (item.supplier) return; }
+      else if (this.currentSupplier !== 'ALL') { if (item.supplier !== this.currentSupplier) return; }
 
       visibleCount++;
 
+      // Рендеринг карточки
       const div = document.createElement('div');
-      // Добавляем класс done, если куплено
       div.className = `b-card ${item.done ? 'done' : ''}`;
-
-      // Рендерим карточку С КНОПКОЙ
       div.innerHTML = `
         <div class="b-top">
           <div class="b-name">${item.name}</div>
-          
-          <!-- ВОТ ОНА, КНОПКА КУПИТЬ 👇 -->
           <button class="b-check-btn ${item.done ? 'active' : ''}" onclick="buyer.toggle(${item.rowIndex})">
              <i class="fas fa-${item.done ? 'check' : 'circle'}" style="${!item.done ? 'color:#eee;' : ''}"></i>
           </button>
         </div>
-
         <div class="b-mid">
           <span class="b-badge">${item.qty} ${item.unit}</span>
           ${item.supplier ? `<span class="b-sup-tag"><i class="fas fa-truck"></i> ${item.supplier}</span>` : ''}
+          <!-- Показываем категорию, если выбран фильтр ВСЕ -->
+          ${this.currentCategory === 'ALL' ? `<span style="font-size:10px; color:#aaa; border:1px solid #eee; padding:2px 6px; border-radius:4px;">${itemCat}</span>` : ''}
         </div>
-        
         ${item.note ? `<div style="font-size:12px; color:#888; margin-top:5px;">${item.note}</div>` : ''}
-
         <div class="b-bot">
           <input type="number" class="b-price-input" 
             value="${item.price > 0 ? item.price : ''}" 
@@ -1325,20 +1378,18 @@ const buyer = {
     });
 
     if (visibleCount === 0) {
-      const msg = this.currentTab === 'todo' ? 'Всё куплено! 🎉' : 'Здесь пока пусто';
-      container.innerHTML = `<div style="text-align:center; padding:40px; color:#999;">${msg}</div>`;
+      container.innerHTML = `<div style="text-align:center; padding:40px; color:#999;">Ничего не найдено</div>`;
     }
-
-    // Обновляем статистику (если нужно, можно вывести в шапку, но пока просто считаем)
-    // console.log(`Прогресс: ${doneCount}/${totalCount}, Сумма: ${totalSum}`);
   },
+
+  // ... (Остальные методы toggle, updatePrice, triggerAutoSave, saveBatch, checkClose оставляем как были) ...
 
   toggle(rowIndex) {
     const item = this.localData.find(i => i.rowIndex === rowIndex);
     if (item) {
       item.done = !item.done;
-      this.markAsChanged();
       this.render();
+      this.triggerAutoSave();
     }
   },
 
@@ -1346,45 +1397,31 @@ const buyer = {
     const item = this.localData.find(i => i.rowIndex === rowIndex);
     if (item) {
       item.price = parseFloat(value) || 0;
-      this.markAsChanged();
-      this.recalcTotal();
+      this.triggerAutoSave();
     }
   },
 
-  recalcTotal() {
-    let sum = this.localData.reduce((acc, i) => acc + (i.qty * i.price), 0);
-    document.getElementById('buyTotalSum').innerText = sum.toLocaleString() + ' ₸';
-  },
-
-  markAsChanged() {
-    this.hasChanges = true;
-    this.toggleSaveBar(true);
-  },
-
-  toggleSaveBar(show) {
-    const bar = document.getElementById('unsavedBar');
-    if (show) bar.classList.add('visible');
-    else bar.classList.remove('visible');
+  triggerAutoSave() {
+    const statusEl = document.getElementById('buySaveStatus');
+    if (statusEl) {
+      statusEl.innerHTML = '<i class="fas fa-sync fa-spin"></i> Сохранение...';
+      statusEl.style.color = '#f59e0b';
+    }
+    if (this.saveTimeout) clearTimeout(this.saveTimeout);
+    this.saveTimeout = setTimeout(() => {
+      this.saveBatch();
+    }, 1000);
   },
 
   async saveBatch() {
-    const btn = document.querySelector('#unsavedBar .save-btn');
-    const oldText = btn.innerText;
-    btn.innerText = "⏳...";
-    btn.disabled = true;
-
     try {
       const arrayData = this.localData.map(i => [
         i.id, i.art, i.name, i.qty, i.unit, i.price,
         (i.qty * i.price), i.supplier, i.note, i.done,
-        i.category || "Фурнитура" // <--- ОБЯЗАТЕЛЬНО ДОБАВИТЬ ЭТУ СТРОКУ (11-я колонка)
+        i.category || "Фурнитура"
       ]);
 
-      // ИСПРАВЛЕНИЕ: ID или ваш запасной
-      if (!app.user || !app.user.id) {
-        document.querySelector('#unsavedBar .save-btn').disabled = false;
-        return alert("Ошибка: Вы не авторизованы в Telegram.");
-      }
+      if (!app.user || !app.user.id) return;
       const userId = app.user.id;
 
       await api.call('saveProject', {
@@ -1392,33 +1429,20 @@ const buyer = {
         data: arrayData,
         status: 'active',
         userId: userId
-      }, 'POST');
+      }, 'POST', false);
 
-      this.hasChanges = false;
-      this.toggleSaveBar(false);
-      btn.innerText = "✅";
+      const statusEl = document.getElementById('buySaveStatus');
+      if (statusEl) {
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Сохранено';
+        statusEl.style.color = '#10b981';
+      }
       this.data = JSON.parse(JSON.stringify(this.localData));
-
-      setTimeout(() => {
-        btn.innerText = oldText;
-        btn.disabled = false;
-      }, 1000);
-
     } catch (e) {
-      alert("Ошибка: " + e.message);
-      btn.innerText = oldText;
-      btn.disabled = false;
+      console.error(e);
     }
   },
 
-  checkClose() {
-    if (this.hasChanges) {
-      if (confirm("Есть несохраненные изменения. Выйти?")) app.goHome();
-    } else {
-      app.goHome();
-    }
-  }
-
+  checkClose() { app.goHome(); }
 }; // <--- ВАЖНО: ЭТА СКОБКА ЗАКРЫВАЕТ ОБЪЕКТ buyer
 
 // === ЗАПУСК (СТРОГО ПОСЛЕ ЗАКРЫВАЮЩЕЙ СКОБКИ) ===
