@@ -6,7 +6,7 @@ const manager = {
     currentCategory: "Фурнитура",
     saveTimeout: null,
     isSaving: false,
-    currentProjectId: null, // <--- НОВАЯ ПЕРЕМЕННАЯ
+    currentProjectId: null,
 
     async open(name) {
         document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
@@ -14,16 +14,17 @@ const manager = {
         document.getElementById('mgrName').value = '';
 
         this.currentCategory = this.categories[0];
-        this.currentProjectId = null; // Сброс ID
+        this.currentProjectId = null;
         this.renderTabs();
+        this.renderTeamAvatars(); // Очистка аватарок
 
         if (name) {
             document.getElementById('mgrName').value = name;
             try {
-                // Теперь получаем объект { items, projectId }
                 const response = await api.call('getProjectData', { sheetName: name });
                 this.data = response.items.map(i => ({ ...i, checked: false, note: i.note || "", category: i.category || this.categories[0] }));
-                this.currentProjectId = response.projectId; // Запоминаем ID
+                this.currentProjectId = response.projectId;
+                this.renderTeamAvatars(); // Загрузка аватарок
             } catch (e) { this.data = []; }
         } else {
             document.getElementById('mgrName').value = `Заказ ${new Date().toLocaleDateString()}`;
@@ -31,6 +32,35 @@ const manager = {
         }
         this.render();
         this.updateDatalist();
+    },
+
+    // Отрисовка аватарок в тулбаре
+    async renderTeamAvatars() {
+        const container = document.getElementById('mgrTeamAvatars');
+        if (!container) return;
+
+        if (!this.currentProjectId) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const team = await api.call('getProjectTeam', { projectId: this.currentProjectId });
+
+        // Показываем макс 3 чел
+        const visible = team.slice(0, 3);
+        const hiddenCount = team.length - 3;
+
+        let html = visible.map(u => `
+            <div class="user-avatar" title="${u.first_name}" style="border-color:#fff;">
+                ${(u.first_name || 'U')[0]}
+            </div>
+        `).join('');
+
+        if (hiddenCount > 0) {
+            html += `<div class="user-avatar more" style="border-color:#fff;">+${hiddenCount}</div>`;
+        }
+
+        container.innerHTML = html;
     },
 
     renderTabs() {
@@ -192,11 +222,9 @@ const manager = {
         try {
             if (!app.user || !app.user.id) throw new Error("Нет авторизации");
 
-            // Если проект новый (нет ID) -> ставим статус 'new'
-            // Если проект старый -> отправляем undefined (чтобы API не менял текущий статус)
             const statusToSend = this.currentProjectId ? undefined : 'new';
 
-            await api.call('saveProject', {
+            const res = await api.call('saveProject', {
                 sheetName: name,
                 projectId: this.currentProjectId,
                 data: arr,
@@ -204,7 +232,6 @@ const manager = {
                 userId: app.user.id
             }, 'POST', !isAuto);
 
-            // Если это был новый проект, запоминаем его ID, чтобы следующее автосохранение не создавало дубликат
             if (res && res.projectId) {
                 this.currentProjectId = res.projectId;
             }
@@ -233,7 +260,6 @@ const manager = {
         reader.onload = function (ev) {
             try {
                 const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
-                // Сохраняем "сырые" данные в mapper
                 mapper.raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
                 if (mapper.raw.length) mapper.show(); else alert("Файл пустой");
             } catch (err) { alert(err); } finally { e.target.value = ''; }
@@ -320,6 +346,7 @@ const manager = {
                 select.value = "";
 
                 await api.call('assignUserToProject', { projectId: this.currentProjectId, userId: userId }, 'POST');
+                this.renderTeamAvatars();
                 this.openTeam();
             };
 
@@ -331,6 +358,7 @@ const manager = {
     async removeFromTeam(userId) {
         if (!confirm("Убрать сотрудника из доступа к проекту?")) return;
         await api.call('removeUserFromProject', { projectId: this.currentProjectId, userId: userId }, 'POST');
+        this.renderTeamAvatars();
         this.openTeam();
     }
 };

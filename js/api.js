@@ -90,7 +90,11 @@ const api = {
     if (!window.CURRENT_COMPANY_ID) return [];
     const { data: projects, error } = await supabase
       .from('projects')
-      .select(`id, name, status, project_items ( id, price, qty, done )`)
+      .select(`
+          id, name, status, 
+          project_items ( id, price, qty, done ),
+          project_assignments ( users ( first_name, last_name ) )
+      `)
       .eq('company_id', window.CURRENT_COMPANY_ID)
       .neq('status', 'archived');
     if (error) throw error;
@@ -100,7 +104,14 @@ const api = {
       const total = items.length;
       const done = items.filter(i => i.done).length;
       const sum = items.reduce((acc, i) => acc + (i.qty * i.price), 0);
-      return { name: p.name, status: p.status || 'new', total: total, done: done, sum: sum };
+      return {
+        name: p.name,
+        status: p.status || 'new',
+        total: total,
+        done: done,
+        sum: sum,
+        project_assignments: p.project_assignments
+      };
     });
   },
 

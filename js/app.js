@@ -112,6 +112,29 @@ const app = {
             if (percent === 100) tagText = 'Завершен';
             else if (percent > 0) tagText = `Прогресс ${percent}%`;
 
+            // === ЛОГИКА АВАТАРОК ===
+            const team = (p.project_assignments || []).map(a => a.users);
+
+            let avatarsHtml = '';
+            if (team.length === 0) {
+                // Если никого нет - показываем серую иконку (как было)
+                avatarsHtml = '<div class="card-avatar" style="background:#f3f4f6; color:#ccc; margin:0;"><i class="fas fa-user"></i></div>';
+            } else {
+                // Показываем первые 3
+                const visible = team.slice(0, 3);
+                const hiddenCount = team.length - 3;
+
+                avatarsHtml = visible.map(u => `
+                    <div class="user-avatar" title="${u.first_name} ${u.last_name || ''}">
+                        ${(u.first_name || 'U')[0]}
+                    </div>
+                `).join('');
+
+                if (hiddenCount > 0) {
+                    avatarsHtml += `<div class="user-avatar more">+${hiddenCount}</div>`;
+                }
+            }
+
             const card = document.createElement('div');
             card.className = 'p-card';
             card.innerHTML = `
@@ -132,9 +155,16 @@ const app = {
                    <option value="active" ${p.status == 'active' ? 'selected' : ''}>Закуп</option>
                    <option value="done" ${p.status == 'done' ? 'selected' : ''}>Готово</option>
                </select>
-               <div class="card-actions">
-                  <button class="btn-action btn-edit" onclick="event.stopPropagation(); manager.open('${p.name}')" title="Редактировать"><i class="fas fa-pencil-alt"></i></button>
-                  <button class="btn-action btn-buy" onclick="event.stopPropagation(); buyer.open('${p.name}')" title="Закуп"><i class="fas fa-shopping-cart"></i></button>
+               
+               <!-- Группа аватарок и кнопки -->
+               <div style="display:flex; gap:10px; align-items:center;">
+                  <div class="avatar-group">
+                      ${avatarsHtml}
+                  </div>
+                  <div class="card-actions">
+                      <button class="btn-action btn-edit" onclick="event.stopPropagation(); manager.open('${p.name}')" title="Редактировать"><i class="fas fa-pencil-alt"></i></button>
+                      <button class="btn-action btn-buy" onclick="event.stopPropagation(); buyer.open('${p.name}')" title="Закуп"><i class="fas fa-shopping-cart"></i></button>
+                  </div>
                </div>
             </div>
         `;
