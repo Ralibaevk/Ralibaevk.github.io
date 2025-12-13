@@ -59,42 +59,51 @@ const profile = {
             // Моя текущая роль
             const myRole = window.CURRENT_USER_ROLE;
 
-            // Рендер списка сотрудников с УПРАВЛЕНИЕМ ПРАВАМИ
+            // Рендер списка сотрудников с НОВЫМИ РОЛЯМИ
             const membersList = members.map(m => {
                 const isMe = String(m.id) === String(user.id);
                 const targetRole = m.role;
 
-                // Логика: Могу ли я менять роль этому человеку?
-                let canEdit = false;
+                // Логика прав: 
+                // 1. Руководитель (owner) меняет всех, кроме себя.
+                // 2. Менеджер/Админ (можно настроить) пока не меняет никого, либо меняет только рабочих.
+                // Пока оставим жесткую логику: Только Владелец управляет ролями.
 
-                if (myRole === 'owner' && !isMe) {
-                    canEdit = true; // Владелец меняет всех, кроме себя
-                } else if (myRole === 'admin' && !isMe) {
-                    // Админ не может менять Владельца и других Админов
-                    if (targetRole !== 'owner' && targetRole !== 'admin') {
-                        canEdit = true;
-                    }
-                }
+                let canEdit = (myRole === 'owner' && !isMe);
 
-                // HTML для роли (Селект или Текст)
+                // HTML для роли
                 let roleEl = '';
+
                 if (canEdit) {
+                    // Генерируем опции для селекта из словаря window.ROLE_NAMES
+                    // Исключаем 'owner' из списка выбора, чтобы случайно не передать права
+                    const options = Object.entries(window.ROLE_NAMES)
+                        .filter(([key]) => key !== 'owner')
+                        .map(([key, label]) =>
+                            `<option value="${key}" ${targetRole === key ? 'selected' : ''}>${label}</option>`
+                        ).join('');
+
                     roleEl = `
-                        <select class="status-select" onchange="profile.changeRole('${m.id}', this.value)" style="padding:4px 8px; font-size:11px; background:#fff; border-color:#ddd;">
-                            <option value="employee" ${targetRole === 'employee' ? 'selected' : ''}>Сотрудник</option>
-                            <option value="buyer" ${targetRole === 'buyer' ? 'selected' : ''}>Снабженец</option>
-                            <option value="admin" ${targetRole === 'admin' ? 'selected' : ''}>Админ</option>
-                            ${myRole === 'owner' ? `<option value="delete" style="color:red;">❌ Удалить</option>` : ''}
+                        <select class="status-select" onchange="profile.changeRole('${m.id}', this.value)" style="padding:4px 8px; font-size:11px; max-width: 120px;">
+                            ${options}
+                            <option value="delete" style="color:red; font-weight:bold;">❌ Удалить</option>
                         </select>
                     `;
                 } else {
                     // Просто красивый бейджик
                     let color = '#f3f4f6';
                     let textCol = '#555';
-                    if (targetRole === 'owner') { color = '#fef3c7'; textCol = '#d97706'; } // Gold
-                    if (targetRole === 'admin') { color = '#e0e7ff'; textCol = '#4f46e5'; } // Indigo
 
-                    roleEl = `<span class="card-tag" style="font-size:10px; background:${color}; color:${textCol}; border:none;">${this.translateRole(targetRole)}</span>`;
+                    // Цветовая кодировка для разных групп
+                    if (targetRole === 'owner') { color = '#fef3c7'; textCol = '#d97706'; } // Руководитель (Золотой)
+                    else if (['manager', 'designer', 'technologist'].includes(targetRole)) { color = '#e0e7ff'; textCol = '#4f46e5'; } // ИТР (Синий)
+                    else if (['buyer'].includes(targetRole)) { color = '#dcfce7'; textCol = '#166534'; } // Снабжение (Зеленый)
+                    else { color = '#f3f4f6'; textCol = '#4b5563'; } // Цех (Серый)
+
+                    // Берем русское название из словаря или оставляем как есть
+                    const roleName = window.ROLE_NAMES[targetRole] || targetRole;
+
+                    roleEl = `<span class="card-tag" style="font-size:10px; background:${color}; color:${textCol}; border:none;">${roleName}</span>`;
                 }
 
                 return `
@@ -123,7 +132,7 @@ const profile = {
                          style="padding: 12px; border:1px solid ${isActive ? 'var(--primary)' : '#e5e7eb'}; border-radius:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:${isActive ? '#eff6ff' : 'white'}; transition:0.2s;">
                         <div>
                             <div style="font-weight:600; font-size:14px; color:${isActive ? 'var(--primary)' : 'var(--text-main)'}">${c.name}</div>
-                            <div style="font-size:11px; color:${isActive ? 'var(--primary)' : 'var(--text-sec)'}; opacity:0.8;">${this.translateRole(c.role)}</div>
+                            <div style="font-size:11px; color:${isActive ? 'var(--primary)' : 'var(--text-sec)'}; opacity:0.8;">${window.ROLE_NAMES[c.role] || c.role}</div>
                         </div>
                         ${isActive ? '<i class="fas fa-check-circle" style="color:var(--primary)"></i>' : '<i class="fas fa-chevron-right" style="color:#ccc; font-size:12px;"></i>'}
                     </div>
@@ -244,8 +253,4 @@ const profile = {
         location.reload();
     },
 
-    translateRole(role) {
-        const roles = { 'owner': 'Владелец', 'admin': 'Админ', 'buyer': 'Снабженец', 'employee': 'Сотрудник' };
-        return roles[role] || role;
-    }
 };

@@ -19,3 +19,18 @@ const utils = {
     });
   }
 };
+
+// === СЛОВАРЬ РОЛЕЙ ===
+window.ROLE_NAMES = {
+  'owner': 'Руководитель',
+  'manager': 'Менеджер',
+  'technologist': 'Технолог',
+  'designer': 'Дизайнер',
+  'measurer': 'Замерщик',
+  'assembler': 'Сборщик',
+  'installer': 'Монтажник',
+  'buyer': 'Снабженец',
+  'operator': 'Оператор станка',
+  'customer': 'Заказчик',
+  'employee': 'Сотрудник' // (резерв)
+};
