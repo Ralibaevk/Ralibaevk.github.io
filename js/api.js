@@ -25,6 +25,7 @@ const api = {
         case 'createCompany': result = await this._createCompany(params.name, params.userId); break;
         case 'joinCompany': result = await this._joinCompany(params.code, params.userId); break;
         case 'getCompanyMembers': result = await this._getCompanyMembers(); break;
+        case 'getUserCompanies': result = await this._getUserCompanies(params.userId); break;
         case 'createInvite': result = await this._createInvite(params.userId); break;
         case 'updateMemberRole': result = await this._updateMemberRole(params.targetId, params.newRole); break;
         case 'leaveCompany': result = await this._leaveCompany(params.userId); break;
@@ -261,14 +262,20 @@ const api = {
       .eq('user_id', userId);
 
     if (memberships && memberships.length > 0) {
-      // Берем первую (активную) компанию
-      const active = memberships[0];
+      // 1. Проверяем, есть ли сохраненный выбор
+      const savedId = localStorage.getItem('preferred_company_id');
+
+      // 2. Пытаемся найти сохраненную компанию в списке доступных
+      let active = memberships.find(m => m.company_id === savedId);
+
+      // 3. Если не нашли (или нет сохранения) - берем первую попавшуюся
+      if (!active) active = memberships[0];
 
       window.CURRENT_COMPANY_ID = active.company_id;
       window.CURRENT_COMPANY_NAME = active.companies?.name || "Моя компания";
       window.CURRENT_USER_ROLE = active.role;
 
-      return true; // У юзера есть компания
+      return true;
     }
 
     return false; // Юзер безработный
@@ -370,8 +377,20 @@ const api = {
       .eq('user_id', userId)
       .eq('company_id', window.CURRENT_COMPANY_ID);
 
-    window.CURRENT_COMPANY_ID = null;
-    window.CURRENT_COMPANY_NAME = null;
     return { success: true };
+  },
+
+  // Получить список всех компаний пользователя для переключения
+  async _getUserCompanies(userId) {
+    const { data } = await supabase
+      .from('company_members')
+      .select('company_id, role, companies(name)')
+      .eq('user_id', userId);
+
+    return data.map(item => ({
+      id: item.company_id,
+      name: item.companies?.name,
+      role: item.role
+    }));
   }
 };

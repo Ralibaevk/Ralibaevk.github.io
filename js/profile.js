@@ -2,7 +2,12 @@
 
 const profile = {
     async init() {
-        this.render();
+        // Проверяем авторизацию перед рендером
+        if (app.user) {
+            this.render();
+        } else {
+            console.log("Ждем пользователя...");
+        }
     },
 
     open() {
@@ -15,7 +20,7 @@ const profile = {
         const container = document.getElementById('profileContent');
         const user = app.user || { first_name: 'Гость', id: '0' };
 
-        // 1. Личная карточка
+        // --- 1. ЛИЧНАЯ КАРТОЧКА ---
         const userHtml = `
             <div class="p-card" style="margin-bottom:20px;">
                 <div style="display:flex; align-items:center; gap:16px;">
@@ -24,71 +29,72 @@ const profile = {
                     </div>
                     <div>
                         <h2 style="margin:0; font-size:20px; font-weight:700;">${user.first_name} ${user.last_name || ''}</h2>
-                        <div style="color:var(--text-sec); font-size:14px; margin-top:4px;">ID: ${user.id}</div>
-                    </div>
-                </div>
-                <!-- Статистика (Заглушка) -->
-                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
-                    <div style="text-align:center;">
-                        <div style="font-weight:800; font-size:18px;">0</div>
-                        <div style="font-size:12px; color:var(--text-sec);">Проектов</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="font-weight:800; font-size:18px;">0</div>
-                        <div style="font-size:12px; color:var(--text-sec);">Лет стажа</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <div style="font-weight:800; font-size:18px; color:#f59e0b;">5.0</div>
-                        <div style="font-size:12px; color:var(--text-sec);">Рейтинг</div>
+                        <div style="color:var(--text-sec); font-size:14px; margin-top:4px;">@${user.username || 'user'}</div>
                     </div>
                 </div>
             </div>
         `;
 
-        // 2. Блок Компании
         let companyHtml = '';
 
+        // --- 2. БЛОК КОМПАНИИ ---
         if (!window.CURRENT_COMPANY_ID) {
-            // == НЕТ КОМПАНИИ ==
+            // Если компании нет (код тот же)
             companyHtml = `
                 <div class="p-card" style="text-align:center; padding:40px 20px;">
                     <div style="width:60px; height:60px; background:#eff6ff; border-radius:16px; margin:0 auto 16px; display:flex; align-items:center; justify-content:center;">
                         <i class="fas fa-building" style="font-size:30px; color:var(--primary);"></i>
                     </div>
                     <h3 style="margin:0 0 8px 0; font-size:18px;">Нет компании</h3>
-                    <p style="color:var(--text-sec); font-size:14px; margin-bottom:24px; line-height:1.5;">
-                        Создайте свою команду или присоединитесь к существующей, чтобы работать над проектами вместе.
-                    </p>
-                    
-                    <button class="btn btn-primary" style="width:100%; margin-bottom:12px; justify-content:center; height:44px;" onclick="profile.createCompanyPrompt()">
-                        Создать компанию
-                    </button>
-                    <button class="btn btn-def" style="width:100%; justify-content:center; height:44px;" onclick="profile.joinCompanyPrompt()">
-                        Ввести код приглашения
-                    </button>
+                    <p style="color:var(--text-sec); font-size:14px; margin-bottom:24px;">Создайте команду или присоединитесь.</p>
+                    <button class="btn btn-primary" style="width:100%; margin-bottom:12px; height:44px;" onclick="profile.createCompanyPrompt()">Создать компанию</button>
+                    <button class="btn btn-def" style="width:100%; height:44px;" onclick="profile.joinCompanyPrompt()">Ввести код</button>
                 </div>
             `;
         } else {
-            // == ЕСТЬ КОМПАНИЯ ==
+            // Если компания есть
             const members = await api.call('getCompanyMembers');
-            // Проверка прав: Владелец или Админ может менять роли
-            const canManage = window.CURRENT_USER_ROLE === 'owner' || window.CURRENT_USER_ROLE === 'admin';
+            const myCompanies = await api.call('getUserCompanies', { userId: user.id });
 
+            // Моя текущая роль
+            const myRole = window.CURRENT_USER_ROLE;
+
+            // Рендер списка сотрудников с УПРАВЛЕНИЕМ ПРАВАМИ
             const membersList = members.map(m => {
                 const isMe = String(m.id) === String(user.id);
+                const targetRole = m.role;
 
-                // Селект ролей (только если есть права и это не мы сами)
+                // Логика: Могу ли я менять роль этому человеку?
+                let canEdit = false;
+
+                if (myRole === 'owner' && !isMe) {
+                    canEdit = true; // Владелец меняет всех, кроме себя
+                } else if (myRole === 'admin' && !isMe) {
+                    // Админ не может менять Владельца и других Админов
+                    if (targetRole !== 'owner' && targetRole !== 'admin') {
+                        canEdit = true;
+                    }
+                }
+
+                // HTML для роли (Селект или Текст)
                 let roleEl = '';
-                if (canManage && !isMe) {
+                if (canEdit) {
                     roleEl = `
-                        <select class="status-select" onchange="profile.changeRole('${m.id}', this.value)" style="padding:4px 8px; font-size:11px;">
-                            <option value="employee" ${m.role === 'employee' ? 'selected' : ''}>Сотрудник</option>
-                            <option value="buyer" ${m.role === 'buyer' ? 'selected' : ''}>Снабженец</option>
-                            <option value="admin" ${m.role === 'admin' ? 'selected' : ''}>Админ</option>
+                        <select class="status-select" onchange="profile.changeRole('${m.id}', this.value)" style="padding:4px 8px; font-size:11px; background:#fff; border-color:#ddd;">
+                            <option value="employee" ${targetRole === 'employee' ? 'selected' : ''}>Сотрудник</option>
+                            <option value="buyer" ${targetRole === 'buyer' ? 'selected' : ''}>Снабженец</option>
+                            <option value="admin" ${targetRole === 'admin' ? 'selected' : ''}>Админ</option>
+                            ${myRole === 'owner' ? `<option value="delete" style="color:red;">❌ Удалить</option>` : ''}
                         </select>
                     `;
                 } else {
-                    roleEl = `<span class="card-tag" style="font-size:10px; background:#f3f4f6; color:#555;">${this.translateRole(m.role)}</span>`;
+                    // Просто красивый бейджик
+                    let color = '#f3f4f6';
+                    let textCol = '#555';
+                    if (targetRole === 'owner') { color = '#fef3c7'; textCol = '#d97706'; } // Gold
+                    if (targetRole === 'admin') { color = '#e0e7ff'; textCol = '#4f46e5'; } // Indigo
+
+                    roleEl = `<span class="card-tag" style="font-size:10px; background:${color}; color:${textCol}; border:none;">${this.translateRole(targetRole)}</span>`;
                 }
 
                 return `
@@ -98,8 +104,8 @@ const profile = {
                                 ${(m.first_name || 'U')[0]}
                             </div>
                             <div>
-                                <div style="font-size:14px; font-weight:600;">
-                                    ${m.first_name} ${isMe ? '<span style="color:#aaa;">(Вы)</span>' : ''}
+                                <div style="font-size:14px; font-weight:600; color:var(--text-main);">
+                                    ${m.first_name} ${isMe ? '<span style="color:#aaa; font-weight:400;">(Вы)</span>' : ''}
                                 </div>
                                 <div style="font-size:11px; color:var(--text-sec);">@${m.username || '...'}</div>
                             </div>
@@ -109,14 +115,42 @@ const profile = {
                 `;
             }).join('');
 
+            // Список для переключения компаний
+            const switchList = myCompanies.map(c => {
+                const isActive = c.id === window.CURRENT_COMPANY_ID;
+                return `
+                    <div onclick="${isActive ? '' : `profile.switchCompany('${c.id}')`}" 
+                         style="padding: 12px; border:1px solid ${isActive ? 'var(--primary)' : '#e5e7eb'}; border-radius:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; background:${isActive ? '#eff6ff' : 'white'}; transition:0.2s;">
+                        <div>
+                            <div style="font-weight:600; font-size:14px; color:${isActive ? 'var(--primary)' : 'var(--text-main)'}">${c.name}</div>
+                            <div style="font-size:11px; color:${isActive ? 'var(--primary)' : 'var(--text-sec)'}; opacity:0.8;">${this.translateRole(c.role)}</div>
+                        </div>
+                        ${isActive ? '<i class="fas fa-check-circle" style="color:var(--primary)"></i>' : '<i class="fas fa-chevron-right" style="color:#ccc; font-size:12px;"></i>'}
+                    </div>
+                `;
+            }).join('');
+
+            const canInvite = myRole === 'owner' || myRole === 'admin';
+
             companyHtml = `
+                <!-- Карточка переключения -->
+                <div class="p-card" style="margin-bottom: 20px;">
+                    <div class="card-header" style="margin-bottom:10px;">
+                        <h3 class="card-title">Мои компании</h3>
+                        <button class="btn btn-text" onclick="profile.joinCompanyPrompt()" style="font-size:12px; color:var(--primary);">+ Код</button>
+                    </div>
+                    <div>${switchList}</div>
+                    <button class="btn btn-def" style="width:100%; margin-top:10px; font-size:13px;" onclick="profile.createCompanyPrompt()">Создать новую компанию</button>
+                </div>
+
+                <!-- Карточка сотрудников -->
                 <div class="p-card">
                     <div class="card-header" style="border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:0;">
                         <div>
-                            <div style="font-size:11px; color:var(--text-sec); font-weight:700; text-transform:uppercase;">Компания</div>
+                            <div style="font-size:11px; color:var(--text-sec); font-weight:700; text-transform:uppercase;">Команда</div>
                             <h3 class="card-title" style="margin-top:4px;">${window.CURRENT_COMPANY_NAME}</h3>
                         </div>
-                        ${canManage ? `<button class="btn btn-text" onclick="profile.invite()" style="color:var(--primary); background:#eff6ff;"><i class="fas fa-plus"></i> Инвайт</button>` : ''}
+                        ${canInvite ? `<button class="btn btn-primary" onclick="profile.invite()" style="padding:6px 12px; font-size:12px;"><i class="fas fa-user-plus"></i> Инвайт</button>` : ''}
                     </div>
                     
                     <div style="margin-top:10px;">
@@ -124,8 +158,8 @@ const profile = {
                     </div>
 
                     <div style="margin-top:24px; text-align:center;">
-                        <button class="btn btn-text" style="color:#ef4444;" onclick="profile.leave()">
-                            <i class="fas fa-sign-out-alt"></i> Выйти из компании
+                        <button class="btn btn-text" style="color:#ef4444; font-size:13px;" onclick="profile.leave()">
+                            <i class="fas fa-sign-out-alt"></i> Выйти из этой компании
                         </button>
                     </div>
                 </div>
@@ -137,53 +171,60 @@ const profile = {
 
     // --- ACTIONS ---
 
-    async createCompanyPrompt() {
-        const name = prompt("Название вашей компании:");
-        if (!name) return;
+    async changeRole(targetId, newRole) {
+        if (newRole === 'delete') {
+            if (confirm("Удалить сотрудника из компании?")) {
+                await api.call('leaveCompany', { userId: targetId }, 'POST'); // Используем логику "покинуть" но с ID другого юзера
+                this.render();
+            } else {
+                this.render(); // Сброс селекта
+            }
+            return;
+        }
 
+        await api.call('updateMemberRole', { targetId, newRole }, 'POST');
+        alert("Права обновлены");
+        // Можно не перерисовывать, если хотим оставить фокус, но лучше обновить для надежности
+    },
+
+    async switchCompany(companyId) {
+        localStorage.setItem('preferred_company_id', companyId);
+        location.reload();
+    },
+
+    // Обертки для API (те же что и раньше)
+    async createCompanyPrompt() {
+        const name = prompt("Название компании:");
+        if (!name) return;
         try {
             document.getElementById('loader').classList.remove('hidden');
             await api.call('createCompany', { name, userId: app.user.id }, 'POST', false);
-            await this.render(); // Перерисовка
-            alert("Компания создана!");
-        } catch (e) {
-            alert("Ошибка: " + e.message);
-        } finally {
-            document.getElementById('loader').classList.add('hidden');
-        }
+            location.reload();
+        } catch (e) { alert(e.message); document.getElementById('loader').classList.add('hidden'); }
     },
 
     async joinCompanyPrompt() {
-        const code = prompt("Введите код приглашения (6 символов):");
+        const code = prompt("Введите код приглашения:");
         if (!code) return;
-
         try {
             document.getElementById('loader').classList.remove('hidden');
             await api.call('joinCompany', { code, userId: app.user.id }, 'POST', false);
-
-            // После входа нужно полностью перезагрузить состояние (получить ID и роль)
-            // Самый простой способ - перезагрузка страницы
-            alert("Успешно! Перезагрузка...");
             location.reload();
-        } catch (e) {
-            alert("Ошибка: " + e.message);
-            document.getElementById('loader').classList.add('hidden');
-        }
+        } catch (e) { alert(e.message); document.getElementById('loader').classList.add('hidden'); }
     },
 
     async invite() {
-        const res = await api.call('createInvite', { userId: app.user.id }, 'POST');
-        prompt("Скопируйте код и отправьте сотруднику:", res.code);
-    },
-
-    async changeRole(targetId, newRole) {
-        await api.call('updateMemberRole', { targetId, newRole }, 'POST');
-        // Не перерисовываем, селект уже изменился
+        try {
+            const res = await api.call('createInvite', { userId: app.user.id }, 'POST');
+            // Красивый вывод (или prompt для копирования)
+            prompt("Скопируйте код и отправьте сотруднику:", res.code);
+        } catch (e) { alert(e.message); }
     },
 
     async leave() {
-        if (!confirm("Вы уверены, что хотите выйти? Вы потеряете доступ к проектам.")) return;
+        if (!confirm("Вы уверены? Вы потеряете доступ к проектам.")) return;
         await api.call('leaveCompany', { userId: app.user.id }, 'POST');
+        localStorage.removeItem('preferred_company_id'); // Забываем выбор
         location.reload();
     },
 
