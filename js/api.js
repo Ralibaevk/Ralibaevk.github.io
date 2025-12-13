@@ -42,30 +42,35 @@ const api = {
 
   // --- INTERNAL METHODS ---
 
+  // 1. Сохранение юзера (Больше не ищем тут компанию)
   async _saveUser(user) {
     if (!user) return;
-    let { data: existingUser } = await supabase.from('users').select('*').eq('id', user.id).single();
-    if (!existingUser) {
-      await supabase.from('users').insert([{
-        id: user.id, username: user.username, first_name: user.first_name,
-        last_name: user.last_name, language: user.language_code, last_login: new Date()
-      }]);
-    } else {
-      await supabase.from('users').update({ last_login: new Date() }).eq('id', user.id);
-      window.CURRENT_COMPANY_ID = existingUser.company_id;
-    }
+
+    // Просто обновляем данные пользователя
+    const { error } = await supabase.from('users').upsert({
+      id: String(user.id),
+      username: user.username,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      language: user.language_code,
+      last_login: new Date()
+    });
+
+    if (error) console.error("Ошибка обновления юзера:", error);
     return { success: true };
   },
 
+  // 2. Получение поставщиков (Убрали старую проверку)
   async _getSuppliers() {
-    // Safety check: try to fetch company ID if missing
-    if (!window.CURRENT_COMPANY_ID && app.user && app.user.id) {
-      const { data } = await supabase.from('users').select('company_id').eq('id', app.user.id).single();
-      if (data) window.CURRENT_COMPANY_ID = data.company_id;
-    }
+    // Если сессия не инициализирована (нет компании), просто возвращаем пустоту
     if (!window.CURRENT_COMPANY_ID) return [];
 
-    const { data, error } = await supabase.from('suppliers').select('*').eq('company_id', window.CURRENT_COMPANY_ID).order('name');
+    const { data, error } = await supabase
+      .from('suppliers')
+      .select('*')
+      .eq('company_id', window.CURRENT_COMPANY_ID)
+      .order('name');
+
     if (error) throw error;
     return data;
   },
@@ -84,18 +89,18 @@ const api = {
     return { success: true };
   },
 
+  // 3. Сводка проектов (Убрали старую проверку)
   async _getProjectsSummary(userId) {
-    if (!window.CURRENT_COMPANY_ID && userId) {
-      const { data } = await supabase.from('users').select('company_id').eq('id', userId).single();
-      if (data) window.CURRENT_COMPANY_ID = data.company_id;
-    }
+    // Если компании нет - проектов нет
     if (!window.CURRENT_COMPANY_ID) return [];
 
+    // Убрали total_sum из запроса, как договаривались ранее
     const { data: projects, error } = await supabase
       .from('projects')
       .select(`id, name, status, project_items ( id, price, qty, done )`)
       .eq('company_id', window.CURRENT_COMPANY_ID)
       .neq('status', 'archived');
+
     if (error) throw error;
 
     return projects.map(p => {
