@@ -32,6 +32,9 @@ const api = {
         case 'getProjectTeam': result = await this._getProjectTeam(params.projectId); break;
         case 'assignUserToProject': result = await this._assignUserToProject(params.projectId, params.userId); break;
         case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId); break;
+        case 'getProjectTeam': result = await this._getProjectTeam(params.projectId); break;
+        case 'assignUserToProject': result = await this._assignUserToProject(params.projectId, params.userId); break;
+        case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId); break;
         default: console.warn(`Action ${action} not implemented.`); result = {};
       }
       return result;
