@@ -261,6 +261,77 @@ const manager = {
             } catch (e) { alert("Ошибка загрузки: " + e.message); }
             finally { document.getElementById('loader').classList.add('hidden'); input.value = ''; }
         };
+    },
+
+    // === TEAM MANAGEMENT ===
+    async openTeam() {
+        if (!this.currentProjectId) {
+            alert("Сначала сохраните проект (напишите название), чтобы добавлять людей.");
+            return;
+        }
+
+        const modal = document.getElementById('teamModal');
+        const listDiv = document.getElementById('teamList');
+        const select = document.getElementById('teamSelect');
+
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        listDiv.innerHTML = '<div style="padding:10px; color:#999;">Загрузка...</div>';
+
+        try {
+            const allMembers = await api.call('getCompanyMembers');
+            const projectTeam = await api.call('getProjectTeam', { projectId: this.currentProjectId });
+
+            listDiv.innerHTML = projectTeam.length ? '' : '<div style="padding:10px; color:#999; font-size:13px;">В этом проекте пока только вы</div>';
+
+            projectTeam.forEach(u => {
+                const row = document.createElement('div');
+                row.className = 'sup-row';
+                row.innerHTML = `
+                   <div style="flex:1; font-size:14px; font-weight:500;">
+                      ${u.first_name || ''} ${u.last_name || ''}
+                      <div style="font-size:11px; color:#999;">@${u.username || 'user'}</div>
+                   </div>
+                   <button class="btn-icon-del" onclick="manager.removeFromTeam('${u.id}')" title="Убрать"><i class="fas fa-times"></i></button>
+                `;
+                listDiv.appendChild(row);
+            });
+
+            const assignedIds = projectTeam.map(u => String(u.id));
+            if (app.user) assignedIds.push(String(app.user.id));
+
+            const available = allMembers.filter(m => !assignedIds.includes(String(m.id)));
+
+            if (available.length === 0) {
+                select.innerHTML = '<option value="">Все сотрудники уже добавлены</option>';
+                select.disabled = true;
+            } else {
+                select.disabled = false;
+                select.innerHTML = '<option value="">Выберите сотрудника...</option>' +
+                    available.map(m => {
+                        const roleName = (window.ROLE_NAMES && window.ROLE_NAMES[m.role]) ? window.ROLE_NAMES[m.role] : m.role;
+                        return `<option value="${m.id}">${m.first_name} ${m.last_name || ''} (${roleName})</option>`;
+                    }).join('');
+            }
+
+            select.onchange = async () => {
+                if (!select.value) return;
+                const userId = select.value;
+                select.value = "";
+
+                await api.call('assignUserToProject', { projectId: this.currentProjectId, userId: userId }, 'POST');
+                this.openTeam();
+            };
+
+        } catch (e) {
+            alert("Ошибка: " + e.message);
+        }
+    },
+
+    async removeFromTeam(userId) {
+        if (!confirm("Убрать сотрудника из доступа к проекту?")) return;
+        await api.call('removeUserFromProject', { projectId: this.currentProjectId, userId: userId }, 'POST');
+        this.openTeam();
     }
 };
 
