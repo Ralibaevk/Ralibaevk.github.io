@@ -9,11 +9,13 @@ const buyer = {
     currentSheet: '',
     saveTimeout: null,
 
-    async open(name) {
-        this.currentSheet = name;
+    async open(positionId, titleName) {
+        this.currentPositionId = positionId;
+        this.currentSheet = titleName || 'Смета'; // Используем как заголовок
+
         document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
         document.getElementById('view-buyer').classList.remove('hidden');
-        document.getElementById('buyTitle').innerText = name;
+        document.getElementById('buyTitle').innerText = this.currentSheet;
 
         const statusEl = document.getElementById('buySaveStatus');
         if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Загружено';
@@ -25,17 +27,24 @@ const buyer = {
         this.setTab('todo');
 
         try {
-            const response = await api.call('getProjectData', { sheetName: name });
-            // Берем только .items из ответа
+            // NEW API CALL
+            const response = await api.call('getSupplyByPosition', { positionId: positionId });
+            this.currentListId = response.listId; // Store list ID for saving
+
             const items = response.items || [];
             this.data = JSON.parse(JSON.stringify(items));
             this.localData = JSON.parse(JSON.stringify(items));
+
+            // Add rowIndex for internal logic if not present
+            this.localData.forEach((item, index) => item.rowIndex = index);
+
             this.renderCategories();
             this.renderSuppliers();
             this.render();
         } catch (e) {
             alert("Ошибка загрузки: " + e.message);
-            app.goHome();
+            // Go back to position, not home
+            app.openPosition(this.currentPositionId, this.currentSheet);
         }
     },
 
@@ -153,14 +162,42 @@ const buyer = {
 
     async saveBatch() {
         try {
-            const arrayData = this.localData.map(i => [i.id, i.art, i.name, i.qty, i.unit, i.price, (i.qty * i.price), i.supplier, i.note, i.done, i.category || "Фурнитура"]);
-            if (!app.user || !app.user.id) return;
-            await api.call('saveProject', { sheetName: this.currentSheet, data: arrayData, status: 'active', userId: app.user.id }, 'POST', false);
+            // Map localData back to array format expected by saveSupplyList
+            // [id, art, name, qty, unit, price, sum, supplier, note, done, category]
+            // Note: rowIndex is internal, don't save it
+
+            const arrayData = this.localData.map(i => [
+                i.id || "",
+                i.art || "",
+                i.name,
+                i.qty,
+                i.unit,
+                i.price,
+                (i.qty * i.price),
+                i.supplier || "",
+                i.note || "",
+                i.done,
+                i.category || "Фурнитура"
+            ]);
+
+            if (!this.currentPositionId) return;
+
+            await api.call('saveSupplyList', {
+                positionId: this.currentPositionId,
+                listId: this.currentListId,
+                data: arrayData
+            }, 'POST', false);
+
             const statusEl = document.getElementById('buySaveStatus');
             if (statusEl) { statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Сохранено'; statusEl.style.color = '#10b981'; }
+
+            // Sync main data
             this.data = JSON.parse(JSON.stringify(this.localData));
         } catch (e) { console.error(e); }
     },
 
-    checkClose() { app.goHome(); }
+    checkClose() {
+        // Return to Position Detail
+        app.openPosition(this.currentPositionId, this.currentSheet);
+    }
 };

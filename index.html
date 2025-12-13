@@ -18,274 +18,171 @@
 </head>
 
 <body>
-
   <div id="loader" class="hidden">
     <div class="spinner"></div>
   </div>
 
   <div class="main-layout">
-    <!-- SIDEBAR (Desktop Only) -->
+    <!-- SIDEBAR (Desktop) -->
     <div class="sidebar">
-      <div class="logo-area">
-        <div class="logo-icon">L</div>
-        <div class="logo-text">Logiqa</div>
-      </div>
-      <nav class="nav-links">
-        <div class="nav-item active" onclick="app.goHome()">
-          <i class="fas fa-th-large" style="width:20px;"></i> Проекты
-        </div>
-        <div class="nav-item" onclick="app.openArchive()">
-          <i class="fas fa-archive" style="width:20px;"></i> Архив
-        </div>
-        <div class="nav-item" onclick="app.openSuppliersEdit()">
-          <i class="fas fa-users" style="width:20px;"></i> Поставщики
-        </div>
-        <div class="nav-item" onclick="profile.open()">
-          <i class="fas fa-user-circle" style="width:20px;"></i> Профиль
-        </div>
-      </nav>
+      <div class="logo"><i class="fas fa-cube"></i> Logiqa ERP</div>
+      <div class="nav-item active" onclick="app.goHome()"><i class="fas fa-folder"></i> Проекты</div>
+      <div class="nav-item" onclick="alert('Скоро')"><i class="fas fa-shopping-cart"></i> Снабжение</div>
+      <div class="nav-item" onclick="profile.open()"><i class="fas fa-user-circle"></i> Профиль</div>
     </div>
 
-    <!-- CONTENT AREA -->
+    <!-- CONTENT -->
     <div class="content-area">
 
-      <!-- 5. PROFILE SCREEN -->
-      <div id="view-profile" class="screen hidden" style="overflow-y:auto;">
-        <div class="dash-header">
-          <h1 class="page-title">Профиль</h1>
-        </div>
-        <div class="dash-content">
-          <div id="profileContent" style="max-width: 600px; margin: 0 auto;"></div>
-        </div>
-      </div>
-
-      <!-- 1. DASHBOARD GRID -->
-      <div id="view-dashboard" class="screen">
-        <div class="dash-header">
-          <div class="header-top-row">
-            <h1 class="page-title">Проекты</h1>
-            <!-- Кнопка "Новый проект" только для десктопа -->
-            <button class="btn btn-primary desktop-only-btn" style="display: flex;" onclick="app.newProject()">
-              <i class="fas fa-plus"></i> Новый проект
-            </button>
+      <!-- 1. СПИСОК ПРОЕКТОВ (Главная) -->
+      <div id="view-projects-list" class="screen active">
+        <div class="view-header">
+          <div class="view-title">
+            <h1>Заказы</h1>
+            <p>Активные проекты в работе</p>
           </div>
-
           <!-- Поиск -->
-          <div style="margin-top: 16px;">
-            <div class="search-wrap">
-              <i class="fas fa-search search-icon"></i>
-              <input type="text" class="search-input" id="dashSearch" placeholder="Поиск проектов..."
-                oninput="app.renderProjectsGrid()">
+          <div
+            style="background:white; border:1px solid #e5e7eb; padding:8px 12px; border-radius:10px; display:flex; align-items:center; width:200px;">
+            <i class="fas fa-search" style="color:#9ca3af; margin-right:8px;"></i>
+            <input type="text" placeholder="Поиск..." style="border:none; outline:none; width:100%; font-size:14px;">
+          </div>
+        </div>
+        <!-- Сетка проектов -->
+        <div id="projectsList" class="grid-list">
+          <!-- JS нарисует здесь карточки -->
+        </div>
+        <!-- FAB (Мобильная кнопка создания) -->
+        <button class="fab" onclick="projects.createPrompt()">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+
+      <!-- 2. ДАШБОРД ЗАКАЗА (Внутрянка) -->
+      <div id="view-project-detail" class="screen">
+        <div class="view-header">
+          <div style="display:flex; align-items:center;">
+            <button class="btn-back" onclick="app.goHome()"><i class="fas fa-arrow-left"></i></button>
+            <div class="view-title">
+              <h1 id="pDetailName">Загрузка...</h1>
+              <p id="pDetailClient">Клиент...</p>
             </div>
           </div>
+          <button class="btn btn-primary" onclick="alert('Чат скоро')"><i class="fab fa-telegram"></i> Чат</button>
+        </div>
 
-          <!-- Табы -->
-          <div class="tabs-row">
-            <button class="tab-btn active" onclick="app.switchTab('new')" id="tab-btn-new">
-              В работе <span class="tab-count" id="count-new">0</span>
-            </button>
-            <button class="tab-btn" onclick="app.switchTab('active')" id="tab-btn-active">
-              Закуп <span class="tab-count" id="count-active">0</span>
-            </button>
-            <button class="tab-btn" onclick="app.switchTab('done')" id="tab-btn-done">
-              Завершен <span class="tab-count" id="count-done">0</span>
-            </button>
+        <!-- Общие файлы -->
+        <div style="margin-bottom:20px;">
+          <h3 style="font-size:14px; text-transform:uppercase; color:#9ca3af; margin-bottom:10px;">Общие файлы</h3>
+          <div id="pDetailFiles" class="grid-list"
+            style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+            <!-- Файлы здесь -->
+          </div>
+          <button class="btn"
+            style="background:white; border:1px dashed #ccc; width:100%; margin-top:10px; color:#666;">+ Добавить
+            файл</button>
+        </div>
+
+        <!-- Список Позиций -->
+        <h3 style="font-size:14px; text-transform:uppercase; color:#9ca3af; margin-bottom:10px;">Изделия / Позиции</h3>
+        <div id="pDetailPositions" class="grid-list">
+          <!-- Карточки позиций здесь -->
+        </div>
+
+        <button class="btn" onclick="positions.createPrompt()"
+          style="width:100%; margin-top:20px; background:#eff6ff; color:var(--primary); border:1px dashed var(--primary); justify-content:center; padding:15px;">
+          + Добавить изделие
+        </button>
+      </div>
+
+      <!-- 3. КАРТОЧКА ИЗДЕЛИЯ (Табы) -->
+      <div id="view-position-detail" class="screen">
+        <div class="view-header">
+          <div style="display:flex; align-items:center;">
+            <button class="btn-back" onclick="app.goToProject()"><i class="fas fa-arrow-left"></i></button>
+            <div class="view-title">
+              <h1 id="posDetailName">Изделие</h1>
+              <p id="posDetailStatus">Статус</p>
+            </div>
           </div>
         </div>
 
-        <div class="dash-content">
-          <div id="projectsGrid" class="grid-container"></div>
+        <!-- Навигация по табам -->
+        <div class="tabs-scroll">
+          <div class="tab-chip active" onclick="app.switchPosTab('info')">Инфо</div>
+          <div class="tab-chip" onclick="app.switchPosTab('design')">Дизайн</div>
+          <div class="tab-chip" onclick="app.switchPosTab('supply')">Смета (Закуп)</div>
+          <div class="tab-chip" onclick="app.switchPosTab('production')">Цех</div>
+          <div class="tab-chip" onclick="app.switchPosTab('install')">Монтаж</div>
+        </div>
+
+        <!-- Контент Табов -->
+        <div id="tab-info" class="tab-content active">
+          <div class="card">
+            <h3>Основная информация</h3>
+            <p>Здесь будет рендер, описание и смена статусов.</p>
+          </div>
+        </div>
+
+        <div id="tab-design" class="tab-content">
+          <div class="card">
+            <h3>Эскизы и история</h3>
+          </div>
+        </div>
+
+        <!-- ТАБ ЗАКУПА (Сюда мы встроим Manager.js) -->
+        <div id="tab-supply" class="tab-content">
+          <!-- Тулбар менеджера -->
+          <div class="mgr-toolbar">
+            <button class="btn btn-text" onclick="manager.addRow()"><i class="fas fa-plus"></i> Строка</button>
+            <button class="btn btn-text" onclick="manager.openSup()"><i class="fas fa-truck"></i> Поставщик</button>
+            <button class="btn btn-text" onclick="manager.openBuyer()" style="color:#3b82f6;"><i
+                class="fas fa-shopping-cart"></i> Режим Закупа</button>
+            <div style="flex:1"></div>
+            <span id="mgrTotal" style="font-weight:700;">0 ₸</span>
+          </div>
+          <!-- Таблица менеджера -->
+          <div class="mgr-grid">
+            <table id="mgrTable">
+              <thead>
+                <tr>
+                  <th style="width:40px;"></th>
+                  <th>Наименование</th>
+                  <th style="width:60px;">Кол</th>
+                  <th>Ед</th>
+                  <th>Цена</th>
+                  <th>Сумма</th>
+                </tr>
+              </thead>
+              <tbody id="mgrBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tab-production" class="tab-content">
+          <div class="card">
+            <h3>Производство</h3>
+          </div>
         </div>
       </div>
 
-      <!-- 2. ARCHIVE -->
-      <div id="view-archive" class="screen hidden">
-        <div class="dash-header">
-          <div class="header-top-row">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <button class="btn btn-text" onclick="app.goHome()"><i class="fas fa-arrow-left"></i></button>
-              <h1 class="page-title">Архив</h1>
-            </div>
-          </div>
-        </div>
-        <div class="dash-content">
-          <div class="grid-container" id="archiveList"></div>
-        </div>
+      <!-- ПРОФИЛЬ (Оставляем как был, только ID поправим в JS) -->
+      <div id="view-profile" class="screen">
+        <div id="profileContent"></div>
       </div>
 
-      <!-- 3. MANAGER -->
-      <div id="view-manager" class="screen hidden">
-        <div class="dash-header">
-          <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-            <button class="btn btn-text" onclick="app.goHome()"><i class="fas fa-arrow-left"></i> Назад</button>
-            <input type="text" id="mgrName" placeholder="Название проекта" class="search-input"
-              oninput="manager.triggerAutoSave()" style="max-width:300px; padding: 8px 12px;">
-            <!-- Индикатор сохранения -->
-            <div id="saveStatus"
-              style="color:#888; font-size:13px; font-weight:500; display:flex; align-items:center; gap:5px;">
-              <i class="fas fa-check-circle" style="color:#10b981;"></i> Сохранено
-            </div>
-          </div>
-        </div>
-
-        <div class="tabs-scroll-container" id="mgrCategoryTabs"></div>
-
-        <div class="mgr-toolbar">
-          <!-- Группа Импорта -->
-          <input type="file" id="xlsInput" hidden>
-          <button class="toolbar-btn" onclick="document.getElementById('xlsInput').click()" title="Импорт Excel">
-            <i class="fas fa-file-excel"></i> <span>Импорт</span>
-          </button>
-
-          <input type="file" id="catFileInput" hidden onchange="manager.uploadFile(this)">
-          <button class="toolbar-btn" onclick="document.getElementById('catFileInput').click()" title="Прикрепить файл">
-            <i class="fas fa-paperclip"></i>
-          </button>
-
-          <!-- Разделитель -->
-          <div style="width:1px; height:24px; background:var(--border); margin:0 8px;"></div>
-
-          <!-- Основные действия -->
-          <button class="toolbar-btn toolbar-btn-primary" onclick="manager.addRow()">
-            <i class="fas fa-plus"></i> <span>Строка</span>
-          </button>
-
-          <button class="toolbar-btn" onclick="manager.sort()" title="Сортировка">
-            <i class="fas fa-sort-alpha-down"></i>
-          </button>
-
-          <button class="toolbar-btn" onclick="manager.openMerge()" title="Объединить">
-            <i class="fas fa-link"></i>
-          </button>
-
-          <button class="toolbar-btn" onclick="manager.openSup()" title="Назначить поставщика">
-            <i class="fas fa-truck"></i>
-          </button>
-
-          <!-- Аватарки команды -->
-          <div id="mgrTeamAvatars" class="avatar-group" style="margin-left:5px; margin-right:5px;"></div>
-
-          <button class="toolbar-btn" onclick="manager.openTeam()" title="Команда проекта">
-            <i class="fas fa-users"></i>
-          </button>
-
-
-
-          <div style="flex:1"></div>
-
-          <!-- Поиск и Удаление -->
-          <div class="search-wrap" style="width: auto; margin:0;">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" id="mgrSearch" placeholder="Поиск..." oninput="manager.render()" class="search-input"
-              style="width:180px; padding: 8px 12px 8px 36px; height:36px;">
-          </div>
-
-          <button class="toolbar-btn toolbar-btn-danger" onclick="manager.delSel()" title="Удалить выбранное">
-            <i class="fas fa-trash"></i>
-          </button>
-
-          <div style="width:1px; height:24px; background:var(--border); margin:0 8px;"></div>
-          <span id="mgrTotal" style="font-weight:700; font-size:14px; color:var(--text-main);">0 ₸</span>
-        </div>
-
-        <div class="mgr-grid">
-          <table id="mgrTable">
-            <thead>
-              <tr>
-                <th class="chk"><input type="checkbox" id="mgrAll" onchange="manager.toggleAll(this.checked)"></th>
-                <th style="width: 120px;">Категория</th>
-                <th>Артикул</th>
-                <th>Наименование</th>
-                <th>Кол-во</th>
-                <th>Ед.</th>
-                <th>Цена</th>
-                <th>Сумма</th>
-                <th>Поставщик</th>
-                <th>Примечание</th>
-              </tr>
-            </thead>
-            <tbody id="mgrBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- 4. BUYER (ОБНОВЛЕННЫЙ ДИЗАЙН) -->
-      <div id="view-buyer" class="screen hidden">
-
-        <!-- Фиксированная шапка -->
-        <div class="buy-tools-wrapper">
-          <div class="buy-nav-row">
-            <div style="display:flex; flex-direction:column; overflow:hidden;">
-              <span class="buy-title" id="buyTitle">Загрузка...</span>
-              <!-- НОВЫЙ ИНДИКАТОР -->
-              <div id="buySaveStatus" style="font-size:12px; color:#10b981; font-weight:500; margin-top:2px;">
-                <i class="fas fa-check-circle"></i> Сохранено
-              </div>
-            </div>
-
-            <button class="btn-close-app" onclick="buyer.checkClose()"
-              style="background:#f3f4f6; color:#333; border:none;">
-              ✕ Закрыть
-            </button>
-          </div>
-
-          <!-- Табы -->
-          <!-- Табы (В работе / Куплено) -->
-          <div class="buy-tabs">
-            <button id="tab-todo" class="buy-tab active" onclick="buyer.setTab('todo')">🛒 В работе</button>
-            <button id="tab-done" class="buy-tab" onclick="buyer.setTab('done')">✅ Куплено</button>
-          </div>
-
-          <!-- НОВОЕ: Фильтр Категорий (Крупный) -->
-          <div class="filter-label">Категория:</div>
-          <div class="filter-scroll" id="buyCategoryFilters"></div>
-
-          <!-- Фильтр Поставщиков (Мелкий) -->
-          <div class="filter-label" style="margin-top:5px;">Поставщик:</div>
-
-          <!-- Фильтры -->
-          <div class="filter-scroll" id="buyFilters"></div>
-        </div>
-
-        <!-- Скроллящийся список -->
-        <div class="buy-list" id="buyList"></div>
-
-
-      </div>
-
-    </div> <!-- End Content Area -->
-  </div> <!-- End Main Layout -->
-
-  <!-- === MODALS === -->
-  <!-- === MOBILE FLOATING BUTTON (FAB) === -->
-  <button class="fab-btn" onclick="app.newProject()">
-    <i class="fas fa-plus"></i>
-  </button>
-
-  <!-- === MOBILE BOTTOM NAVIGATION === -->
-  <div class="bottom-nav">
-    <div class="b-nav-item active" onclick="app.goHome()">
-      <i class="fas fa-th-large"></i>
-      <span>Проекты</span>
-    </div>
-    <div class="b-nav-item" onclick="app.openArchive()">
-      <i class="fas fa-archive"></i>
-      <span>Архив</span>
-    </div>
-    <div class="b-nav-item" onclick="app.openSuppliersEdit()">
-      <i class="fas fa-users"></i>
-      <span>Поставщики</span>
-    </div>
-    <div class="b-nav-item" onclick="profile.open()">
-      <i class="fas fa-user-circle"></i>
-      <span>Профиль</span>
-    </div>
-    <div class="b-nav-item" style="color:#ef4444;" onclick="alert('Логика выхода')">
-      <i class="fas fa-sign-out-alt"></i>
-      <span>Выйти</span>
     </div>
   </div>
 
+  <!-- Mobile Nav -->
+  <div class="bottom-nav">
+    <div class="b-item active" onclick="app.goHome()"><i class="fas fa-folder"></i><span>Проекты</span></div>
+    <div class="b-item" onclick="alert('Скоро')"><i class="fas fa-search"></i><span>Закуп</span></div>
+    <div class="b-item" onclick="alert('Скоро')"><i class="fas fa-hard-hat"></i><span>Цех</span></div>
+    <div class="b-item" onclick="profile.open()"><i class="fas fa-user"></i><span>Профиль</span></div>
+  </div>
+
+  <!-- Модалки -->
   <div id="modal" class="hidden">
     <div class="dash-header">
       <h2>Импорт</h2>
@@ -344,9 +241,6 @@
     </div>
   </div>
 
-  </div>
-
-  <!-- МОДАЛЬНОЕ ОКНО КОМАНДЫ (ВСТАВИТЬ ВНИЗУ BODY) -->
   <div id="teamModal" class="modal-overlay hidden">
     <div class="modal-box" style="width:400px;">
       <h3>Команда проекта</h3>
@@ -365,14 +259,42 @@
     </div>
   </div>
 
-  <!-- APP MODULES (Order Matters!) -->
+  <!-- PRODUCTION TASK MODAL -->
+  <div id="prodModal" class="modal-overlay hidden">
+    <div class="modal-box" style="width:350px;">
+      <h3>Добавить этап</h3>
+
+      <!-- Переключатель -->
+      <div style="display:flex; background:#f3f4f6; padding:4px; border-radius:10px; margin-bottom:15px;">
+        <button class="buy-tab active" id="type-internal" onclick="positions.setTaskType('internal')">🏠 Свой
+          цех</button>
+        <button class="buy-tab" id="type-external" onclick="positions.setTaskType('external')">🚚 Аутсорс</button>
+      </div>
+
+      <input type="text" id="prodTitle" class="search-input" placeholder="Название (напр. Распил)"
+        style="margin-bottom:10px;">
+
+      <!-- Поле цены (только для Аутсорса) -->
+      <div id="prodCostBlock" class="hidden">
+        <input type="number" id="prodCost" class="search-input" placeholder="Стоимость услуги (₸)"
+          style="margin-bottom:10px;">
+      </div>
+
+      <button class="btn btn-primary" style="width:100%; justify-content:center;"
+        onclick="positions.createTask()">Добавить</button>
+      <button class="btn btn-text" style="width:100%; margin-top:5px;"
+        onclick="document.getElementById('prodModal').classList.add('hidden')">Отмена</button>
+    </div>
+  </div>
+
+  <!-- Скрипты (порядок важен) -->
   <script src="js/config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/projects.js"></script>
+  <script src="js/positions.js"></script>
   <script src="js/manager.js"></script>
   <script src="js/buyer.js"></script>
-  <script src="js/design.js"></script>
-  <script src="js/settings.js"></script>
   <script src="js/profile.js"></script>
   <script src="js/app.js"></script>
 </body>

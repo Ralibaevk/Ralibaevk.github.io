@@ -1,20 +1,17 @@
 :root {
   --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --bg-body: #f8f9fa;
+  --primary-light: #eff6ff;
+  --bg-body: #f3f4f6;
+  /* Чуть темнее фон для контраста карточек */
   --bg-card: #ffffff;
-  --text-main: #1f2937;
+  --text-main: #111827;
   --text-sec: #6b7280;
   --border: #e5e7eb;
-  --radius: 16px;
-  --shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  --sidebar-w: 260px;
-  --bottom-nav-h: 65px;
-  /* Высота нижнего меню */
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --sidebar-w: 250px;
+  --bottom-nav-h: 60px;
   --tg-safe-area-inset-top: 0px;
-  /* Будет перезаписано JS */
-  --primary-light: #eff6ff;
-  /* Added to support preserved styles usage */
 }
 
 * {
@@ -33,7 +30,7 @@ body {
   overflow: hidden;
 }
 
-/* === LAYOUT SYSTEM === */
+/* === LAYOUT === */
 .main-layout {
   display: flex;
   width: 100%;
@@ -41,15 +38,15 @@ body {
   overflow: hidden;
 }
 
-/* SIDEBAR (Desktop Only) */
+/* Sidebar (Desktop) */
 .sidebar {
   width: var(--sidebar-w);
   background: var(--bg-card);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 24px 16px;
-  flex-shrink: 0;
+  padding: 20px;
+  z-index: 100;
 }
 
 @media (max-width: 768px) {
@@ -58,86 +55,313 @@ body {
   }
 }
 
-.logo-area {
+.logo {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 30px;
+  color: var(--primary);
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px 24px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.logo-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--primary);
-  border-radius: 8px;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-}
-
-.logo-text {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.nav-links {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 10px;
 }
 
 .nav-item {
+  padding: 12px;
+  border-radius: var(--radius);
+  color: var(--text-sec);
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: var(--text-sec);
-  font-size: 14px;
   font-weight: 500;
-  cursor: pointer;
   transition: 0.2s;
+  margin-bottom: 2px;
 }
 
-.nav-item:hover {
-  background: #f3f4f6;
-  color: var(--text-main);
-}
-
+.nav-item:hover,
 .nav-item.active {
-  background: #eff6ff;
+  background: var(--primary-light);
   color: var(--primary);
 }
 
-/* CONTENT AREA */
+/* Content Area */
 .content-area {
   flex: 1;
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  position: relative;
+}
+
+/* Screens Logic */
+.screen {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
   background: var(--bg-body);
+  padding: 20px;
 }
 
-/* === MOBILE BOTTOM NAV & FAB === */
-.bottom-nav {
-  display: none;
-  /* Скрыто на десктопе */
-}
-
-.fab-btn {
-  display: none;
-  /* Скрыто на десктопе */
+.screen.active {
+  display: flex;
 }
 
 @media (max-width: 768px) {
+  .screen {
+    padding: 15px;
+    padding-bottom: 100px;
+    padding-top: calc(var(--tg-safe-area-inset-top) + 15px);
+  }
+}
 
-  /* Нижнее меню */
+/* Headers */
+.view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.view-title h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.view-title p {
+  margin: 4px 0 0 0;
+  color: var(--text-sec);
+  font-size: 13px;
+}
+
+/* === CARDS & LISTS === */
+.grid-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+}
+
+@media (max-width: 768px) {
+  .grid-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: 0.2s;
+  position: relative;
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+/* Progress Bar */
+.progress-wrap {
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  width: 0%;
+  transition: width 0.5s;
+}
+
+/* Status Badges */
+.badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.badge.blue {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge.orange {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.badge.green {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.gray {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+/* === TABS (Horizontal Scroll) === */
+.tabs-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex-shrink: 0;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  scrollbar-width: none;
+}
+
+.tab-chip {
+  background: white;
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-sec);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab-chip.active {
+  background: var(--text-main);
+  color: white;
+  border-color: var(--text-main);
+}
+
+/* Tab Content Containers */
+.tab-content {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+}
+
+.tab-content.active {
+  display: flex;
+}
+
+/* === SUPPLY TABLE (Manager Integration) === */
+/* Адаптация старых стилей менеджера под новый контейнер */
+.mgr-toolbar {
+  background: white;
+  padding: 10px;
+  border-radius: 12px 12px 0 0;
+  border: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.mgr-grid {
+  background: white;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  overflow: auto;
+  flex: 1;
+  min-height: 400px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+th {
+  background: #f9fafb;
+  padding: 12px;
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-sec);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  height: 40px;
+  font-size: 13px;
+}
+
+td input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0 10px;
+  background: transparent;
+  outline: none;
+}
+
+td input:focus {
+  background: #eff6ff;
+}
+
+/* === UI UTILS === */
+.btn {
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-back {
+  background: transparent;
+  color: var(--text-sec);
+  padding: 0;
+  margin-right: 10px;
+}
+
+.fab {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+  border: none;
+  z-index: 99;
+  cursor: pointer;
+}
+
+/* Mobile Nav */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
   .bottom-nav {
     display: flex;
     justify-content: space-around;
@@ -147,898 +371,31 @@ body {
     left: 0;
     width: 100%;
     height: var(--bottom-nav-h);
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
+    background: white;
     border-top: 1px solid var(--border);
-    z-index: 1000;
+    z-index: 100;
     padding-bottom: env(safe-area-inset-bottom);
-    /* Для iPhone без кнопки */
   }
 
-  .b-nav-item {
+  .b-item {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 4px;
-    color: #9ca3af;
     font-size: 10px;
-    font-weight: 500;
-    width: 60px;
-    height: 100%;
-    cursor: pointer;
+    color: var(--text-sec);
+    gap: 4px;
   }
 
-  .b-nav-item i {
+  .b-item i {
     font-size: 20px;
-    margin-bottom: 2px;
   }
 
-  .b-nav-item.active {
+  .b-item.active {
     color: var(--primary);
   }
-
-  /* Плавающая кнопка (FAB) */
-  .fab-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 56px;
-    background: var(--primary);
-    color: white;
-    border-radius: 50%;
-    position: fixed;
-    bottom: calc(var(--bottom-nav-h) + 20px);
-    /* Над меню */
-    right: 20px;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-    z-index: 1001;
-    font-size: 24px;
-    cursor: pointer;
-    border: none;
-    transition: transform 0.2s;
-  }
-
-  .fab-btn:active {
-    transform: scale(0.95);
-  }
-
-  /* Корректировка отступов контента, чтобы не перекрывало меню */
-  .dash-content {
-    padding-bottom: 100px !important;
-    /* Больше места снизу */
-  }
-}
-
-/* === HEADER FIXES === */
-.dash-header {
-  padding: 24px 32px;
-  background: var(--bg-body);
-  flex-shrink: 0;
-}
-
-.header-top-row {
-  display: flex;
-  justify-content: space-between;
-  /* Заголовок слева, кнопка справа */
-  align-items: center;
-  /* Выравнивание по центру по вертикали */
-  width: 100%;
-  margin-bottom: 16px;
-}
-
-@media (max-width: 768px) {
-  .dash-header {
-    /* Отступ сверху для кнопок Телеграма */
-    padding-top: calc(var(--tg-safe-area-inset-top) + 20px);
-    padding-left: 20px;
-    padding-right: 20px;
-    padding-bottom: 10px;
-  }
-
-  .header-top-row {
-    margin-bottom: 10px;
-    /* На мобилке кнопка "Новый проект" скрыта, так как есть FAB */
-  }
-
-  /* Скрываем верхнюю кнопку на мобильных, чтобы не дублировать FAB */
-  .desktop-only-btn {
-    display: none !important;
-  }
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 800;
-  margin: 0;
-  color: var(--text-main);
-}
-
-/* SEARCH & TABS */
-.search-wrap {
-  position: relative;
-  width: 100%;
-  margin-top: 10px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 12px 16px 12px 44px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: white;
-  font-size: 15px;
-  outline: none;
-}
-
-.search-input:focus {
-  border-color: var(--primary);
-}
-
-.search-icon {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-sec);
-}
-
-.tabs-row {
-  display: flex;
-  gap: 24px;
-  border-bottom: 1px solid var(--border);
-  margin-top: 20px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.tab-btn {
-  background: transparent;
-  border: none;
-  padding: 0 0 12px 0;
-  color: var(--text-sec);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  position: relative;
-  white-space: nowrap;
-}
-
-.tab-btn.active {
-  color: var(--primary);
-}
-
-.tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background: var(--primary);
-  border-radius: 3px;
-}
-
-.tab-count {
-  background: #e5e7eb;
-  color: #4b5563;
-  border-radius: 10px;
-  padding: 2px 8px;
-  font-size: 11px;
-  margin-left: 6px;
-}
-
-.tab-btn.active .tab-count {
-  background: #eff6ff;
-  color: var(--primary);
-}
-
-/* GRID & CARDS (Оставляем как было, они хорошие) */
-.dash-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 32px 32px 32px;
-}
-
-@media (max-width: 768px) {
-  .dash-content {
-    padding: 0 16px 16px 16px;
-  }
-}
-
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-  padding-top: 20px;
-}
-
-/* === COMPONENT STYLES (Preserved) === */
-.hidden {
-  display: none !important;
-}
-
-.btn {
-  border: none;
-  outline: none;
-  cursor: pointer;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 14px;
-  padding: 8px 16px;
-  transition: 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--primary-hover);
-}
-
-.btn-text {
-  background: transparent;
-  color: var(--text-sec);
-}
-
-.btn-text:hover {
-  color: var(--text-main);
-  background: #f3f4f6;
-}
-
-.btn-def {
-  background: white;
-  border: 1px solid var(--border);
-  color: var(--text-main);
-}
-
-.btn-w {
-  background: #f59e0b;
-  color: white;
-}
-
-.btn-p {
-  background: #8b5cf6;
-  color: white;
-}
-
-.btn-d {
-  background: #fee2e2;
-  color: #ef4444;
-}
-
-.screen {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.p-card {
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  padding: 24px;
-  /* Больше воздуха внутри */
-  box-shadow: var(--shadow);
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  /* Отступ между элементами карточки */
-  position: relative;
-}
-
-.p-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1);
-  border-color: rgba(59, 130, 246, 0.1);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.card-tag {
-  background: var(--primary-light);
-  color: var(--primary);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 6px 12px;
-  border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.card-body {
-  cursor: pointer;
-}
-
-.card-title {
-  font-size: 18px;
-  /* Чуть крупнее заголовок */
-  font-weight: 700;
-  color: var(--text-main);
-  margin: 0 0 8px 0;
-  line-height: 1.3;
-}
-
-.card-desc {
-  font-size: 14px;
-  color: var(--text-sec);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.desc-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.card-footer {
-  margin-top: auto;
-  padding-top: 20px;
-  /* Больше воздуха перед футером */
-  border-top: 1px solid #f3f4f6;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* Стили для селекта статуса (Слева) */
-.status-select {
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  border-radius: 8px;
-  font-size: 12px;
-  padding: 6px 10px;
-  color: var(--text-sec);
-  font-weight: 500;
-  cursor: pointer;
-  outline: none;
-  transition: 0.2s;
-}
-
-.status-select:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-/* Контейнер для кнопок (Справа) */
-.card-actions {
-  display: flex;
-  gap: 10px;
-}
-
-/* Кнопки действий (Редактировать и Закуп) */
-.btn-action {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: none;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: 0.2s;
-  font-size: 14px;
-}
-
-.btn-edit {
-  background: #f3f4f6;
-  color: #4b5563;
-}
-
-.btn-edit:hover {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-.btn-buy {
-  background: var(--primary-light);
-  color: var(--primary);
-}
-
-.btn-buy:hover {
-  background: var(--primary);
-  color: white;
-}
-
-
-/* === MANAGER SCREEN (STRICT REDESIGN) === */
-
-/* Шапка Менеджера */
-.dash-header {
-  padding: 32px 40px 16px 40px;
-  /* Большие отступы для десктопа */
-  background: var(--bg-body);
-  flex-shrink: 0;
-}
-
-@media (max-width: 768px) {
-  .dash-header {
-    padding: calc(var(--tg-safe-area-inset-top) + 20px) 20px 10px 20px;
-  }
-}
-
-/* Строгий стиль Табов (Категории) */
-.tabs-scroll-container {
-  overflow-x: auto;
-  white-space: nowrap;
-  padding: 0 40px;
-  background: var(--bg-body);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  gap: 24px;
-  /* Расстояние между табами */
-}
-
-@media (max-width: 768px) {
-  .tabs-scroll-container {
-    padding: 0 20px;
-  }
-}
-
-.cat-tab-btn {
-  display: inline-block;
-  padding: 12px 0;
-  border: none;
-  background: transparent;
-  color: var(--text-sec);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  position: relative;
-  transition: 0.2s;
-}
-
-.cat-tab-btn:hover {
-  color: var(--text-main);
-}
-
-.cat-tab-btn.active {
-  color: var(--primary);
-  font-weight: 600;
-}
-
-.cat-tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: var(--primary);
-}
-
-/* Панель инструментов (Toolbar) */
-.mgr-toolbar {
-  background: var(--bg-card);
-  padding: 12px 40px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-@media (max-width: 768px) {
-  .mgr-toolbar {
-    padding: 12px 20px;
-  }
-}
-
-/* Новые строгие кнопки */
-.toolbar-btn {
-  background: white;
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  padding: 8px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-}
-
-.toolbar-btn:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
-}
-
-.toolbar-btn i {
-  font-size: 14px;
-  color: var(--text-sec);
-}
-
-.toolbar-btn-primary {
-  background: #eff6ff;
-  /* Светло-синий фон */
-  border: 1px dashed var(--primary);
-  color: var(--primary);
-}
-
-.toolbar-btn-primary i {
-  color: var(--primary);
-}
-
-.toolbar-btn-primary:hover {
-  background: #dbeafe;
-}
-
-.toolbar-btn-danger {
-  color: #ef4444;
-}
-
-.toolbar-btn-danger:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-}
-
-.toolbar-btn-danger i {
-  color: #ef4444;
-}
-
-/* Таблица (Excel Style) */
-.mgr-grid {
-  flex: 1;
-  overflow: auto;
-  background: var(--bg-card);
-  padding: 0 40px 40px 40px;
-}
-
-@media (max-width: 768px) {
-  .mgr-grid {
-    padding: 0 20px 80px 20px;
-  }
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px;
-}
-
-th {
-  position: sticky;
-  top: 0;
-  background: var(--bg-card);
-  padding: 12px;
-  text-align: left;
-  font-size: 11px;
-  text-transform: uppercase;
-  color: var(--text-sec);
-  font-weight: 700;
-  border-bottom: 2px solid var(--border);
-  z-index: 10;
-}
-
-td {
-  padding: 0;
-  border-bottom: 1px solid var(--border);
-  height: 44px;
-  font-size: 13px;
-  color: var(--text-main);
-}
-
-/* Инпуты внутри таблицы (на всю ширину) */
-td input,
-td select {
-  width: 100%;
-  height: 100%;
-  border: 2px solid transparent;
-  padding: 0 12px;
-  background: transparent;
-  font-size: 13px;
-  outline: none;
-  color: inherit;
-  border-radius: 0;
-}
-
-td input:focus,
-td select:focus {
-  background: white;
-  border-color: var(--primary);
-  position: relative;
-  z-index: 2;
-}
-
-/* Чекбоксы */
-th.chk,
-td.chk {
-  width: 40px;
-  text-align: center;
-}
-
-td.chk input {
-  width: 16px;
-  height: 16px;
-  margin: auto;
-}
-
-/* Ячейка суммы (не инпут) */
-.sum-cell {
-  background: #f9fafb;
-  padding: 0 12px;
-  vertical-align: middle;
-  font-weight: 600;
-}
-
-/* === BUYER SCREEN (RE-DESIGN 2.0) === */
-
-/* Главный контейнер: фиксирует высоту и включает Flex-колонку */
-#view-buyer {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--bg-body);
-  position: relative;
-  overflow: hidden;
-  /* Важно: убирает двойной скролл */
-}
-
-/* ШАПКА (Фиксированная) */
-.buy-tools-wrapper {
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  padding: 15px 20px;
-  flex-shrink: 0;
-  /* Шапка не сжимается */
-  z-index: 10;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-}
-
-.buy-nav-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.buy-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--text-main);
-  /* Обрезка длинного текста */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 70%;
-}
-
-/* ТАБЫ (В работе / Куплено) */
-.buy-tabs {
-  background: var(--bg-body);
-  padding: 4px;
-  border-radius: 12px;
-  display: flex;
-  position: relative;
-  border: 1px solid var(--border);
-}
-
-.buy-tab {
-  flex: 1;
-  text-align: center;
-  padding: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-sec);
-  border-radius: 9px;
-  border: none;
-  background: transparent;
-  transition: 0.2s;
-}
-
-.buy-tab.active {
-  background: var(--bg-card);
-  color: var(--text-main);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-/* ФИЛЬТРЫ (Чипсы) */
-.filter-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #9ca3af;
-  margin-top: 12px;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding-left: 4px;
-}
-
-.filter-scroll {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-top: 15px;
-  scrollbar-width: none;
-  padding-bottom: 5px;
-}
-
-.filter-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.cat-chip {
-  background: white;
-  border: 1px solid var(--border);
-  padding: 8px 16px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-main);
-  white-space: nowrap;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-}
-
-.cat-chip.active {
-  background: var(--text-main);
-  color: white;
-  border-color: var(--text-main);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* === СТИЛЬ 2: ПОСТАВЩИКИ (Вторичный фильтр) === */
-.filter-chip {
-  background: #f3f4f6;
-  border: 1px solid transparent;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  color: var(--text-sec);
-  white-space: nowrap;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.filter-chip.active {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
-  font-weight: 600;
-}
-
-/* СПИСОК (Скроллится только он) */
-.buy-list {
-  flex: 1;
-  /* Занимает всё доступное место */
-  overflow-y: auto;
-  /* Включает скролл внутри блока */
-  padding: 20px;
-  padding-bottom: 100px;
-  /* Отступ под плавающую кнопку */
-}
-
-/* КАРТОЧКА ТОВАРА */
-.b-card {
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: var(--shadow);
-  border: 1px solid transparent;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.b-card.done {
-  background: #f0fdf4;
-  /* Светло-зеленый фон */
-  border-color: #bbf7d0;
-  opacity: 0.8;
-}
-
-/* Верхняя часть карточки: Название + КНОПКА */
-.b-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.b-name {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--text-main);
-}
-
-/* ГЛАВНАЯ КНОПКА-ГАЛОЧКА */
-.b-check-btn {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  border-radius: 12px;
-  border: 2px solid var(--border);
-  background: white;
-  color: #ddd;
-  font-size: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-/* Состояние "Куплено" */
-.b-check-btn.active {
-  background: #22c55e;
-  border-color: #22c55e;
-  color: white;
-}
-
-.b-mid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.b-badge {
-  background: var(--primary-light);
-  color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 6px;
-}
-
-.b-sup-tag {
-  background: #f3f4f6;
-  color: #6b7280;
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* Нижняя часть: Цена */
-.b-bot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 5px;
-}
-
-.b-price-input {
-  flex: 1;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  padding: 10px;
-  border-radius: 10px;
-  font-size: 16px;
-  /* 16px чтобы айфон не зумил */
-  font-weight: 600;
-  outline: none;
-}
-
-.b-price-input:focus {
-  background: white;
-  border-color: var(--primary);
 }
 
-/* LOADER & MODALS */
+/* Loader */
 #loader {
   position: fixed;
   top: 0;
@@ -1067,144 +424,111 @@ td.chk input {
   }
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 1000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+/* === PRODUCTION TAB === */
 
-.modal-box {
+/* Внутренняя задача (Чек-лист) */
+.prod-task-internal {
+  display: flex;
+  align-items: center;
   background: white;
-  padding: 24px;
-  border-radius: 16px;
-  width: 400px;
-  max-width: 90%;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
 }
 
-/* === МОДАЛЬНОЕ ОКНО ПОСТАВЩИКОВ === */
-.modal-box h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.sup-list {
+.prod-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 2px solid #ccc;
+  margin-right: 12px;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 4px;
-  /* Чтобы тени не обрезались */
-}
-
-.sup-row {
-  display: flex;
-  gap: 10px;
   align-items: center;
-  background: #f9fafb;
-  padding: 10px;
-  border-radius: 12px;
-  border: 1px solid #eee;
+  justify-content: center;
+  cursor: pointer;
+  color: white;
   transition: 0.2s;
 }
 
-.sup-row:hover {
-  background: #fff;
-  border-color: var(--primary);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+.prod-check.done {
+  background: #10b981;
+  border-color: #10b981;
 }
 
-.sup-input {
+.prod-title {
+  font-size: 14px;
+  font-weight: 500;
   flex: 1;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
-  outline: none;
-  width: 100%;
 }
 
-.sup-input:focus {
-  border-color: var(--primary);
+.prod-title.done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+/* Внешняя задача (Карточка услуги) */
+.prod-task-external {
   background: white;
-}
-
-.btn-icon-del {
-  background: #fee2e2;
-  color: #ef4444;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 14px;
-}
-
-.btn-add-sup {
-  width: 100%;
-  margin-top: 15px;
-  padding: 12px;
-  background: #eff6ff;
-  color: var(--primary);
-  border: 1px dashed var(--primary);
+  border: 1px solid var(--border);
   border-radius: 12px;
+  padding: 12px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.ext-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
   font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.ext-status-row {
+  display: flex;
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.ext-step {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  padding: 6px 0;
+  border-radius: 6px;
+  color: #9ca3af;
   cursor: pointer;
+  transition: 0.2s;
 }
 
-.btn-add-sup:hover {
-  background: #dbeafe;
-}
-
-/* === TEAM AVATARS === */
-.avatar-group {
-  display: flex;
-  align-items: center;
-  padding-left: 8px;
-  /* Компенсация наложения */
-}
-
-.user-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #e0e7ff;
-  color: var(--primary);
-  border: 2px solid white;
-  margin-left: -8px;
-  /* Наложение друг на друга */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
+.ext-step.active {
+  background: white;
+  color: var(--text-main);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   font-weight: 700;
-  text-transform: uppercase;
-  cursor: default;
-  position: relative;
 }
 
-.user-avatar:hover {
-  z-index: 10;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.ext-step.done-green {
+  background: #dcfce7;
+  color: #166534;
 }
 
-/* Стиль для +2 если людей много */
-.user-avatar.more {
-  background: #f3f4f6;
-  color: var(--text-sec);
-  font-size: 9px;
+/* Buy Tab Button */
+.buy-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.buy-tab.active {
+  background: white;
+  color: #000;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
