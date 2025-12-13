@@ -310,13 +310,28 @@ const api = {
   // 3. Создать инвайт-код
   async _createInvite(userId) {
     if (!window.CURRENT_COMPANY_ID) throw new Error("Нет компании");
+
+    // 1. Сначала ищем существующий код для этой компании
+    const { data: existing } = await supabase
+      .from('invitations')
+      .select('code')
+      .eq('company_id', window.CURRENT_COMPANY_ID)
+      .maybeSingle();
+
+    if (existing) {
+      return { code: existing.code }; // Возвращаем старый (ссылка не меняется)
+    }
+
+    // 2. Если нет - создаем новый
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-    await supabase.from('invitations').insert({
+    const { error } = await supabase.from('invitations').insert({
       company_id: window.CURRENT_COMPANY_ID,
       code: code,
       created_by: userId
     });
+
+    if (error) throw error;
     return { code };
   },
 

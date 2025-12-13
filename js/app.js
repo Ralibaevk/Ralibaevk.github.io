@@ -24,6 +24,27 @@ const app = {
                 // Сохраняем данные юзера (на всякий случай)
                 await api.call('saveTelegramUser', { user: this.user }, 'POST', false);
 
+                // === ЛОВИМ ИНВАЙТ ССЫЛКУ (Deep Linking) ===
+                const startParam = window.Telegram.WebApp.initDataUnsafe?.start_param;
+
+                if (startParam && this.user) {
+                    try {
+                        // Показываем, что что-то происходит
+                        document.getElementById('loader').classList.remove('hidden');
+
+                        // Пробуем вступить
+                        await api.call('joinCompany', { code: startParam, userId: this.user.id }, 'POST', false);
+
+                        alert("🎉 Вы успешно присоединились к команде!");
+
+                    } catch (e) {
+                        // Игнорируем ошибку "Уже в компании", остальные показываем
+                        if (!e.message.includes("уже в этой компании")) {
+                            alert("Ошибка входа по ссылке: " + e.message);
+                        }
+                    }
+                }
+
                 // Инициализируем сессию (находим компанию юзера)
                 await api._initSession(userId);
             }

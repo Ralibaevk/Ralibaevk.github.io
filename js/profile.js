@@ -216,9 +216,25 @@ const profile = {
     async invite() {
         try {
             const res = await api.call('createInvite', { userId: app.user.id }, 'POST');
-            // Красивый вывод (или prompt для копирования)
-            prompt("Скопируйте код и отправьте сотруднику:", res.code);
-        } catch (e) { alert(e.message); }
+
+            // 👇 ОБНОВЛЕННЫЕ ДАННЫЕ ИЗ ВАШЕГО СКРИНШОТА
+            const botUsername = "logiqa_work_bot";
+            const appName = "directlink";
+
+            // Ссылка будет вида: https://t.me/logiqa_work_bot/directlink?startapp=КОД
+            const inviteLink = `https://t.me/${botUsername}/${appName}?startapp=${res.code}`;
+
+            // Копируем в буфер (для мобилок)
+            navigator.clipboard.writeText(inviteLink).then(() => {
+                alert("Ссылка скопирована! Отправьте её сотруднику.");
+            }).catch(() => {
+                // Если буфер недоступен, показываем промпт
+                prompt("Скопируйте ссылку:", inviteLink);
+            });
+
+        } catch (e) {
+            alert(e.message);
+        }
     },
 
     async leave() {
