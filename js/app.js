@@ -17,7 +17,18 @@ const app = {
 
         try {
             document.getElementById('loader').classList.remove('hidden');
-            // 2. Если компания есть - грузим дашборд и справочники
+            // 1. Инициализация сессии (Проверяем компании НОВЫМ МЕТОДОМ)
+            let userId = this.user ? String(this.user.id) : null;
+
+            if (userId) {
+                // Сохраняем данные юзера (на всякий случай)
+                await api.call('saveTelegramUser', { user: this.user }, 'POST', false);
+
+                // Инициализируем сессию (находим компанию юзера)
+                await api._initSession(userId);
+            }
+
+            // 2. Если компания определилась - грузим дашборд и справочники
             if (window.CURRENT_COMPANY_ID) {
                 await this.refreshDashboard(false);
                 const [suppliersData, catalogData] = await Promise.all([
@@ -27,15 +38,16 @@ const app = {
                 this.suppliers = suppliersData;
                 this.catalog = catalogData || [];
             } else {
-                // Если компании нет - можно сразу открыть профиль или показать пустой дашборд
+                // Если компании нет - отправляем в профиль или показываем пустой экран
                 console.log("Пользователь без компании");
-                if (window.profile) profile.open(); // Optional: auto-open profile
+                if (window.profile) profile.open();
             }
 
             if (window.manager) manager.updateDatalist();
 
             const input = document.getElementById('xlsInput');
             if (input) {
+                // Reset file input
                 const newInput = input.cloneNode(true);
                 input.parentNode.replaceChild(newInput, input);
                 newInput.addEventListener('change', (e) => manager.handleFile(e));
