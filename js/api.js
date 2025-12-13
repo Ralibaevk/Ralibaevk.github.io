@@ -21,6 +21,8 @@ const api = {
         case 'getArchivedList': result = await this._getArchivedList(); break;
         case 'uploadFile': result = await this._uploadFile(params.data, params.name, params.mime); break;
         case 'getCatalog': result = await this._getCatalog(); break;
+
+        // Company Logic
         case 'initSession': result = await this._initSession(params.userId); break;
         case 'createCompany': result = await this._createCompany(params.name, params.userId); break;
         case 'joinCompany': result = await this._joinCompany(params.code, params.userId); break;
@@ -29,12 +31,12 @@ const api = {
         case 'createInvite': result = await this._createInvite(params.userId); break;
         case 'updateMemberRole': result = await this._updateMemberRole(params.targetId, params.newRole); break;
         case 'leaveCompany': result = await this._leaveCompany(params.userId); break;
+
+        // Team Logic (Оставил по 1 разу)
         case 'getProjectTeam': result = await this._getProjectTeam(params.projectId); break;
         case 'assignUserToProject': result = await this._assignUserToProject(params.projectId, params.userId); break;
         case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId); break;
-        case 'getProjectTeam': result = await this._getProjectTeam(params.projectId); break;
-        case 'assignUserToProject': result = await this._assignUserToProject(params.projectId, params.userId); break;
-        case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId); break;
+
         default: console.warn(`Action ${action} not implemented.`); result = {};
       }
       return result;
@@ -49,11 +51,8 @@ const api = {
 
   // --- INTERNAL METHODS ---
 
-  // 1. Сохранение юзера (Больше не ищем тут компанию)
   async _saveUser(user) {
     if (!user) return;
-
-    // Просто обновляем данные пользователя
     const { error } = await supabase.from('users').upsert({
       id: String(user.id),
       username: user.username,
@@ -62,22 +61,13 @@ const api = {
       language: user.language_code,
       last_login: new Date()
     });
-
-    if (error) console.error("Ошибка обновления юзера:", error);
+    if (error) console.error("Error updating user:", error);
     return { success: true };
   },
 
-  // 2. Получение поставщиков (Убрали старую проверку)
   async _getSuppliers() {
-    // Если сессия не инициализирована (нет компании), просто возвращаем пустоту
     if (!window.CURRENT_COMPANY_ID) return [];
-
-    const { data, error } = await supabase
-      .from('suppliers')
-      .select('*')
-      .eq('company_id', window.CURRENT_COMPANY_ID)
-      .order('name');
-
+    const { data, error } = await supabase.from('suppliers').select('*').eq('company_id', window.CURRENT_COMPANY_ID).order('name');
     if (error) throw error;
     return data;
   },
@@ -96,18 +86,13 @@ const api = {
     return { success: true };
   },
 
-  // 3. Сводка проектов (Убрали старую проверку)
   async _getProjectsSummary(userId) {
-    // Если компании нет - проектов нет
     if (!window.CURRENT_COMPANY_ID) return [];
-
-    // Убрали total_sum из запроса, как договаривались ранее
     const { data: projects, error } = await supabase
       .from('projects')
       .select(`id, name, status, project_items ( id, price, qty, done )`)
       .eq('company_id', window.CURRENT_COMPANY_ID)
       .neq('status', 'archived');
-
     if (error) throw error;
 
     return projects.map(p => {
@@ -121,24 +106,10 @@ const api = {
 
   async _getProjectData(projectName) {
     if (!window.CURRENT_COMPANY_ID) throw new Error("Нет доступа");
+    const { data: project } = await supabase.from('projects').select('id').eq('name', projectName).eq('company_id', window.CURRENT_COMPANY_ID).maybeSingle();
+    if (!project) return { items: [], projectId: null };
 
-    // Ищем проект
-    const { data: project } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('name', projectName)
-      .eq('company_id', window.CURRENT_COMPANY_ID)
-      .maybeSingle();
-
-    if (!project) return { items: [], projectId: null }; // <--- Возвращаем объект
-
-    // Загружаем позиции
-    const { data: items, error } = await supabase
-      .from('project_items')
-      .select('*')
-      .eq('project_id', project.id)
-      .order('created_at', { ascending: true });
-
+    const { data: items, error } = await supabase.from('project_items').select('*').eq('project_id', project.id).order('created_at', { ascending: true });
     if (error) throw error;
 
     const mappedItems = items.map(item => ({
@@ -146,56 +117,39 @@ const api = {
       price: item.price || 0, sum: (item.qty || 0) * (item.price || 0), supplier: item.supplier || "",
       note: item.note || "", done: item.done || false, category: item.category || "Фурнитура"
     }));
-
-    return { items: mappedItems, projectId: project.id }; // <--- Возвращаем ID проекта
+    return { items: mappedItems, projectId: project.id };
   },
 
   async _saveProject(params) {
     if (!window.CURRENT_COMPANY_ID) throw new Error("Ошибка: Не определена компания");
-
     const projectName = params.sheetName;
-    let projectId = params.projectId; // <--- Получаем ID из параметров
+    let projectId = params.projectId;
 
-    // 1. Создание или Обновление Проекта (Заголовка)
     if (projectId) {
-      // Если ID есть - обновляем имя и статус у существующего
       const updatePayload = { name: projectName };
       if (params.status) updatePayload.status = params.status;
-
-      await supabase.from('projects')
-        .update(updatePayload)
-        .eq('id', projectId)
-        .eq('company_id', window.CURRENT_COMPANY_ID);
+      await supabase.from('projects').update(updatePayload).eq('id', projectId).eq('company_id', window.CURRENT_COMPANY_ID);
     } else {
-      // Если ID нет - создаем новый
-      // Проверка на дубликат имени при создании нового
       let { data: existing } = await supabase.from('projects').select('id').eq('name', projectName).eq('company_id', window.CURRENT_COMPANY_ID).maybeSingle();
-
       if (existing) {
-        projectId = existing.id; // Если имя занято, используем этот проект
+        projectId = existing.id;
       } else {
-        const { data: newProj, error } = await supabase
-          .from('projects')
-          .insert({
-            name: projectName,
-            company_id: window.CURRENT_COMPANY_ID,
-            status: params.status || 'new'
-          })
-          .select()
-          .single();
+        const { data: newProj, error } = await supabase.from('projects').insert({
+          name: projectName,
+          company_id: window.CURRENT_COMPANY_ID,
+          status: params.status || 'new'
+        }).select().single();
         if (error) throw error;
         projectId = newProj.id;
       }
     }
 
-    // 2. Обновление каталога цен (без изменений)
     const catalogUpdates = params.data.map(row => ({ name: row[2], unit: row[4], price: row[5], supplier: row[7] }));
     this._updateCatalog(catalogUpdates).catch(console.error);
 
-    // 3. Сохранение позиций
     const upsertData = params.data.map(row => {
       const itemObj = {
-        project_id: projectId, // Привязываем к ID
+        project_id: projectId,
         art: row[1], name: row[2], qty: parseFloat(row[3]) || 0, unit: row[4],
         price: parseFloat(row[5]) || 0, supplier: row[7], note: row[8], done: row[9] === true || row[9] === 'true',
         category: row[10] || 'Фурнитура'
@@ -206,8 +160,6 @@ const api = {
 
     const { error: itemsError } = await supabase.from('project_items').upsert(upsertData);
     if (itemsError) throw itemsError;
-
-    // Возвращаем ID проекта, чтобы менеджер его запомнил
     return { success: true, projectId: projectId };
   },
 
@@ -255,163 +207,95 @@ const api = {
   async _getArchivedList() {
     if (!window.CURRENT_COMPANY_ID) return [];
     const { data } = await supabase.from('projects').select('id, name, created_at').eq('company_id', window.CURRENT_COMPANY_ID).eq('status', 'archived').order('created_at', { ascending: false });
-    // Map to old format
     return data.map(p => ({ id: p.name, name: p.name, date: utils.formatDate(p.created_at) }));
   },
 
-  // 1. Инициализация сессии (вызывается при старте)
   async _initSession(userId) {
-    // Ищем компании, где состоит юзер
-    const { data: memberships } = await supabase
-      .from('company_members')
-      .select('company_id, role, companies(name)')
-      .eq('user_id', userId);
-
+    const { data: memberships } = await supabase.from('company_members').select('company_id, role, companies(name)').eq('user_id', userId);
     if (memberships && memberships.length > 0) {
-      // 1. Проверяем, есть ли сохраненный выбор
       const savedId = localStorage.getItem('preferred_company_id');
-
-      // 2. Пытаемся найти сохраненную компанию в списке доступных
       let active = memberships.find(m => m.company_id === savedId);
-
-      // 3. Если не нашли (или нет сохранения) - берем первую попавшуюся
       if (!active) active = memberships[0];
-
       window.CURRENT_COMPANY_ID = active.company_id;
       window.CURRENT_COMPANY_NAME = active.companies?.name || "Моя компания";
       window.CURRENT_USER_ROLE = active.role;
-
       return true;
     }
-
-    return false; // Юзер безработный
+    return false;
   },
 
-  // 2. Создать компанию
   async _createCompany(name, userId) {
-    // Создаем саму компанию
-    const { data: company, error } = await supabase
-      .from('companies')
-      .insert({ name: name, owner_id: userId })
-      .select()
-      .single();
-
+    const { data: company, error } = await supabase.from('companies').insert({ name: name, owner_id: userId }).select().single();
     if (error) throw error;
-
-    // Создаем связь "Владелец"
-    await supabase.from('company_members').insert({
-      user_id: userId,
-      company_id: company.id,
-      role: 'owner'
-    });
-
-    // Обновляем сессию сразу
+    await supabase.from('company_members').insert({ user_id: userId, company_id: company.id, role: 'owner' });
     window.CURRENT_COMPANY_ID = company.id;
     window.CURRENT_COMPANY_NAME = company.name;
     window.CURRENT_USER_ROLE = 'owner';
-
     return { success: true };
   },
 
-  // 3. Создать инвайт-код
   async _createInvite(userId) {
     if (!window.CURRENT_COMPANY_ID) throw new Error("Нет компании");
-
-    // 1. Сначала ищем существующий код для этой компании
-    const { data: existing } = await supabase
-      .from('invitations')
-      .select('code')
-      .eq('company_id', window.CURRENT_COMPANY_ID)
-      .maybeSingle();
-
-    if (existing) {
-      return { code: existing.code }; // Возвращаем старый (ссылка не меняется)
-    }
-
-    // 2. Если нет - создаем новый
+    const { data: existing } = await supabase.from('invitations').select('code').eq('company_id', window.CURRENT_COMPANY_ID).maybeSingle();
+    if (existing) return { code: existing.code };
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-
-    const { error } = await supabase.from('invitations').insert({
-      company_id: window.CURRENT_COMPANY_ID,
-      code: code,
-      created_by: userId
-    });
-
+    const { error } = await supabase.from('invitations').insert({ company_id: window.CURRENT_COMPANY_ID, code: code, created_by: userId });
     if (error) throw error;
     return { code };
   },
 
-  // 4. Вступить по коду
   async _joinCompany(code, userId) {
     const { data: invite } = await supabase.from('invitations').select('*').eq('code', code).maybeSingle();
     if (!invite) throw new Error("Неверный код");
-
-    // Проверка на дубликат
-    const { error } = await supabase.from('company_members').insert({
-      user_id: userId,
-      company_id: invite.company_id,
-      role: 'employee'
-    });
-
-    if (error) {
-      if (error.code === '23505') throw new Error("Вы уже в этой компании");
-      throw error;
-    }
-
-    // После входа нужно перезагрузить страницу или обновить сессию
+    const { error } = await supabase.from('company_members').insert({ user_id: userId, company_id: invite.company_id, role: 'employee' });
+    if (error) { if (error.code === '23505') throw new Error("Вы уже в этой компании"); throw error; }
     return { success: true };
   },
 
-  // 5. Получить список сотрудников
   async _getCompanyMembers() {
     if (!window.CURRENT_COMPANY_ID) return [];
-
-    const { data } = await supabase
-      .from('company_members')
-      .select('role, user_id, users(first_name, last_name, username)')
-      .eq('company_id', window.CURRENT_COMPANY_ID);
-
-    return data.map(m => ({
-      id: m.user_id, // ID юзера
-      role: m.role,
-      first_name: m.users?.first_name || 'Без имени',
-      last_name: m.users?.last_name || '',
-      username: m.users?.username
-    }));
+    const { data } = await supabase.from('company_members').select('role, user_id, users(first_name, last_name, username)').eq('company_id', window.CURRENT_COMPANY_ID);
+    return data.map(m => ({ id: m.user_id, role: m.role, first_name: m.users?.first_name || 'Без имени', last_name: m.users?.last_name || '', username: m.users?.username }));
   },
 
-  // 6. Изменить роль сотрудника
   async _updateMemberRole(targetUserId, newRole) {
     if (!window.CURRENT_COMPANY_ID) return;
-    await supabase.from('company_members')
-      .update({ role: newRole })
-      .eq('user_id', targetUserId)
-      .eq('company_id', window.CURRENT_COMPANY_ID);
+    await supabase.from('company_members').update({ role: newRole }).eq('user_id', targetUserId).eq('company_id', window.CURRENT_COMPANY_ID);
     return { success: true };
   },
 
-  // 7. Покинуть компанию
   async _leaveCompany(userId) {
     if (!window.CURRENT_COMPANY_ID) return;
-    await supabase.from('company_members')
-      .delete()
-      .eq('user_id', userId)
-      .eq('company_id', window.CURRENT_COMPANY_ID);
-
+    await supabase.from('company_members').delete().eq('user_id', userId).eq('company_id', window.CURRENT_COMPANY_ID);
     return { success: true };
   },
 
-  // Получить список всех компаний пользователя для переключения
   async _getUserCompanies(userId) {
-    const { data } = await supabase
-      .from('company_members')
-      .select('company_id, role, companies(name)')
-      .eq('user_id', userId);
+    const { data } = await supabase.from('company_members').select('company_id, role, companies(name)').eq('user_id', userId);
+    return data.map(item => ({ id: item.company_id, name: item.companies?.name, role: item.role }));
+  },
 
-    return data.map(item => ({
-      id: item.company_id,
-      name: item.companies?.name,
-      role: item.role
-    }));
+  // === НОВЫЕ МЕТОДЫ ДЛЯ КОМАНДЫ (БЫЛИ ПРОПУЩЕНЫ) ===
+
+  async _getProjectTeam(projectId) {
+    if (!window.CURRENT_COMPANY_ID) return [];
+    const { data, error } = await supabase
+      .from('project_assignments')
+      .select('user_id, users(first_name, last_name, username, id)')
+      .eq('project_id', projectId);
+    if (error) { console.error(error); return []; }
+    return data.map(i => i.users);
+  },
+
+  async _assignUserToProject(projectId, userId) {
+    const { error } = await supabase.from('project_assignments').insert({ project_id: projectId, user_id: userId });
+    if (error && error.code !== '23505') throw error;
+    return { success: true };
+  },
+
+  async _removeUserFromProject(projectId, userId) {
+    const { error } = await supabase.from('project_assignments').delete().eq('project_id', projectId).eq('user_id', userId);
+    if (error) throw error;
+    return { success: true };
   }
 };
