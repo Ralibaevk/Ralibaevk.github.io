@@ -89,7 +89,15 @@ const api = {
   },
 
   async _getProjectById(id) {
-    const { data, error } = await supabase.from('projects').select('*').eq('id', id).single();
+    // Здесь важно проверить ID
+    if (!id) throw new Error("ID проекта не передан");
+
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .single(); // Используем single(), так как ID уникален
+
     if (error) throw error;
     return data;
   },

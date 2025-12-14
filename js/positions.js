@@ -6,39 +6,57 @@ const positions = {
 
     // === УРОВЕНЬ 1: СПИСОК ИЗДЕЛИЙ В ПРОЕКТЕ ===
     async openProject(projectId) {
+        console.log("📂 Открываем проект ID:", projectId);
         this.currentProjectId = projectId;
 
-        // 1. Грузим инфо о проекте
-        const proj = await api.call('getProjectById', { id: projectId });
-        document.getElementById('pDetailName').innerText = proj.name;
-        document.getElementById('pDetailClient').innerText = proj.client_name || '';
+        // Очищаем старые данные перед загрузкой
+        document.getElementById('pDetailName').innerText = "Загрузка...";
+        document.getElementById('pDetailClient').innerText = "";
+        document.getElementById('pDetailPositions').innerHTML = '<div class="spinner"></div>';
 
-        // 2. Грузим список изделий
-        this.renderList();
+        try {
+            // 1. Грузим инфо о проекте
+            const proj = await api.call('getProjectById', { id: projectId });
+
+            if (!proj) throw new Error("Проект не найден");
+
+            document.getElementById('pDetailName').innerText = proj.name;
+            document.getElementById('pDetailClient').innerText = proj.client_name || 'Клиент не указан';
+
+            // 2. Грузим список изделий
+            await this.renderList();
+        } catch (e) {
+            console.error("Ошибка открытия проекта:", e);
+            document.getElementById('pDetailName').innerText = "Ошибка";
+            document.getElementById('pDetailPositions').innerHTML = `<div style="color:red; text-align:center;">Не удалось загрузить: ${e.message}</div>`;
+        }
     },
 
     async renderList() {
         const container = document.getElementById('pDetailPositions');
-        container.innerHTML = '<div class="spinner"></div>';
 
-        const list = await api.call('getPositions', { projectId: this.currentProjectId });
+        try {
+            const list = await api.call('getPositions', { projectId: this.currentProjectId });
 
-        if (list.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#ccc; padding:20px;">Добавьте изделия (Кухня, Шкаф...)</div>';
-            return;
+            if (list.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#ccc; padding:20px;">Добавьте изделия (Кухня, Шкаф...)</div>';
+                return;
+            }
+
+            container.innerHTML = list.map(pos => `
+                <div class="card" onclick="app.openPosition('${pos.id}', '${pos.name}')" style="display:flex; gap:15px; align-items:center;">
+                    <div style="width:50px; height:50px; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-cube" style="color:#cbd5e1;"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin:0; font-size:16px;">${pos.name}</h3>
+                        <div style="font-size:12px; color:#6b7280; margin-top:2px;">Статус: ${pos.status || 'design'}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            container.innerHTML = 'Ошибка списка изделий';
         }
-
-        container.innerHTML = list.map(pos => `
-            <div class="card" onclick="app.openPosition('${pos.id}', '${pos.name}')" style="display:flex; gap:15px; align-items:center;">
-                <div style="width:50px; height:50px; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                    <i class="fas fa-cube" style="color:#cbd5e1;"></i>
-                </div>
-                <div>
-                    <h3 style="margin:0; font-size:16px;">${pos.name}</h3>
-                    <div style="font-size:12px; color:#6b7280; margin-top:2px;">Статус: ${pos.status}</div>
-                </div>
-            </div>
-        `).join('');
     },
 
     async createPrompt() {
@@ -53,16 +71,21 @@ const positions = {
         this.currentPositionId = posId;
         document.getElementById('posDetailName').innerText = name;
 
+        // Сброс статуса в шапке
+        document.getElementById('posDetailStatus').innerText = "Загрузка...";
+
         // По умолчанию открываем Инфо
         app.switchPosTab('info');
+
+        // Подгружаем актуальный статус
+        // (Можно добавить отдельный API запрос, если нужно, но пока оставим так)
     },
 
     // === ПРОИЗВОДСТВО (Logic) ===
-
     async renderProduction() {
         if (!this.currentPositionId) return;
         const container = document.getElementById('prodList');
-        if (!container) return; // На случай если не отренедрился HTML
+        if (!container) return;
         container.innerHTML = '<div class="spinner"></div>';
 
         try {
@@ -75,7 +98,6 @@ const positions = {
 
             container.innerHTML = tasks.map(t => {
                 if (t.type === 'internal') {
-                    // Внутренняя задача (Чекбокс)
                     const isDone = t.status === 'done';
                     return `
                     <div class="prod-task-internal">
@@ -86,7 +108,6 @@ const positions = {
                         <button class="btn-icon-del" onclick="positions.deleteTask('${t.id}')"><i class="fas fa-times"></i></button>
                     </div>`;
                 } else {
-                    // Внешняя услуга (Статусы)
                     return `
                     <div class="prod-task-external">
                         <div class="ext-header">
@@ -109,10 +130,7 @@ const positions = {
         }
     },
 
-    // --- Actions ---
-
     async toggleInternal(id, newState) {
-        // Оптимистичное обновление UI можно было бы добавить, но пока просто перезагрузим
         await api.call('updateTaskStatus', { taskId: id, status: newState ? 'done' : 'pending' });
         this.renderProduction();
     },
@@ -128,15 +146,13 @@ const positions = {
         this.renderProduction();
     },
 
-    // --- Modal Logic ---
-
     openProdModal() {
         this.currentTaskType = 'internal';
         this.updateModalUI();
         const t = document.getElementById('prodTitle'); if (t) t.value = '';
         const c = document.getElementById('prodCost'); if (c) c.value = '';
         document.getElementById('prodModal').classList.remove('hidden');
-        document.getElementById('prodModal').style.display = 'flex'; // Принудительно
+        document.getElementById('prodModal').style.display = 'flex';
     },
 
     setTaskType(type) {
@@ -145,7 +161,6 @@ const positions = {
     },
 
     updateModalUI() {
-        // Переключаем стили кнопок
         const btnInt = document.getElementById('type-internal');
         const btnExt = document.getElementById('type-external');
         const costBlock = document.getElementById('prodCostBlock');
@@ -162,7 +177,6 @@ const positions = {
     async createTask() {
         const title = document.getElementById('prodTitle').value;
         const cost = document.getElementById('prodCost').value;
-
         if (!title) return alert("Введите название");
 
         await api.call('createProductionTask', {
@@ -174,5 +188,5 @@ const positions = {
 
         document.getElementById('prodModal').classList.add('hidden');
         this.renderProduction();
-    }
+    },
 };
