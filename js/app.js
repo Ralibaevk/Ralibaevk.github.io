@@ -9,63 +9,84 @@ const app = {
         if (window.Telegram && window.Telegram.WebApp) {
             window.Telegram.WebApp.ready();
             window.Telegram.WebApp.expand();
-            document.documentElement.style.setProperty('--tg-safe-area-inset-top', (window.Telegram.WebApp.contentSafeAreaInset?.top || 20) + 'px');
+            try {
+                // Безопасное получение отступов
+                const topInset = window.Telegram.WebApp.contentSafeAreaInset?.top || 20;
+                document.documentElement.style.setProperty('--tg-safe-area-inset-top', topInset + 'px');
+            } catch (e) { console.warn('TG Safe Area Error', e); }
+
             this.user = window.Telegram.WebApp.initDataUnsafe?.user;
         }
+
+        // Если открыто в браузере для тестов (без TG), создаем фейк юзера
+        // Раскомментируйте для тестов в браузере:
+        // if (!this.user) this.user = { id: 12345, first_name: "Test", last_name: "User", username: "test" };
 
         // 2. Auth & Session
         try {
             let userId = this.user ? String(this.user.id) : null;
+
             if (userId) {
+                // ВАЖНО: Сначала сохраняем/обновляем юзера в БД, чтобы работали Foreign Keys
+                await api.call('saveTelegramUser', { user: this.user }, 'POST', false);
+
+                // Инициализируем сессию (ищем компанию)
                 await api.call('initSession', { userId: userId });
             }
 
-            // 3. Load Data
+            // 3. Load Data & Routing
             if (window.CURRENT_COMPANY_ID) {
-                // Load Dictionaries
-                const [suppliersData, catalogData] = await Promise.all([
-                    api.call('getSuppliers', {}, 'GET', false),
-                    api.call('getCatalog', {}, 'GET', false)
-                ]);
-                this.suppliers = suppliersData;
-                this.catalog = catalogData || [];
+                // Загружаем справочники параллельно
+                try {
+                    const [suppliersData, catalogData] = await Promise.all([
+                        api.call('getSuppliers', {}, 'GET', false),
+                        api.call('getCatalog', {}, 'GET', false)
+                    ]);
+                    this.suppliers = suppliersData || [];
+                    this.catalog = catalogData || [];
+                } catch (err) {
+                    console.error("Ошибка загрузки справочников:", err);
+                }
 
-                // Start App
-                projects.init();
+                // Запускаем экран проектов
+                this.navTo('projects');
             } else {
-                // No Company
-                if (window.profile) this.navTo('profile');
+                // Если компании нет -> в Профиль
+                this.navTo('profile');
             }
 
-            if (window.manager) manager.updateDatalist();
+            if (window.manager && typeof manager.updateDatalist === 'function') {
+                manager.updateDatalist();
+            }
 
-            // 4. Восстанавливаем состояние Сайдбара (Добавить в конец init)
+            // 4. Восстанавливаем состояние Сайдбара
             const sidebarState = localStorage.getItem('logiqa_sidebar_state');
             if (sidebarState === 'closed') {
-                this.toggleSidebar(false); // false = не менять, просто применить
+                this.toggleSidebar(false);
             }
 
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error("Critical Init Error:", e);
+            alert("Ошибка запуска: " + (e.message || e));
+            // В случае критической ошибки пробуем показать профиль
+            this.navTo('profile');
+        }
     },
 
-    // Новый метод
+    // Сайдбар
     toggleSidebar(save = true) {
         const sidebar = document.getElementById('sidebar');
         const icon = document.getElementById('sidebarIcon');
 
         if (!sidebar) return;
 
-        // Переключаем класс
         sidebar.classList.toggle('collapsed');
-
         const isClosed = sidebar.classList.contains('collapsed');
 
-        // Меняем иконку
         if (icon) {
             icon.className = isClosed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
         }
 
-        // Сохраняем в память (если это клик пользователя)
         if (save) {
             localStorage.setItem('logiqa_sidebar_state', isClosed ? 'closed' : 'open');
         }
@@ -81,12 +102,12 @@ const app = {
         // 2. Routing
         if (sectionId === 'projects') {
             this.showScreen('view-projects-list');
-            projects.render();
+            // Вызываем рендер проектов только если перешли на этот экран
+            if (window.projects) projects.render();
         } else if (sectionId === 'profile') {
             this.showScreen('view-profile');
-            profile.render();
+            if (window.profile) profile.render();
         } else if (['design', 'measure', 'detail', 'supply', 'production', 'install', 'handover'].includes(sectionId)) {
-            // Заглушки
             this.showScreen('view-stub');
         } else {
             console.warn('Unknown section:', sectionId);
@@ -115,24 +136,18 @@ const app = {
         const target = document.getElementById(id);
         if (!target) {
             console.error(`Screen not found: ${id}`);
-            return; // Не скрываем текущий экран, если новый не найден
+            return;
         }
-
-        // Скрываем все
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        // Показываем целевой
         target.classList.add('active');
     },
 
     // Табы внутри позиции
     switchPosTab(tabId) {
         document.querySelectorAll('.tab-chip').forEach(c => c.classList.remove('active'));
-
-        // New efficient way: click event is handled in HTML, but we might want to highlight programmatically
         if (typeof event !== 'undefined' && event.target && event.target.classList.contains('tab-chip')) {
             event.target.classList.add('active');
         } else {
-            // Fallback: find by onclick attr
             const btn = Array.from(document.querySelectorAll('.tab-chip')).find(el => el.getAttribute('onclick')?.includes(tabId));
             if (btn) btn.classList.add('active');
         }
@@ -141,8 +156,7 @@ const app = {
         const content = document.getElementById('tab-' + tabId);
         if (content) content.classList.add('active');
 
-        // Если открыли Смету - грузим данные
-        if (tabId === 'supply') {
+        if (tabId === 'supply' && window.manager && positions.currentPositionId) {
             manager.open(positions.currentPositionId);
         }
     },
@@ -152,12 +166,16 @@ const app = {
         const div = document.getElementById('supEditModal');
         if (div) {
             div.classList.remove('hidden');
-            document.getElementById('supListContainer').innerHTML = ''; // Clear
-            this.suppliers.forEach(s => this.addSupplierRow(s.id, s.name, s.phone));
+            const listContainer = document.getElementById('supListContainer');
+            if (listContainer) {
+                listContainer.innerHTML = '';
+                this.suppliers.forEach(s => this.addSupplierRow(s.id, s.name, s.phone));
+            }
         }
     },
     addSupplierRow(id = '', name = '', phone = '') {
         const list = document.getElementById('supListContainer');
+        if (!list) return;
         const d = document.createElement('div');
         d.className = 'sup-row';
         d.dataset.id = id;
@@ -171,10 +189,14 @@ const app = {
             name: r.querySelector('.name').value,
             phone: r.querySelector('.phone').value
         })).filter(i => i.name);
-        await api.call('saveSuppliers', { list });
-        this.suppliers = await api.call('getSuppliers');
-        document.getElementById('supEditModal').classList.add('hidden');
-        alert('Сохранено');
+
+        try {
+            await api.call('saveSuppliers', { list });
+            this.suppliers = await api.call('getSuppliers');
+            document.getElementById('supEditModal').classList.add('hidden');
+        } catch (e) {
+            console.error(e);
+        }
     }
 };
 
