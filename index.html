@@ -24,11 +24,28 @@
 
   <div class="main-layout">
     <!-- SIDEBAR (Desktop) -->
-    <div class="sidebar">
-      <div class="logo"><i class="fas fa-cube"></i> Logiqa ERP</div>
-      <div class="nav-item active" onclick="app.goHome()"><i class="fas fa-folder"></i> Проекты</div>
-      <div class="nav-item" onclick="alert('Скоро')"><i class="fas fa-shopping-cart"></i> Снабжение</div>
-      <div class="nav-item" onclick="profile.open()"><i class="fas fa-user-circle"></i> Профиль</div>
+    <div class="sidebar" id="sidebar">
+      <div class="logo-area">
+        <div class="logo-icon">L</div>
+        <div class="logo-text">Logiqa</div>
+      </div>
+
+      <nav class="nav-links">
+        <div class="nav-item active" onclick="app.goHome()" title="Проекты">
+          <i class="fas fa-folder"></i> <span class="nav-text">Проекты</span>
+        </div>
+        <div class="nav-item" onclick="alert('Скоро')" title="Снабжение">
+          <i class="fas fa-shopping-cart"></i> <span class="nav-text">Снабжение</span>
+        </div>
+        <div class="nav-item" onclick="profile.open()" title="Профиль">
+          <i class="fas fa-user-circle"></i> <span class="nav-text">Профиль</span>
+        </div>
+      </nav>
+
+      <!-- Кнопка Toggle (внизу сайдбара) -->
+      <button class="sidebar-toggle" onclick="app.toggleSidebar()">
+        <i class="fas fa-chevron-left" id="sidebarIcon"></i>
+      </button>
     </div>
 
     <!-- CONTENT -->

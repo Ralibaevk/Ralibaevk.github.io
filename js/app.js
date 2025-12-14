@@ -39,7 +39,36 @@ const app = {
 
             if (window.manager) manager.updateDatalist();
 
+            // 4. Восстанавливаем состояние Сайдбара (Добавить в конец init)
+            const sidebarState = localStorage.getItem('logiqa_sidebar_state');
+            if (sidebarState === 'closed') {
+                this.toggleSidebar(false); // false = не менять, просто применить
+            }
+
         } catch (e) { console.error(e); }
+    },
+
+    // Новый метод
+    toggleSidebar(save = true) {
+        const sidebar = document.getElementById('sidebar');
+        const icon = document.getElementById('sidebarIcon');
+
+        if (!sidebar) return;
+
+        // Переключаем класс
+        sidebar.classList.toggle('collapsed');
+
+        const isClosed = sidebar.classList.contains('collapsed');
+
+        // Меняем иконку
+        if (icon) {
+            icon.className = isClosed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+        }
+
+        // Сохраняем в память (если это клик пользователя)
+        if (save) {
+            localStorage.setItem('logiqa_sidebar_state', isClosed ? 'closed' : 'open');
+        }
     },
 
     // Навигация
