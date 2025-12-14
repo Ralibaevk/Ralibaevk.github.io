@@ -60,7 +60,6 @@ const api = {
       return result;
     } catch (e) {
       console.error("API Error:", e);
-      // Не показываем алерт на ошибку прерывания (если пользователь быстро переключается)
       if (!e.message.includes("The user aborted a request")) alert("Ошибка: " + e.message);
       throw e;
     } finally {
