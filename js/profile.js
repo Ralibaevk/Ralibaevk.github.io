@@ -2,12 +2,8 @@
 
 const profile = {
     async init() {
-        // Проверяем авторизацию перед рендером
-        if (app.user) {
-            this.render();
-        } else {
-            console.log("Ждем пользователя...");
-        }
+        // Всегда рендерим, даже если юзера нет (будет Гость)
+        this.render();
     },
 
     open() {

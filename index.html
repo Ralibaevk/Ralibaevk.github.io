@@ -31,13 +31,34 @@
       </div>
 
       <nav class="nav-links">
-        <div class="nav-item active" onclick="app.goHome()" title="Проекты">
+        <div class="nav-item active" id="nav-projects" onclick="app.navTo('projects')" title="Проекты">
           <i class="fas fa-folder"></i> <span class="nav-text">Проекты</span>
         </div>
-        <div class="nav-item" onclick="alert('Скоро')" title="Снабжение">
-          <i class="fas fa-shopping-cart"></i> <span class="nav-text">Снабжение</span>
+        <div class="nav-item" id="nav-design" onclick="app.navTo('design')" title="Дизайн">
+          <i class="fas fa-pencil-ruler"></i> <span class="nav-text">Дизайн</span>
         </div>
-        <div class="nav-item" onclick="profile.open()" title="Профиль">
+        <div class="nav-item" id="nav-measure" onclick="app.navTo('measure')" title="Замер">
+          <i class="fas fa-ruler-combined"></i> <span class="nav-text">Замер</span>
+        </div>
+        <div class="nav-item" id="nav-detail" onclick="app.navTo('detail')" title="Деталировка">
+          <i class="fas fa-cubes"></i> <span class="nav-text">Деталировка</span>
+        </div>
+        <div class="nav-item" id="nav-supply" onclick="app.navTo('supply')" title="Снабжение">
+          <i class="fas fa-shopping-cart"></i> <span class="nav-text">Закуп</span>
+        </div>
+        <div class="nav-item" id="nav-production" onclick="app.navTo('production')" title="Изготовление">
+          <i class="fas fa-industry"></i> <span class="nav-text">Изготовление</span>
+        </div>
+        <div class="nav-item" id="nav-install" onclick="app.navTo('install')" title="Монтаж">
+          <i class="fas fa-hammer"></i> <span class="nav-text">Монтаж</span>
+        </div>
+        <div class="nav-item" id="nav-handover" onclick="app.navTo('handover')" title="Сдача">
+          <i class="fas fa-flag-checkered"></i> <span class="nav-text">Сдача</span>
+        </div>
+
+        <div style="flex:1"></div> <!-- Spacer to push profile down if needed, or just specific margin -->
+
+        <div class="nav-item" id="nav-profile" onclick="app.navTo('profile')" title="Профиль">
           <i class="fas fa-user-circle"></i> <span class="nav-text">Профиль</span>
         </div>
       </nav>
@@ -196,7 +217,7 @@
     <div class="b-item active" onclick="app.goHome()"><i class="fas fa-folder"></i><span>Проекты</span></div>
     <div class="b-item" onclick="alert('Скоро')"><i class="fas fa-search"></i><span>Закуп</span></div>
     <div class="b-item" onclick="alert('Скоро')"><i class="fas fa-hard-hat"></i><span>Цех</span></div>
-    <div class="b-item" onclick="profile.open()"><i class="fas fa-user"></i><span>Профиль</span></div>
+    <div class="b-item" onclick="app.navTo('profile')"><i class="fas fa-user"></i><span>Профиль</span></div>
   </div>
 
   <!-- Модалки -->

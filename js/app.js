@@ -34,7 +34,7 @@ const app = {
                 projects.init();
             } else {
                 // No Company
-                if (window.profile) profile.open();
+                if (window.profile) this.navTo('profile');
             }
 
             if (window.manager) manager.updateDatalist();
@@ -72,9 +72,37 @@ const app = {
     },
 
     // Навигация
+    navTo(sectionId) {
+        // 1. Sidebar Active State
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        const navItem = document.getElementById('nav-' + sectionId);
+        if (navItem) navItem.classList.add('active');
+
+        // 2. Routing
+        if (sectionId === 'projects') {
+            this.showScreen('view-projects-list');
+            projects.render();
+        } else if (sectionId === 'profile') {
+            profile.open();
+        } else {
+            // Placeholder for other sections
+            console.log('Nav to ' + sectionId);
+            // Optional: show a "In Development" screen
+            // this.showScreen('view-dev'); 
+            // For now, let's just keep the current screen or do nothing, 
+            // BUT the prompt said: "Пока они будут вести на страницу-заглушку "В разработке" или просто переключать класс активности."
+            // We just switched the class above. Let's maybe alert or just leave it.
+            // Let's at least clear the screen if it's not projects/profile to indicate change?
+            // actually user said "или просто переключать класс активности". 
+            // A nice touch would be to show a generic "Coming Soon" if we had one.
+            // For now, let's NOT change the screen content if it's not implemented, to avoid "White Screen" confusion,
+            // OR let's alert.
+            // Better: let's do nothing but switch the active class, as requested as an option.
+        }
+    },
+
     goHome() {
-        this.showScreen('view-projects-list');
-        projects.render();
+        this.navTo('projects');
     },
 
     openProject(id) {
