@@ -47,12 +47,15 @@ const manager = {
         // Если контейнера нет в HTML (например, в новом дизайне), просто выходим
         if (!container) return;
 
-        if (!positions.currentProjectId) {
+        // Берем ID проекта из глобального объекта positions, если он доступен
+        const projId = (typeof positions !== 'undefined') ? positions.currentProjectId : null;
+
+        if (!projId) {
             container.innerHTML = '';
             return;
         }
 
-        const team = await api.call('getProjectTeam', { projectId: positions.currentProjectId });
+        const team = await api.call('getProjectTeam', { projectId: projId });
         const visible = team.slice(0, 3);
         const hiddenCount = team.length - 3;
 
@@ -302,8 +305,10 @@ const manager = {
 
     // === TEAM MANAGEMENT ===
     async openTeam() {
-        if (!positions.currentProjectId) { // Используем ID проекта из модуля positions
-            alert("Ошибка: Проект не определен");
+        const projId = (typeof positions !== 'undefined') ? positions.currentProjectId : null;
+
+        if (!projId) {
+            alert("Ошибка: Проект не определен (ID не найден)");
             return;
         }
 
@@ -317,7 +322,7 @@ const manager = {
 
         try {
             const allMembers = await api.call('getCompanyMembers');
-            const projectTeam = await api.call('getProjectTeam', { projectId: positions.currentProjectId });
+            const projectTeam = await api.call('getProjectTeam', { projectId: projId });
 
             listDiv.innerHTML = projectTeam.length ? '' : '<div style="padding:10px; color:#999; font-size:13px;">В этом проекте пока только вы</div>';
 
@@ -359,7 +364,7 @@ const manager = {
                 if (!newSelect.value) return;
                 const userId = newSelect.value;
                 newSelect.value = "";
-                await api.call('assignUserToProject', { projectId: positions.currentProjectId, userId: userId }, 'POST');
+                await api.call('assignUserToProject', { projectId: projId, userId: userId }, 'POST');
                 this.renderTeamAvatars();
                 this.openTeam();
             };
@@ -371,7 +376,10 @@ const manager = {
 
     async removeFromTeam(userId) {
         if (!confirm("Убрать сотрудника из доступа к проекту?")) return;
-        await api.call('removeUserFromProject', { projectId: positions.currentProjectId, userId: userId }, 'POST');
+        const projId = (typeof positions !== 'undefined') ? positions.currentProjectId : null;
+        if (projId) {
+            await api.call('removeUserFromProject', { projectId: projId, userId: userId }, 'POST');
+        }
         this.renderTeamAvatars();
         this.openTeam();
     },
