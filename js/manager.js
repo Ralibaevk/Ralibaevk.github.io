@@ -10,19 +10,20 @@ const manager = {
     currentPositionId: null, // ID изделия
 
     async open(positionId) {
-        // Мы больше не открываем отдельный экран "view-manager"
-        // Мы работаем внутри container-а в табе "tab-supply"
-
         this.currentCategory = this.categories[0];
         this.currentListId = null;
         this.currentPositionId = positionId;
 
         // Очистка
-        document.getElementById('mgrBody').innerHTML = '';
-        document.getElementById('mgrTotal').innerText = '0 ₸';
+        const tbody = document.getElementById('mgrBody');
+        if (tbody) tbody.innerHTML = '';
+        const totalEl = document.getElementById('mgrTotal');
+        if (totalEl) totalEl.innerText = '0 ₸';
 
-        // Рендер табов (если они не статичны, но у нас они статичны в HTML? нет, в HTML их нет, надо рендерить)
+        // Рендер табов
         this.renderTabs();
+        // Отрисовка аватарок
+        this.renderTeamAvatars();
 
         try {
             // Грузим данные по ID позиции
@@ -40,55 +41,58 @@ const manager = {
         }
     },
 
+    // Отрисовка аватарок в тулбаре
+    async renderTeamAvatars() {
+        const container = document.getElementById('mgrTeamAvatars');
+        // Если контейнера нет в HTML (например, в новом дизайне), просто выходим
+        if (!container) return;
+
+        if (!positions.currentProjectId) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const team = await api.call('getProjectTeam', { projectId: positions.currentProjectId });
+        const visible = team.slice(0, 3);
+        const hiddenCount = team.length - 3;
+
+        let html = visible.map(u => `
+            <div class="user-avatar" title="${u.first_name}" style="border-color:#fff;">
+                ${(u.first_name || 'U')[0]}
+            </div>
+        `).join('');
+
+        if (hiddenCount > 0) {
+            html += `<div class="user-avatar more" style="border-color:#fff;">+${hiddenCount}</div>`;
+        }
+        container.innerHTML = html;
+    },
+
     // Отрисовка табов категорий
     renderTabs() {
-        const container = document.getElementById('mgrCategoryTabs');
-        if (!container) return; // В новом дизайне может не быть этого контейнера, если он переехал?
-        // В index.html (новом) нет контейнера #mgrCategoryTabs внутри #tab-supply. 
-        // Нужно проверить index.html. В старом он был. В новом:
-        // <div id="tab-supply" ...> <div class="mgr-toolbar">...</div> <div class="mgr-grid">...</div> 
-        // ТАБЫ КАТЕГОРИЙ ПРОПАЛИ ИЗ HTML?
-        // В User Request есть: "Вам нужно полностью заменить содержимое двух файлов... index.html".
-        // В index.html snippet: <div id="view-position-detail"> ... <div id="tab-supply"> ... NO TABS CONTAINER ...
-        // НО в manager.js коде (старом) есть renderTabs.
-        // Если их нет в HTML, значит надо добавить программно или забить. 
-        // В старом коде manager.js: renderTabs() ищет 'mgrCategoryTabs'.
-        // В новом index.html я не вижу этого контейнера.
-        // Но, пользователь просит "Интеграция: Мы встроим наш старый редактор таблицы (Менеджер) внутрь 3-го таба".
-        // Возможно, пользователь забыл добавить табы категорий в HTML snippet?
-        // Или они должны быть в тулбаре?
-        // Давайте добавим их динамически в .mgr-toolbar или перед ним, если элемента нет.
-        // Либо просто пропустим рендер если элемента нет.
-        // UPD: В `manager.js` (старом) tabs container был. В новом HTML его нет.
-        // Я добавлю его создание JS-ом если не найден, или просто вставлю в тулбар.
-        // Ладно, пока предположим, что `mgrCategoryTabs` может не быть. 
-        // Но фильтрация по категориям нужна!
-        // Добавлю в тулбар выпадающий список или просто буду рендерить табы ПЕРЕД тулбаром.
-
-        // Fix: Проверим, есть ли mgrCategoryTabs. Если нет - создадим перед тулбаром.
+        // Ищем контейнер. Если нет - создаем динамически перед тулбаром
         let containerEl = document.getElementById('mgrCategoryTabs');
         if (!containerEl) {
             const toolbar = document.querySelector('#tab-supply .mgr-toolbar');
             if (toolbar) {
                 containerEl = document.createElement('div');
                 containerEl.id = 'mgrCategoryTabs';
-                containerEl.className = 'tabs-scroll-container'; // Старый класс
-                // Добавим стили inline, т.к. в CSS мб нет
+                containerEl.className = 'tabs-scroll-container';
+                // Inline стили на случай отсутствия CSS
                 containerEl.style.display = 'flex';
-                containerEl.style.gap = '5px';
+                containerEl.style.gap = '10px';
                 containerEl.style.overflowX = 'auto';
-                containerEl.style.padding = '5px 0';
-                containerEl.style.marginBottom = '5px';
+                containerEl.style.padding = '10px 0';
+                containerEl.style.borderBottom = '1px solid #eee';
                 toolbar.parentNode.insertBefore(containerEl, toolbar);
             }
         }
 
         if (containerEl) {
             containerEl.innerHTML = this.categories.map(cat => {
-                const activeClass = (cat === this.currentCategory) ? 'active' : '';
-                // Стили кнопки
-                const style = `padding:6px 12px; border:1px solid #ddd; border-radius:15px; font-size:12px; cursor:pointer; background:${activeClass ? '#333' : '#fff'}; color:${activeClass ? '#fff' : '#666'}; white-space:nowrap;`;
-                return `<button style="${style}" onclick="manager.setCategory('${cat}')">${cat}</button>`;
+                const isActive = (cat === this.currentCategory);
+                // Используем класс cat-tab-btn из style.css
+                return `<button class="cat-tab-btn ${isActive ? 'active' : ''}" onclick="manager.setCategory('${cat}')">${cat}</button>`;
             }).join('');
         }
     },
@@ -101,11 +105,14 @@ const manager = {
 
     render() {
         const tbody = document.getElementById('mgrBody');
+        if (!tbody) return;
+
         tbody.innerHTML = '';
         const filter = document.getElementById('mgrSearch')?.value.toLowerCase() || '';
         let total = 0;
         const isFacades = (this.currentCategory === "Фасады");
 
+        // Обновляем шапку таблицы
         const thead = document.querySelector('#mgrTable thead tr');
         if (thead) {
             if (isFacades) {
@@ -116,26 +123,29 @@ const manager = {
         }
 
         const supOpts = `<option value="">-</option>` + app.suppliers.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-        // const catOpts = this.categories.map(c => `<option value="${c}">${c}</option>`).join(''); // Уберем из таблицы лишнее
 
         this.data.forEach((item, i) => {
             if (item.category !== this.currentCategory) return;
-            // Filter
+
             const searchStr = (item.name + ' ' + (item.art || '') + ' ' + (item.supplier || '')).toLowerCase();
             if (filter && !searchStr.includes(filter)) return;
 
             item.sum = item.qty * item.price;
             total += item.sum;
+
             const tr = document.createElement('tr');
             if (item.checked) tr.style.background = '#fff9c4';
 
             if (isFacades) {
-                // Фасады (оставим упрощенно как текст, если надо) -> но у пользователя в запросе не было деталей про фасады,
-                // однако в старом manager.js было. Оставим логику.
                 tr.innerHTML = `<td class="chk"><input type="checkbox" ${item.checked ? 'checked' : ''} onchange="manager.check(${i},this.checked)"></td>
-                               <td>${item.category}</td>
+                               <td><select class="cat-select-table" onchange="manager.changeCategory(${i}, this.value)" style="border:none;">${this.categories.map(c => `<option ${c === item.category ? 'selected' : ''}>${c}</option>`).join('')}</select></td>
                                <td><input value="${item.name}" oninput="manager.upd(${i},'name',this.value)"></td>
-                               <td colspan="6">Специфичные поля фасадов (в разработке)</td>
+                               <td><input value="${item.art || ''}" oninput="manager.upd(${i},'art',this.value)"></td>
+                               <td><input value="${item.unit}" oninput="manager.upd(${i},'unit',this.value)"></td>
+                               <td><input value="${item.supplier || ''}" oninput="manager.upd(${i},'supplier',this.value)"></td>
+                               <td><input value="${item.note || ''}" oninput="manager.upd(${i},'note',this.value)"></td>
+                               <td><input type="number" value="${item.qty}" onchange="manager.upd(${i},'qty',this.value)"></td>
+                               <td><input type="number" value="${item.price}" onchange="manager.upd(${i},'price',this.value)"></td>
                                <td class="sum-cell">${utils.formatCurrency(item.sum)}</td>`;
             } else {
                 tr.innerHTML = `
@@ -151,6 +161,7 @@ const manager = {
             }
             tbody.appendChild(tr);
         });
+
         const totalEl = document.getElementById('mgrTotal');
         if (totalEl) totalEl.innerText = utils.formatCurrency(total);
     },
@@ -200,17 +211,21 @@ const manager = {
         this.triggerAutoSave();
     },
 
+    // Переход в режим закупа (Buyer)
     openBuyer() {
         if (!this.currentPositionId) return alert("Сначала откройте изделие");
-        // Pass position ID and a title (e.g. Project Name + Position Name, or just Position Name)
-        // We might need to fetch header info, but for now use static or cached name if available.
-        // manager doesn't store name strictly, but we can pass generic name or fetch it.
-        // Actually positions.js sets 'posDetailName' text.
         const name = document.getElementById('posDetailName')?.innerText || 'Смета';
         buyer.open(this.currentPositionId, name);
     },
 
-    // Save
+    // Вспомогательное: для смены категории прямо в таблице
+    changeCategory(index, newCat) {
+        this.data[index].category = newCat;
+        this.render();
+        this.triggerAutoSave();
+    },
+
+    // Сохранение
     triggerAutoSave() {
         const statusEl = document.getElementById('mgrTotal');
         if (statusEl) statusEl.style.color = '#f59e0b'; // Yellow
@@ -227,7 +242,7 @@ const manager = {
         try {
             const res = await api.call('saveSupplyList', {
                 positionId: this.currentPositionId, // Привязка к изделию
-                listId: this.currentListId,         // ID сметы (если есть)
+                listId: this.currentListId,         // ID сметы
                 data: arr
             }, 'POST', !isAuto);
 
@@ -241,6 +256,126 @@ const manager = {
         finally { this.isSaving = false; }
     },
 
+    // === FILES & IMPORT ===
+    updateDatalist() {
+        let dl = document.getElementById('catalogList');
+        if (!dl) { dl = document.createElement('datalist'); dl.id = 'catalogList'; document.body.appendChild(dl); }
+        dl.innerHTML = app.catalog.map(item => `<option value="${item.name}">${item.price}₸ (${item.supplier || '-'})</option>`).join('');
+    },
+
+    handleFile(e) {
+        const f = e.target.files[0];
+        if (!f) return;
+        if (typeof XLSX === 'undefined') return alert("Библиотека Excel не готова");
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+                mapper.raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+                if (mapper.raw.length) mapper.show(); else alert("Файл пустой");
+            } catch (err) { alert(err); } finally { e.target.value = ''; }
+        };
+        reader.readAsArrayBuffer(f);
+    },
+
+    async uploadFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) return alert("Файл > 5 МБ");
+        document.getElementById('loader').classList.remove('hidden');
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            try {
+                const base64 = reader.result.split(',')[1];
+                const res = await api.call('uploadFile', { data: base64, name: file.name, mime: file.type }, 'POST', false);
+                if (res.url) {
+                    this.data.unshift({ id: "", art: "", name: "📎 Файл: " + file.name, qty: 1, unit: "шт", price: 0, supplier: "", note: res.url, done: false, category: this.currentCategory });
+                    this.render();
+                    this.triggerAutoSave();
+                    alert("Файл добавлен!");
+                }
+            } catch (e) { alert("Ошибка загрузки: " + e.message); }
+            finally { document.getElementById('loader').classList.add('hidden'); input.value = ''; }
+        };
+    },
+
+    // === TEAM MANAGEMENT ===
+    async openTeam() {
+        if (!positions.currentProjectId) { // Используем ID проекта из модуля positions
+            alert("Ошибка: Проект не определен");
+            return;
+        }
+
+        const modal = document.getElementById('teamModal');
+        const listDiv = document.getElementById('teamList');
+        const select = document.getElementById('teamSelect');
+
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+        listDiv.innerHTML = '<div style="padding:10px; color:#999;">Загрузка...</div>';
+
+        try {
+            const allMembers = await api.call('getCompanyMembers');
+            const projectTeam = await api.call('getProjectTeam', { projectId: positions.currentProjectId });
+
+            listDiv.innerHTML = projectTeam.length ? '' : '<div style="padding:10px; color:#999; font-size:13px;">В этом проекте пока только вы</div>';
+
+            projectTeam.forEach(u => {
+                const row = document.createElement('div');
+                row.className = 'sup-row';
+                row.innerHTML = `
+                   <div style="flex:1; font-size:14px; font-weight:500;">
+                      ${u.first_name || ''} ${u.last_name || ''}
+                      <div style="font-size:11px; color:#999;">@${u.username || 'user'}</div>
+                   </div>
+                   <button class="btn-icon-del" onclick="manager.removeFromTeam('${u.id}')" title="Убрать"><i class="fas fa-times"></i></button>
+                `;
+                listDiv.appendChild(row);
+            });
+
+            const assignedIds = projectTeam.map(u => String(u.id));
+            if (app.user) assignedIds.push(String(app.user.id));
+
+            const available = allMembers.filter(m => !assignedIds.includes(String(m.id)));
+
+            if (available.length === 0) {
+                select.innerHTML = '<option value="">Все сотрудники уже добавлены</option>';
+                select.disabled = true;
+            } else {
+                select.disabled = false;
+                select.innerHTML = '<option value="">Выберите сотрудника...</option>' +
+                    available.map(m => {
+                        const roleName = (window.ROLE_NAMES && window.ROLE_NAMES[m.role]) ? window.ROLE_NAMES[m.role] : m.role;
+                        return `<option value="${m.id}">${m.first_name} ${m.last_name || ''} (${roleName})</option>`;
+                    }).join('');
+            }
+
+            // Удаляем старые слушатели (клонируем узел)
+            const newSelect = select.cloneNode(true);
+            select.parentNode.replaceChild(newSelect, select);
+
+            newSelect.onchange = async () => {
+                if (!newSelect.value) return;
+                const userId = newSelect.value;
+                newSelect.value = "";
+                await api.call('assignUserToProject', { projectId: positions.currentProjectId, userId: userId }, 'POST');
+                this.renderTeamAvatars();
+                this.openTeam();
+            };
+
+        } catch (e) {
+            alert("Ошибка: " + e.message);
+        }
+    },
+
+    async removeFromTeam(userId) {
+        if (!confirm("Убрать сотрудника из доступа к проекту?")) return;
+        await api.call('removeUserFromProject', { projectId: positions.currentProjectId, userId: userId }, 'POST');
+        this.renderTeamAvatars();
+        this.openTeam();
+    },
+
     // Modals (Merge/Sup)
     openMerge() {
         const sel = this.data.filter(i => i.checked);
@@ -250,7 +385,6 @@ const manager = {
         document.getElementById('mergeModal').classList.remove('hidden');
     },
     applyMerge() {
-        // ... (standard merge logic)
         const radios = document.getElementsByName('mname');
         let selIdx = -1; for (let r of radios) if (r.checked) selIdx = parseInt(r.value);
         if (selIdx === -1) return;
@@ -277,12 +411,5 @@ const manager = {
         document.getElementById('mgrAll').checked = false;
         this.render();
         this.triggerAutoSave();
-    },
-
-    updateDatalist() {
-        let dl = document.getElementById('catalogList');
-        if (!dl) { dl = document.createElement('datalist'); dl.id = 'catalogList'; document.body.appendChild(dl); }
-        dl.innerHTML = app.catalog.map(item => `<option value="${item.name}">${item.price}₸ (${item.supplier || '-'})</option>`).join('');
     }
-    // Files upload/Excel import can be added if needed, but for now basic functionality
 };

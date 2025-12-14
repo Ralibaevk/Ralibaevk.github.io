@@ -43,19 +43,24 @@ const api = {
         case 'assignUserToProject': result = await this._assignUserToProject(params.projectId, params.userId); break;
         case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId); break;
 
-        case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId); break;
-
         // --- PRODUCTION TASKS ---
         case 'getProductionTasks': result = await this._getProductionTasks(params.positionId); break;
         case 'createProductionTask': result = await this._createProductionTask(params); break;
         case 'updateTaskStatus': result = await this._updateTaskStatus(params.taskId, params.status); break;
         case 'deleteTask': result = await this._deleteTask(params.taskId); break;
 
+        // --- FILES & STATUSES ---
+        case 'getFiles': result = await this._getFiles(params.parentId, params.level); break;
+        case 'attachFile': result = await this._attachFile(params); break;
+        case 'deleteFile': result = await this._deleteFile(params.fileId); break;
+        case 'updatePositionStatus': result = await this._updatePositionStatus(params.id, params.status); break;
+
         default: console.warn(`Action ${action} not implemented.`); result = {};
       }
       return result;
     } catch (e) {
       console.error("API Error:", e);
+      // Не показываем алерт на ошибку прерывания (если пользователь быстро переключается)
       if (!e.message.includes("The user aborted a request")) alert("Ошибка: " + e.message);
       throw e;
     } finally {
@@ -63,135 +68,7 @@ const api = {
     }
   },
 
-  // === 1. ГЛОБАЛЬНЫЕ ПРОЕКТЫ (ЗАКАЗЫ) ===
-
-  async _getGlobalProjects() {
-    if (!window.CURRENT_COMPANY_ID) return [];
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('company_id', window.CURRENT_COMPANY_ID)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return data;
-  },
-
-  async _createGlobalProject(params) {
-    const { data, error } = await supabase.from('projects').insert({
-      company_id: window.CURRENT_COMPANY_ID,
-      name: params.name,
-      client_name: params.client,
-      status: 'new',
-      created_by: app.user?.id
-    }).select().single();
-    if (error) throw error;
-    return data;
-  },
-
-  async _getProjectById(id) {
-    // Здесь важно проверить ID
-    if (!id) throw new Error("ID проекта не передан");
-
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', id)
-      .single(); // Используем single(), так как ID уникален
-
-    if (error) throw error;
-    return data;
-  },
-
-  // === 2. ПОЗИЦИИ (ИЗДЕЛИЯ) ===
-
-  async _getPositions(projectId) {
-    const { data, error } = await supabase
-      .from('positions')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: true });
-    if (error) throw error;
-    return data;
-  },
-
-  async _createPosition(params) {
-    const { data, error } = await supabase.from('positions').insert({
-      project_id: params.projectId,
-      name: params.name,
-      status: 'design'
-    }).select().single();
-    if (error) throw error;
-    return data;
-  },
-
-  // === 3. СМЕТЫ (SUPPLY LISTS - Manager) ===
-
-  async _getSupplyByPosition(positionId) {
-    // Ищем смету, привязанную к позиции
-    const { data: list } = await supabase
-      .from('supply_lists')
-      .select('id')
-      .eq('position_id', positionId)
-      .maybeSingle();
-
-    if (!list) return { items: [], listId: null };
-
-    // Грузим товары (таблица та же - project_items, но теперь связь через supply_lists)
-
-    const { data: items } = await supabase
-      .from('project_items')
-      .select('*')
-      .eq('project_id', list.id) // project_id здесь - это ID сметы
-      .order('created_at', { ascending: true });
-
-    const mapped = items.map(item => ({
-      id: item.id, art: item.art, name: item.name, qty: item.qty, unit: item.unit,
-      price: item.price, sum: (item.qty * item.price), supplier: item.supplier,
-      note: item.note, done: item.done, category: item.category || "Фурнитура"
-    }));
-
-    return { items: mapped, listId: list.id };
-  },
-
-  async _saveSupplyList(params) {
-    let listId = params.listId;
-    const positionId = params.positionId;
-
-    // 1. Создаем или обновляем заголовок сметы
-    if (!listId) {
-      const { data: newList, error } = await supabase.from('supply_lists').insert({
-        company_id: window.CURRENT_COMPANY_ID,
-        position_id: positionId, // Привязка к изделию!
-        name: 'Смета', // Техническое имя
-        status: 'active'
-      }).select().single();
-      if (error) throw error;
-      listId = newList.id;
-    }
-
-    // 2. Обновляем каталог цен (фоном)
-    const catalogUpdates = params.data.map(row => ({ name: row[2], unit: row[4], price: row[5], supplier: row[7] }));
-    this._updateCatalog(catalogUpdates).catch(console.error);
-
-    // 3. Сохраняем строки
-    const upsertData = params.data.map(row => {
-      const itemObj = {
-        project_id: listId, // Привязываем к ID сметы
-        art: row[1], name: row[2], qty: parseFloat(row[3]) || 0, unit: row[4],
-        price: parseFloat(row[5]) || 0, supplier: row[7], note: row[8], done: row[9] === true,
-        category: row[10] || 'Фурнитура'
-      };
-      if (row[0] && row[0].length > 5) itemObj.id = row[0];
-      return itemObj;
-    });
-
-    const { error: itemsError } = await supabase.from('project_items').upsert(upsertData);
-    if (itemsError) throw itemsError;
-
-    return { success: true, listId: listId };
-  },
-
-  // === PRESERVED LEGACY METHODS ===
+  // --- INTERNAL METHODS ---
 
   async _saveUser(user) {
     if (!user) return;
@@ -221,6 +98,81 @@ const api = {
     return false;
   },
 
+  async _getGlobalProjects() {
+    if (!window.CURRENT_COMPANY_ID) return [];
+    const { data, error } = await supabase.from('projects').select('*').eq('company_id', window.CURRENT_COMPANY_ID).order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+
+  async _createGlobalProject(params) {
+    const { data, error } = await supabase.from('projects').insert({
+      company_id: window.CURRENT_COMPANY_ID,
+      name: params.name,
+      client_name: params.client,
+      status: 'new',
+      created_by: app.user?.id
+    }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async _getProjectById(id) {
+    if (!id) throw new Error("ID проекта не передан");
+    const { data, error } = await supabase.from('projects').select('*').eq('id', id).single();
+    if (error) throw error;
+    return data;
+  },
+
+  async _getPositions(projectId) {
+    const { data, error } = await supabase.from('positions').select('*').eq('project_id', projectId).order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
+  async _createPosition(params) {
+    const { data, error } = await supabase.from('positions').insert({ project_id: params.projectId, name: params.name, status: 'design' }).select().single();
+    if (error) throw error;
+    return data;
+  },
+
+  async _getSupplyByPosition(positionId) {
+    const { data: list } = await supabase.from('supply_lists').select('id').eq('position_id', positionId).maybeSingle();
+    if (!list) return { items: [], listId: null };
+    const { data: items } = await supabase.from('project_items').select('*').eq('project_id', list.id).order('created_at', { ascending: true });
+    const mapped = items.map(item => ({
+      id: item.id, art: item.art, name: item.name, qty: item.qty, unit: item.unit,
+      price: item.price, sum: (item.qty * item.price), supplier: item.supplier,
+      note: item.note, done: item.done, category: item.category || "Фурнитура"
+    }));
+    return { items: mapped, listId: list.id };
+  },
+
+  async _saveSupplyList(params) {
+    let listId = params.listId;
+    const positionId = params.positionId;
+    if (!listId) {
+      const { data: newList, error } = await supabase.from('supply_lists').insert({
+        company_id: window.CURRENT_COMPANY_ID, position_id: positionId, name: 'Смета', status: 'active'
+      }).select().single();
+      if (error) throw error;
+      listId = newList.id;
+    }
+    const catalogUpdates = params.data.map(row => ({ name: row[2], unit: row[4], price: row[5], supplier: row[7] }));
+    this._updateCatalog(catalogUpdates).catch(console.error);
+    const upsertData = params.data.map(row => {
+      const itemObj = {
+        project_id: listId, art: row[1], name: row[2], qty: parseFloat(row[3]) || 0, unit: row[4],
+        price: parseFloat(row[5]) || 0, supplier: row[7], note: row[8], done: row[9] === true, category: row[10] || 'Фурнитура'
+      };
+      if (row[0] && row[0].length > 5) itemObj.id = row[0];
+      return itemObj;
+    });
+    const { error: itemsError } = await supabase.from('project_items').upsert(upsertData);
+    if (itemsError) throw itemsError;
+    return { success: true, listId: listId };
+  },
+
   async _getSuppliers() {
     if (!window.CURRENT_COMPANY_ID) return [];
     const { data, error } = await supabase.from('suppliers').select('*').eq('company_id', window.CURRENT_COMPANY_ID).order('name');
@@ -235,10 +187,7 @@ const api = {
       if (!currentId || currentId.length < 5) currentId = utils.generateUUID();
       return { id: currentId, name: item.name, phone: item.phone, company_id: window.CURRENT_COMPANY_ID };
     });
-    if (upsertData.length > 0) {
-      const { error } = await supabase.from('suppliers').upsert(upsertData);
-      if (error) throw error;
-    }
+    if (upsertData.length > 0) { const { error } = await supabase.from('suppliers').upsert(upsertData); if (error) throw error; }
     return { success: true };
   },
 
@@ -250,9 +199,7 @@ const api = {
 
   async _updateCatalog(items) {
     if (!window.CURRENT_COMPANY_ID || !items.length) return;
-    const catalogItems = items
-      .filter(i => i.name && i.name.trim().length > 0)
-      .map(i => ({ company_id: window.CURRENT_COMPANY_ID, name: i.name.trim(), price: parseFloat(i.price) || 0, supplier: i.supplier, unit: i.unit }));
+    const catalogItems = items.filter(i => i.name && i.name.trim().length > 0).map(i => ({ company_id: window.CURRENT_COMPANY_ID, name: i.name.trim(), price: parseFloat(i.price) || 0, supplier: i.supplier, unit: i.unit }));
     if (catalogItems.length > 0) await supabase.from('catalog_items').upsert(catalogItems, { onConflict: 'company_id, name' });
   },
 
@@ -323,10 +270,7 @@ const api = {
 
   async _getProjectTeam(projectId) {
     if (!window.CURRENT_COMPANY_ID) return [];
-    const { data, error } = await supabase
-      .from('project_assignments')
-      .select('user_id, users(first_name, last_name, username, id)')
-      .eq('project_id', projectId);
+    const { data, error } = await supabase.from('project_assignments').select('user_id, users(first_name, last_name, username, id)').eq('project_id', projectId);
     if (error) { console.error(error); return []; }
     return data.map(i => i.users);
   },
@@ -343,34 +287,22 @@ const api = {
     return { success: true };
   },
 
-  // === 4. ПРОИЗВОДСТВО (ЗАДАЧИ) ===
-
   async _getProductionTasks(positionId) {
-    const { data, error } = await supabase
-      .from('production_tasks')
-      .select('*')
-      .eq('position_id', positionId)
-      .order('created_at', { ascending: true });
+    const { data, error } = await supabase.from('production_tasks').select('*').eq('position_id', positionId).order('created_at', { ascending: true });
     if (error) throw error;
     return data;
   },
 
   async _createProductionTask(params) {
     const { error } = await supabase.from('production_tasks').insert({
-      position_id: params.positionId,
-      title: params.title,
-      type: params.type, // 'internal' | 'external'
-      cost: params.cost || 0,
-      status: 'pending' // pending -> in_progress -> done
+      position_id: params.positionId, title: params.title, type: params.type, cost: params.cost || 0, status: 'pending'
     });
     if (error) throw error;
     return { success: true };
   },
 
   async _updateTaskStatus(taskId, status) {
-    const { error } = await supabase.from('production_tasks')
-      .update({ status: status })
-      .eq('id', taskId);
+    const { error } = await supabase.from('production_tasks').update({ status: status }).eq('id', taskId);
     if (error) throw error;
     return { success: true };
   },
@@ -378,6 +310,30 @@ const api = {
   async _deleteTask(taskId) {
     const { error } = await supabase.from('production_tasks').delete().eq('id', taskId);
     if (error) throw error;
+    return { success: true };
+  },
+
+  async _getFiles(parentId, level) {
+    const { data } = await supabase.from('project_files').select('*').eq(level === 'project' ? 'project_id' : 'position_id', parentId).order('created_at', { ascending: false });
+    return data || [];
+  },
+
+  async _attachFile(params) {
+    const uploadRes = await this._uploadFile(params.base64, params.name, params.mime);
+    const payload = { file_name: params.name, file_url: uploadRes.url, file_type: params.type, uploaded_by: app.user?.id };
+    if (params.level === 'project') payload.project_id = params.parentId; else payload.position_id = params.parentId;
+    const { error } = await supabase.from('project_files').insert(payload);
+    if (error) throw error;
+    return { success: true };
+  },
+
+  async _deleteFile(fileId) {
+    await supabase.from('project_files').delete().eq('id', fileId);
+    return { success: true };
+  },
+
+  async _updatePositionStatus(id, status) {
+    await supabase.from('positions').update({ status: status }).eq('id', id);
     return { success: true };
   }
 };
