@@ -118,8 +118,16 @@ const api = {
 
   async _getProjectById(id) {
     if (!id) throw new Error("ID проекта не передан");
-    const { data, error } = await supabase.from('projects').select('*').eq('id', id).single();
+
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle(); // Используем maybeSingle вместо single, чтобы не крашилось
+
     if (error) throw error;
+    if (!data) throw new Error("Проект не найден (проверьте права доступа)");
+
     return data;
   },
 

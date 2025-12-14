@@ -6,29 +6,43 @@ const positions = {
 
     // === УРОВЕНЬ 1: СПИСОК ИЗДЕЛИЙ В ПРОЕКТЕ ===
     async openProject(projectId) {
-        console.log("📂 Открываем проект ID:", projectId);
+        console.log("📂 Попытка открыть проект ID:", projectId);
+
+        if (!projectId || projectId === 'undefined') {
+            alert("Ошибка: Некорректный ID проекта");
+            return;
+        }
+
         this.currentProjectId = projectId;
 
-        // Очищаем старые данные перед загрузкой
+        // UI: Показываем лоадеры
         document.getElementById('pDetailName').innerText = "Загрузка...";
         document.getElementById('pDetailClient').innerText = "";
         document.getElementById('pDetailPositions').innerHTML = '<div class="spinner"></div>';
 
         try {
             // 1. Грузим инфо о проекте
+            console.log("requesting project info...");
             const proj = await api.call('getProjectById', { id: projectId });
+            console.log("project info received:", proj);
 
-            if (!proj) throw new Error("Проект не найден");
+            if (!proj) throw new Error("Проект не найден в БД");
 
             document.getElementById('pDetailName').innerText = proj.name;
             document.getElementById('pDetailClient').innerText = proj.client_name || 'Клиент не указан';
 
             // 2. Грузим список изделий
+            console.log("rendering list...");
             await this.renderList();
+
         } catch (e) {
-            console.error("Ошибка открытия проекта:", e);
+            console.error("❌ Ошибка открытия проекта:", e);
             document.getElementById('pDetailName').innerText = "Ошибка";
-            document.getElementById('pDetailPositions').innerHTML = `<div style="color:red; text-align:center;">Не удалось загрузить: ${e.message}</div>`;
+            document.getElementById('pDetailPositions').innerHTML =
+                `<div style="color:red; text-align:center; padding:20px;">
+                    Не удалось загрузить проект.<br>
+                    <small>${e.message}</small>
+                </div>`;
         }
     },
 
@@ -37,9 +51,10 @@ const positions = {
 
         try {
             const list = await api.call('getPositions', { projectId: this.currentProjectId });
+            console.log("positions list:", list);
 
-            if (list.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:#ccc; padding:20px;">Добавьте изделия (Кухня, Шкаф...)</div>';
+            if (!list || list.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#ccc; padding:20px;">В этом проекте пока нет изделий.<br>Нажмите "Добавить изделие"</div>';
                 return;
             }
 
@@ -55,15 +70,27 @@ const positions = {
                 </div>
             `).join('');
         } catch (e) {
-            container.innerHTML = 'Ошибка списка изделий';
+            console.error(e);
+            container.innerHTML = '<div style="color:red; text-align:center;">Ошибка загрузки списка изделий</div>';
         }
     },
 
     async createPrompt() {
+        // Проверка на потерю ID
+        if (!this.currentProjectId) {
+            console.error("Current Project ID is null!");
+            return alert("Ошибка: ID проекта не найден. Попробуйте обновить страницу и открыть проект заново.");
+        }
+
         const name = prompt("Название изделия (например: Кухня):");
         if (!name) return;
-        await api.call('createPosition', { projectId: this.currentProjectId, name }, 'POST');
-        this.renderList();
+
+        try {
+            await api.call('createPosition', { projectId: this.currentProjectId, name }, 'POST');
+            this.renderList();
+        } catch (e) {
+            alert("Не удалось создать изделие: " + e.message);
+        }
     },
 
     // === УРОВЕНЬ 2: ВНУТРИ ИЗДЕЛИЯ (ТАБЫ) ===
