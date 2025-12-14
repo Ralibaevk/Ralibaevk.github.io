@@ -6,42 +6,41 @@ const positions = {
 
     // === УРОВЕНЬ 1: СПИСОК ИЗДЕЛИЙ В ПРОЕКТЕ ===
     async openProject(projectId) {
-        console.log("📂 Попытка открыть проект ID:", projectId);
+        console.log("📂 Открываем проект ID:", projectId);
 
-        if (!projectId || projectId === 'undefined') {
-            alert("Ошибка: Некорректный ID проекта");
+        // 1. СРАЗУ ЗАПОМИНАЕМ ID (До любых запросов)
+        if (projectId) {
+            this.currentProjectId = projectId;
+        } else {
+            console.error("❌ Ошибка: openProject вызван без ID!");
             return;
         }
 
-        this.currentProjectId = projectId;
-
-        // UI: Показываем лоадеры
+        // 2. UI: Показываем лоадеры
         document.getElementById('pDetailName').innerText = "Загрузка...";
         document.getElementById('pDetailClient').innerText = "";
         document.getElementById('pDetailPositions').innerHTML = '<div class="spinner"></div>';
 
         try {
-            // 1. Грузим инфо о проекте
-            console.log("requesting project info...");
+            // 3. Грузим инфо о проекте
             const proj = await api.call('getProjectById', { id: projectId });
-            console.log("project info received:", proj);
 
-            if (!proj) throw new Error("Проект не найден в БД");
+            if (proj) {
+                document.getElementById('pDetailName').innerText = proj.name;
+                document.getElementById('pDetailClient').innerText = proj.client_name || 'Клиент не указан';
+            }
 
-            document.getElementById('pDetailName').innerText = proj.name;
-            document.getElementById('pDetailClient').innerText = proj.client_name || 'Клиент не указан';
-
-            // 2. Грузим список изделий
-            console.log("rendering list...");
+            // 4. Грузим список изделий
             await this.renderList();
 
         } catch (e) {
-            console.error("❌ Ошибка открытия проекта:", e);
-            document.getElementById('pDetailName').innerText = "Ошибка";
+            console.error("❌ Ошибка загрузки данных проекта:", e);
+            document.getElementById('pDetailName').innerText = "Ошибка загрузки";
+            // Даже если ошибка загрузки, ID у нас есть, и мы можем попробовать добавить изделие
             document.getElementById('pDetailPositions').innerHTML =
                 `<div style="color:red; text-align:center; padding:20px;">
-                    Не удалось загрузить проект.<br>
-                    <small>${e.message}</small>
+                    Не удалось загрузить список.<br>
+                    <button class="btn btn-text" onclick="positions.renderList()">Попробовать снова</button>
                 </div>`;
         }
     },
