@@ -83,21 +83,13 @@ const app = {
             this.showScreen('view-projects-list');
             projects.render();
         } else if (sectionId === 'profile') {
-            profile.open();
+            this.showScreen('view-profile');
+            profile.render();
+        } else if (['design', 'measure', 'detail', 'supply', 'production', 'install', 'handover'].includes(sectionId)) {
+            // Заглушки
+            this.showScreen('view-stub');
         } else {
-            // Placeholder for other sections
-            console.log('Nav to ' + sectionId);
-            // Optional: show a "In Development" screen
-            // this.showScreen('view-dev'); 
-            // For now, let's just keep the current screen or do nothing, 
-            // BUT the prompt said: "Пока они будут вести на страницу-заглушку "В разработке" или просто переключать класс активности."
-            // We just switched the class above. Let's maybe alert or just leave it.
-            // Let's at least clear the screen if it's not projects/profile to indicate change?
-            // actually user said "или просто переключать класс активности". 
-            // A nice touch would be to show a generic "Coming Soon" if we had one.
-            // For now, let's NOT change the screen content if it's not implemented, to avoid "White Screen" confusion,
-            // OR let's alert.
-            // Better: let's do nothing but switch the active class, as requested as an option.
+            console.warn('Unknown section:', sectionId);
         }
     },
 
@@ -107,12 +99,12 @@ const app = {
 
     openProject(id) {
         this.showScreen('view-project-detail');
-        positions.openProject(id);
+        if (window.positions) positions.openProject(id);
     },
 
     openPosition(id, name) {
         this.showScreen('view-position-detail');
-        positions.openPosition(id, name);
+        if (window.positions) positions.openPosition(id, name);
     },
 
     goToProject() {
@@ -120,26 +112,34 @@ const app = {
     },
 
     showScreen(id) {
+        const target = document.getElementById(id);
+        if (!target) {
+            console.error(`Screen not found: ${id}`);
+            return; // Не скрываем текущий экран, если новый не найден
+        }
+
+        // Скрываем все
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
+        // Показываем целевой
+        target.classList.add('active');
     },
 
     // Табы внутри позиции
     switchPosTab(tabId) {
         document.querySelectorAll('.tab-chip').forEach(c => c.classList.remove('active'));
-        // Найдем кнопку по onclick и добавим класс (если передаем event, но тут его нет в аргументах)
-        // Сделаем хак через поиск по тексту или атрибуту, или просто забьем на кнопку (визуально не поменяется)
-        // Или лучше: переберем все .tab-chip и если onclick содержит tabId - актив.
-        document.querySelectorAll('.container .tab-chip').forEach(c => {
-            if (c.getAttribute('onclick').includes(tabId)) c.classList.add('active');
-        });
-        // В index.html onclick="app.switchPosTab('info')" -> так что event.target проще
-        if (typeof event !== 'undefined' && event.target) {
+
+        // New efficient way: click event is handled in HTML, but we might want to highlight programmatically
+        if (typeof event !== 'undefined' && event.target && event.target.classList.contains('tab-chip')) {
             event.target.classList.add('active');
+        } else {
+            // Fallback: find by onclick attr
+            const btn = Array.from(document.querySelectorAll('.tab-chip')).find(el => el.getAttribute('onclick')?.includes(tabId));
+            if (btn) btn.classList.add('active');
         }
 
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        document.getElementById('tab-' + tabId).classList.add('active');
+        const content = document.getElementById('tab-' + tabId);
+        if (content) content.classList.add('active');
 
         // Если открыли Смету - грузим данные
         if (tabId === 'supply') {
