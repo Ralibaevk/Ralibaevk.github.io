@@ -1,7 +1,7 @@
 // js/projects.js
 console.log("✅ projects.js file is loading...");
 
-const projects = {
+window.projects = {
     data: [],
 
     async init() {

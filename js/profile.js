@@ -1,6 +1,7 @@
 // js/profile.js
+console.log("✅ profile.js file is loading...");
 
-const profile = {
+window.profile = {
     async init() {
         // Всегда рендерим, даже если юзера нет (будет Гость)
         this.render();

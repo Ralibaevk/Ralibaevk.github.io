@@ -1,7 +1,7 @@
 // js/positions.js
 console.log("✅ positions.js file is loading...");
 
-const positions = {
+window.positions = {
     currentProjectId: null,
     currentPositionId: null,
     currentTaskType: 'internal',

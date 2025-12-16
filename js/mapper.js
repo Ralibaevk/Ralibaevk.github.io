@@ -1,5 +1,7 @@
 // js/mapper.js
-const mapper = {
+console.log("✅ mapper.js file is loading...");
+
+window.mapper = {
     raw: [],
     columnMap: {}, // Маппинг колонок
 

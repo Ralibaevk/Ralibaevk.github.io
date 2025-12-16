@@ -1,5 +1,7 @@
 // js/utils.js
-const utils = {
+console.log("✅ utils.js file is loading...");
+
+window.utils = {
   // Формат денег (10 000 ₸)
   formatCurrency(value) {
     return (parseFloat(value) || 0).toLocaleString('ru-RU') + ' ₸';

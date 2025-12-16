@@ -1,5 +1,5 @@
 // js/app.js
-const app = {
+window.app = {
     user: null,
     suppliers: [],
     catalog: [],

@@ -1,6 +1,7 @@
 // js/manager.js
+console.log("✅ manager.js file is loading...");
 
-const manager = {
+window.manager = {
     data: [],
     categories: ["Фурнитура", "Листовые материалы", "Фасады", "Услуги", "Прочий закуп", "Рекламации"],
     currentCategory: "Фурнитура",

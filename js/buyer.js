@@ -1,6 +1,7 @@
 // js/buyer.js
+console.log("✅ buyer.js file is loading...");
 
-const buyer = {
+window.buyer = {
     data: [],
     localData: [],
     currentTab: 'todo',

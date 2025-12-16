@@ -1,6 +1,7 @@
 // js/api.js
+console.log("✅ api.js file is loading...");
 
-const api = {
+window.api = {
   async call(action, params = {}, method = 'GET', useLoader = true) {
     if (useLoader && document.getElementById('loader')) document.getElementById('loader').classList.remove('hidden');
 
