@@ -6,59 +6,93 @@ const positions = {
 
     // === УРОВЕНЬ 1: СПИСОК ИЗДЕЛИЙ В ПРОЕКТЕ ===
     async openProject(projectId) {
-        console.log("📂 Открываем проект ID:", projectId);
+        console.log("📂 positions.openProject() STARTED with ID:", projectId);
+        console.log("📂 Type of projectId:", typeof projectId);
 
         // 1. СРАЗУ ЗАПОМИНАЕМ ID (До любых запросов)
         if (projectId) {
             this.currentProjectId = projectId;
+            console.log("✅ currentProjectId saved:", this.currentProjectId);
         } else {
             console.error("❌ Ошибка: openProject вызван без ID!");
+            document.getElementById('pDetailName').innerText = "Ошибка: нет ID";
             return;
         }
 
         // 2. UI: Показываем лоадеры
-        document.getElementById('pDetailName').innerText = "Загрузка...";
-        document.getElementById('pDetailClient').innerText = "";
-        document.getElementById('pDetailPositions').innerHTML = '<div class="spinner"></div>';
+        const nameEl = document.getElementById('pDetailName');
+        const clientEl = document.getElementById('pDetailClient');
+        const positionsEl = document.getElementById('pDetailPositions');
+
+        if (nameEl) nameEl.innerText = "Загрузка...";
+        if (clientEl) clientEl.innerText = "";
+        if (positionsEl) positionsEl.innerHTML = '<div class="spinner"></div>';
+
+        console.log("📂 UI updated to loading state");
 
         try {
             // 3. Грузим инфо о проекте
+            console.log("📂 Calling API: getProjectById...");
             const proj = await api.call('getProjectById', { id: projectId });
+            console.log("📂 API response:", proj);
 
             if (proj) {
-                document.getElementById('pDetailName').innerText = proj.name;
-                document.getElementById('pDetailClient').innerText = proj.client_name || 'Клиент не указан';
+                if (nameEl) nameEl.innerText = proj.name;
+                if (clientEl) clientEl.innerText = proj.client_name || 'Клиент не указан';
+                console.log("✅ Project info loaded:", proj.name);
+            } else {
+                console.warn("⚠️ Project not found or null response");
+                if (nameEl) nameEl.innerText = "Проект не найден";
             }
 
             // 4. Грузим список изделий
+            console.log("📂 Calling renderList...");
             await this.renderList();
+            console.log("✅ renderList completed");
 
         } catch (e) {
             console.error("❌ Ошибка загрузки данных проекта:", e);
-            document.getElementById('pDetailName').innerText = "Ошибка загрузки";
-            // Даже если ошибка загрузки, ID у нас есть, и мы можем попробовать добавить изделие
-            document.getElementById('pDetailPositions').innerHTML =
-                `<div style="color:red; text-align:center; padding:20px;">
-                    Не удалось загрузить список.<br>
-                    <button class="btn btn-text" onclick="positions.renderList()">Попробовать снова</button>
-                </div>`;
+            if (nameEl) nameEl.innerText = "Ошибка загрузки";
+            if (positionsEl) {
+                positionsEl.innerHTML =
+                    `<div style="color:red; text-align:center; padding:20px;">
+                        Не удалось загрузить: ${e.message}<br>
+                        <button class="btn btn-text" onclick="positions.renderList()">Попробовать снова</button>
+                    </div>`;
+            }
         }
     },
 
     async renderList() {
+        console.log("📋 renderList() called, currentProjectId:", this.currentProjectId);
+
         const container = document.getElementById('pDetailPositions');
+        if (!container) {
+            console.error("❌ Container #pDetailPositions not found!");
+            return;
+        }
+
+        if (!this.currentProjectId) {
+            console.error("❌ renderList: currentProjectId is null!");
+            container.innerHTML = '<div style="color:red; text-align:center;">Ошибка: ID проекта не найден</div>';
+            return;
+        }
 
         try {
+            console.log("📋 Calling API: getPositions for project:", this.currentProjectId);
             const list = await api.call('getPositions', { projectId: this.currentProjectId });
-            console.log("positions list:", list);
+            console.log("📋 Positions received:", list);
 
             if (!list || list.length === 0) {
                 container.innerHTML = '<div style="text-align:center; color:#ccc; padding:20px;">В этом проекте пока нет изделий.<br>Нажмите "Добавить изделие"</div>';
                 return;
             }
 
-            container.innerHTML = list.map(pos => `
-                <div class="card" onclick="app.openPosition('${pos.id}', '${pos.name}')" style="display:flex; gap:15px; align-items:center;">
+            container.innerHTML = list.map(pos => {
+                // Экранируем спецсимволы в названии для безопасного использования в onclick
+                const safeName = (pos.name || 'Без названия').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                return `
+                <div class="card" onclick="app.openPosition('${pos.id}', '${safeName}')" style="display:flex; gap:15px; align-items:center; cursor:pointer;">
                     <div style="width:50px; height:50px; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center;">
                         <i class="fas fa-cube" style="color:#cbd5e1;"></i>
                     </div>
@@ -67,10 +101,12 @@ const positions = {
                         <div style="font-size:12px; color:#6b7280; margin-top:2px;">Статус: ${pos.status || 'design'}</div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
+
+            console.log("✅ Positions rendered:", list.length, "items");
         } catch (e) {
-            console.error(e);
-            container.innerHTML = '<div style="color:red; text-align:center;">Ошибка загрузки списка изделий</div>';
+            console.error("❌ Error in renderList:", e);
+            container.innerHTML = `<div style="color:red; text-align:center;">Ошибка загрузки: ${e.message}</div>`;
         }
     },
 

@@ -132,14 +132,53 @@ const api = {
   },
 
   async _getPositions(projectId) {
-    const { data, error } = await supabase.from('positions').select('*').eq('project_id', projectId).order('created_at', { ascending: true });
-    if (error) throw error;
-    return data;
+    console.log("🔍 API._getPositions called with projectId:", projectId);
+
+    if (!projectId) {
+      console.error("❌ _getPositions: projectId is empty!");
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('positions')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+
+    console.log("🔍 _getPositions result:", { data, error });
+
+    if (error) {
+      console.error("❌ Supabase error in _getPositions:", error);
+      throw error;
+    }
+
+    return data || [];
   },
 
   async _createPosition(params) {
-    const { data, error } = await supabase.from('positions').insert({ project_id: params.projectId, name: params.name, status: 'design' }).select().single();
-    if (error) throw error;
+    console.log("➕ API._createPosition called with:", params);
+
+    if (!params.projectId) {
+      throw new Error("projectId обязателен для создания позиции");
+    }
+
+    const { data, error } = await supabase
+      .from('positions')
+      .insert({
+        project_id: params.projectId,
+        name: params.name || 'Новое изделие',
+        status: 'design'
+      })
+      .select()
+      .single();
+
+    console.log("➕ _createPosition result:", { data, error });
+
+    if (error) {
+      console.error("❌ Supabase error in _createPosition:", error);
+      throw error;
+    }
+
     return data;
   },
 

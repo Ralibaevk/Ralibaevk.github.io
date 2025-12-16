@@ -219,6 +219,41 @@
         </div>
       </div>
 
+      <!-- BUYER VIEW (Режим закупа) -->
+      <div id="view-buyer" class="screen">
+        <div class="view-header">
+          <div style="display:flex; align-items:center;">
+            <button class="btn-back" onclick="buyer.checkClose()"><i class="fas fa-arrow-left"></i></button>
+            <div class="view-title">
+              <h1 id="buyTitle">Режим закупа</h1>
+              <p>Отмечайте купленные позиции</p>
+            </div>
+          </div>
+          <span id="buySaveStatus" style="font-size:12px; color:#10b981;"><i class="fas fa-check-circle"></i>
+            Загружено</span>
+        </div>
+
+        <!-- Табы: К закупу / Куплено -->
+        <div style="display:flex; gap:8px; margin-bottom:10px; padding:0 20px;">
+          <button class="buy-tab active" id="tab-todo" onclick="buyer.setTab('todo')">К закупу</button>
+          <button class="buy-tab" id="tab-done" onclick="buyer.setTab('done')">Куплено</button>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="buy-tools-wrapper" style="padding:0 20px;">
+          <div class="filter-label" style="font-size:11px; color:#999; margin-bottom:5px;">Категория:</div>
+          <div id="buyCategoryFilters" class="filter-chips-scroll"
+            style="display:flex; gap:8px; overflow-x:auto; padding-bottom:10px;"></div>
+          <div class="filter-label" style="font-size:11px; color:#999; margin-bottom:5px; margin-top:10px;">Поставщик:
+          </div>
+          <div id="buyFilters" class="filter-chips-scroll"
+            style="display:flex; gap:8px; overflow-x:auto; padding-bottom:10px;"></div>
+        </div>
+
+        <!-- Список позиций -->
+        <div id="buyList" class="buy-list" style="padding:0 20px; flex:1; overflow-y:auto;"></div>
+      </div>
+
     </div>
   </div>
 
@@ -346,6 +381,7 @@
   <script src="js/design.js"></script>
   <script src="js/settings.js"></script>
   <script src="js/profile.js"></script>
+  <script src="js/mapper.js"></script>
   <script src="js/app.js"></script>
 </body>
 

@@ -13,8 +13,8 @@ const buyer = {
         this.currentPositionId = positionId;
         this.currentSheet = titleName || 'Смета'; // Используем как заголовок
 
-        document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
-        document.getElementById('view-buyer').classList.remove('hidden');
+        // Используем единый метод навигации
+        app.showScreen('view-buyer');
         document.getElementById('buyTitle').innerText = this.currentSheet;
 
         const statusEl = document.getElementById('buySaveStatus');

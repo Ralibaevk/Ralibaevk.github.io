@@ -98,17 +98,40 @@ const app = {
     },
 
     openProject(id) {
+        console.log('🚀 app.openProject called with id:', id);
+
+        if (!id) {
+            console.error('❌ app.openProject: ID is empty!');
+            alert('Ошибка: ID проекта не передан');
+            return;
+        }
+
         this.showScreen('view-project-detail');
-        if (window.positions) positions.openProject(id);
+
+        if (window.positions) {
+            try {
+                positions.openProject(id);
+            } catch (e) {
+                console.error('❌ Error in positions.openProject:', e);
+            }
+        } else {
+            console.error('❌ positions object not found!');
+        }
     },
 
     openPosition(id, name) {
+        console.log('🚀 app.openPosition called:', id, name);
         this.showScreen('view-position-detail');
         if (window.positions) positions.openPosition(id, name);
     },
 
     goToProject() {
+        // Возврат к детальному экрану проекта
         this.showScreen('view-project-detail');
+        // Перерендерим позиции если ID сохранён
+        if (window.positions && positions.currentProjectId) {
+            positions.renderList();
+        }
     },
 
     showScreen(id) {
