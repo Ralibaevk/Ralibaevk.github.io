@@ -1,4 +1,6 @@
 // js/positions.js
+console.log("✅ positions.js file is loading...");
+
 const positions = {
     currentProjectId: null,
     currentPositionId: null,
@@ -89,10 +91,10 @@ const positions = {
             }
 
             container.innerHTML = list.map(pos => {
-                // Экранируем спецсимволы в названии для безопасного использования в onclick
-                const safeName = (pos.name || 'Без названия').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                // Используем encodeURIComponent для безопасной передачи имени
+                const safeName = encodeURIComponent(pos.name || 'Без названия');
                 return `
-                <div class="card" onclick="app.openPosition('${pos.id}', '${safeName}')" style="display:flex; gap:15px; align-items:center; cursor:pointer;">
+                <div class="card" data-pos-id="${pos.id}" data-pos-name="${safeName}" style="display:flex; gap:15px; align-items:center; cursor:pointer;">
                     <div style="width:50px; height:50px; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center;">
                         <i class="fas fa-cube" style="color:#cbd5e1;"></i>
                     </div>
@@ -102,6 +104,15 @@ const positions = {
                     </div>
                 </div>
             `}).join('');
+
+            // Добавляем обработчики кликов
+            container.querySelectorAll('.card[data-pos-id]').forEach(card => {
+                card.onclick = () => {
+                    const id = card.dataset.posId;
+                    const name = decodeURIComponent(card.dataset.posName);
+                    app.openPosition(id, name);
+                };
+            });
 
             console.log("✅ Positions rendered:", list.length, "items");
         } catch (e) {

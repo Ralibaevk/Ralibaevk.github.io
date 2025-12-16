@@ -201,4 +201,14 @@ const app = {
     }
 };
 
-window.onload = () => app.init();
+console.log("✅ app.js file loaded");
+console.log("📦 Checking global objects:");
+console.log("  - window.positions:", typeof window.positions !== 'undefined' ? "✅ exists" : "❌ NOT FOUND");
+console.log("  - window.projects:", typeof window.projects !== 'undefined' ? "✅ exists" : "❌ NOT FOUND");
+console.log("  - window.api:", typeof window.api !== 'undefined' ? "✅ exists" : "❌ NOT FOUND");
+console.log("  - window.manager:", typeof window.manager !== 'undefined' ? "✅ exists" : "❌ NOT FOUND");
+
+window.onload = () => {
+    console.log("🚀 window.onload triggered, starting app.init()...");
+    app.init();
+};

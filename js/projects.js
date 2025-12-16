@@ -1,4 +1,6 @@
 // js/projects.js
+console.log("✅ projects.js file is loading...");
+
 const projects = {
     data: [],
 
