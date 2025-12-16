@@ -54,13 +54,16 @@ window.positions = {
                 if (nameEl) nameEl.innerText = "Проект не найден";
             }
 
-            // 4. Грузим команду проекта
-            await this.renderTeam(projectId);
+            // 4. Грузим компактную команду проекта
+            await this.renderTeamCompact(projectId);
 
             // 5. Грузим список изделий
             console.log("📂 Calling renderList...");
             await this.renderList();
             console.log("✅ renderList completed");
+
+            // 6. Инициализация inline-редактирования
+            this.initEditing();
 
         } catch (e) {
             console.error("❌ Ошибка загрузки данных проекта:", e);
@@ -181,7 +184,175 @@ window.positions = {
         if (this.currentProject?.chat_link) {
             window.open(this.currentProject.chat_link, '_blank');
         } else {
-            alert('Ссылка на чат не указана');
+            const link = prompt('Введите ссылку на чат (Telegram):');
+            if (link) {
+                this.saveField('chat_link', link);
+            }
+        }
+    },
+
+    // Открытие модалки команды
+    openTeamModal() {
+        if (window.manager?.openTeam) {
+            manager.openTeam();
+        } else {
+            document.getElementById('teamModal').classList.remove('hidden');
+            document.getElementById('teamModal').style.display = 'flex';
+        }
+    },
+
+    // === INLINE EDITING ===
+
+    // Инициализация редактирования
+    initEditing() {
+        document.querySelectorAll('.editable-field').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (el.classList.contains('editing')) return;
+                this.startEdit(el);
+            });
+        });
+    },
+
+    // Начало редактирования поля
+    startEdit(el) {
+        const field = el.dataset.field;
+        const type = el.dataset.type || 'text';
+
+        // Получаем текущее значение
+        let currentValue = '';
+        if (type === 'number') {
+            currentValue = parseFloat(el.innerText.replace(/[^\d.-]/g, '')) || 0;
+        } else if (type === 'date') {
+            // Конвертируем дату обратно в формат input
+            currentValue = this.currentProject?.[field] || '';
+        } else {
+            currentValue = this.currentProject?.[field] || el.innerText;
+            if (currentValue === '—') currentValue = '';
+        }
+
+        el.classList.add('editing');
+
+        // Создаём input
+        const input = document.createElement('input');
+        input.type = type === 'date' ? 'date' : (type === 'number' ? 'number' : 'text');
+        input.className = 'edit-input';
+        input.value = currentValue;
+
+        // Сохраняем оригинальный контент
+        const originalContent = el.innerHTML;
+        el.innerHTML = '';
+        el.appendChild(input);
+        input.focus();
+        input.select();
+
+        // Обработчики событий
+        const save = () => {
+            let value = input.value;
+            el.classList.remove('editing');
+
+            if (type === 'number') {
+                value = parseFloat(value) || 0;
+                el.innerText = utils.formatCurrency(value);
+            } else if (type === 'date') {
+                el.innerText = value ? utils.formatDate(value) : '—';
+            } else {
+                el.innerText = value || '—';
+            }
+
+            this.saveField(field, type === 'number' ? value : (value || null));
+
+            // Пересчёт остатка если меняли финансы
+            if (field === 'contract_amount' || field === 'prepayment_amount') {
+                this.updateBalance();
+            }
+        };
+
+        input.addEventListener('blur', save);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                input.blur();
+            }
+            if (e.key === 'Escape') {
+                el.classList.remove('editing');
+                el.innerHTML = originalContent;
+            }
+        });
+    },
+
+    // Сохранение поля в БД
+    async saveField(field, value) {
+        if (!this.currentProjectId) return;
+
+        try {
+            await api.call('updateProject', {
+                id: this.currentProjectId,
+                data: { [field]: value }
+            }, 'POST', false);
+
+            // Обновляем локальные данные
+            if (this.currentProject) {
+                this.currentProject[field] = value;
+            }
+
+            // Показываем индикатор сохранения
+            this.showSaveIndicator();
+        } catch (e) {
+            console.error('Ошибка сохранения:', e);
+            alert('Не удалось сохранить: ' + e.message);
+        }
+    },
+
+    // Пересчёт остатка
+    updateBalance() {
+        const contract = parseFloat(this.currentProject?.contract_amount) || 0;
+        const prepay = parseFloat(this.currentProject?.prepayment_amount) || 0;
+        const balance = contract - prepay;
+
+        const balanceEl = document.getElementById('pDetailBalance');
+        if (balanceEl) {
+            balanceEl.innerText = utils.formatCurrency(balance);
+        }
+    },
+
+    // Индикатор сохранения
+    showSaveIndicator() {
+        let indicator = document.querySelector('.save-indicator');
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.className = 'save-indicator';
+            indicator.innerHTML = '<i class="fas fa-check"></i> Сохранено';
+            document.body.appendChild(indicator);
+        }
+        indicator.classList.add('show');
+        setTimeout(() => indicator.classList.remove('show'), 1500);
+    },
+
+    // Рендер компактной команды
+    async renderTeamCompact(projectId) {
+        const container = document.getElementById('pDetailTeamCompact');
+        if (!container) return;
+
+        try {
+            const team = await api.call('getProjectTeam', { projectId });
+
+            if (!team || team.length === 0) {
+                container.innerHTML = '<span style="font-size:12px; color:#999;">Нет участников</span>';
+                return;
+            }
+
+            // Показываем до 4 аватаров
+            const display = team.slice(0, 4);
+            const more = team.length - 4;
+
+            container.innerHTML = display.map(member => {
+                const name = member.users?.name || 'Без имени';
+                const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                return `<div class="team-avatar-sm" title="${name}">${initials}</div>`;
+            }).join('') + (more > 0 ? `<span class="team-more" onclick="positions.openTeamModal()">+${more}</span>` : '');
+
+        } catch (e) {
+            console.error('Ошибка загрузки команды:', e);
         }
     },
 

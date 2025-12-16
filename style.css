@@ -730,3 +730,229 @@ td input:focus {
   background: #f3f4f6;
   color: var(--text-main);
 }
+
+/* === COMPACT PROJECT LAYOUT === */
+.project-compact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+  .project-compact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.compact-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+}
+
+.compact-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.compact-row:last-child {
+  border-bottom: none;
+}
+
+.compact-row i {
+  color: var(--text-sec);
+  width: 16px;
+  font-size: 12px;
+}
+
+.compact-label {
+  font-size: 12px;
+  color: var(--text-sec);
+  min-width: 70px;
+}
+
+.compact-value {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: right;
+}
+
+/* Finance Card */
+.finance-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.finance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.finance-row:last-child {
+  border-bottom: none;
+}
+
+.finance-label-sm {
+  font-size: 12px;
+  color: var(--text-sec);
+}
+
+.finance-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.finance-val.positive {
+  color: #10b981;
+}
+
+.finance-val.negative {
+  color: #ef4444;
+}
+
+/* Meta Row (Team + Docs) */
+.project-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 10px 16px;
+  background: white;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.team-compact {
+  display: flex;
+  align-items: center;
+  gap: -8px;
+}
+
+.team-compact .team-avatar-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  border: 2px solid white;
+  margin-left: -8px;
+}
+
+.team-compact .team-avatar-sm:first-child {
+  margin-left: 0;
+}
+
+.team-compact .team-more {
+  font-size: 11px;
+  color: var(--text-sec);
+  margin-left: 8px;
+  cursor: pointer;
+}
+
+.docs-compact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.doc-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: 0.2s;
+}
+
+.doc-chip:hover {
+  background: #dbeafe;
+}
+
+/* === EDITABLE FIELDS === */
+.editable-field {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: 0.15s;
+  position: relative;
+}
+
+.editable-field:hover {
+  background: #eff6ff;
+}
+
+.editable-field:hover::after {
+  content: '\f044';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 10px;
+  color: var(--primary);
+  margin-left: 5px;
+}
+
+.editable-field.editing {
+  background: white;
+  padding: 0;
+}
+
+.editable-field.editing:hover::after {
+  display: none;
+}
+
+.edit-input {
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: inherit;
+  font-weight: inherit;
+  font-family: inherit;
+  color: var(--text-main);
+  width: 100%;
+  outline: none;
+  background: white;
+}
+
+.edit-input:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Save indicator */
+.save-indicator {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #10b981;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.save-indicator.show {
+  opacity: 1;
+}
