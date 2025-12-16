@@ -370,19 +370,36 @@
   </div>
 
   <div id="teamModal" class="modal-overlay hidden">
-    <div class="modal-box" style="width:400px;">
+    <div class="modal-box" style="width:450px;">
       <h3>Команда проекта</h3>
 
-      <!-- Список участников -->
-      <div id="teamList" class="sup-list" style="margin-bottom:15px; min-height:50px;"></div>
+      <!-- Список участников с ролями -->
+      <div id="teamList" class="team-list-modal" style="margin-bottom:15px; min-height:50px;"></div>
 
-      <!-- Добавление -->
-      <div style="font-size:12px; color:#999; margin-bottom:5px;">Добавить сотрудника:</div>
-      <select id="teamSelect" class="status-select" style="width:100%; margin-bottom:20px; padding:10px;"></select>
+      <!-- Добавление сотрудника -->
+      <div class="team-add-section" style="background:#f9fafb; padding:12px; border-radius:10px;">
+        <div style="font-size:12px; color:#999; margin-bottom:8px;">Добавить сотрудника:</div>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+          <select id="teamSelect" class="status-select" style="flex:1; padding:10px;"></select>
+          <select id="teamRoleSelect" class="status-select" style="width:130px; padding:10px;">
+            <option value="member">Участник</option>
+            <option value="designer">Дизайнер</option>
+            <option value="measurer">Замерщик</option>
+            <option value="technologist">Технолог</option>
+            <option value="supplier">Снабженец</option>
+            <option value="production">Производство</option>
+            <option value="installation">Монтаж</option>
+            <option value="manager">Менеджер</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%;" onclick="manager.addTeamMember()">
+          <i class="fas fa-plus"></i> Добавить
+        </button>
+      </div>
 
-      <div style="text-align:right;">
+      <div style="text-align:right; margin-top:15px;">
         <button class="btn btn-def"
-          onclick="document.getElementById('teamModal').classList.add('hidden')">Закрыть</button>
+          onclick="document.getElementById('teamModal').classList.add('hidden'); positions.renderTeamCompact(positions.currentProjectId);">Закрыть</button>
       </div>
     </div>
   </div>

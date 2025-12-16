@@ -321,28 +321,49 @@ window.manager = {
         modal.style.display = 'flex';
         listDiv.innerHTML = '<div style="padding:10px; color:#999;">Загрузка...</div>';
 
+        const roleNames = {
+            'designer': 'Дизайнер',
+            'measurer': 'Замерщик',
+            'technologist': 'Технолог',
+            'supplier': 'Снабженец',
+            'production': 'Производство',
+            'installation': 'Монтаж',
+            'manager': 'Менеджер',
+            'member': 'Участник'
+        };
+
         try {
             const allMembers = await api.call('getCompanyMembers');
             const projectTeam = await api.call('getProjectTeam', { projectId: projId });
 
-            listDiv.innerHTML = projectTeam.length ? '' : '<div style="padding:10px; color:#999; font-size:13px;">В этом проекте пока только вы</div>';
+            if (!projectTeam.length) {
+                listDiv.innerHTML = '<div style="padding:10px; color:#999; font-size:13px;">В этом проекте пока только вы</div>';
+            } else {
+                listDiv.innerHTML = projectTeam.map(member => {
+                    const name = member.users?.name || 'Без имени';
+                    const userId = member.users?.id;
+                    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                    const role = roleNames[member.role] || member.role || 'Участник';
 
-            projectTeam.forEach(u => {
-                const row = document.createElement('div');
-                row.className = 'sup-row';
-                row.innerHTML = `
-                   <div style="flex:1; font-size:14px; font-weight:500;">
-                      ${u.first_name || ''} ${u.last_name || ''}
-                      <div style="font-size:11px; color:#999;">@${u.username || 'user'}</div>
-                   </div>
-                   <button class="btn-icon-del" onclick="manager.removeFromTeam('${u.id}')" title="Убрать"><i class="fas fa-times"></i></button>
-                `;
-                listDiv.appendChild(row);
-            });
+                    return `
+                    <div class="team-row-modal">
+                        <div class="team-avatar-modal">${initials}</div>
+                        <div class="team-info-modal">
+                            <div class="team-name-modal">${name}</div>
+                            <div class="team-role-modal">${role}</div>
+                        </div>
+                        <button class="btn-icon-del" onclick="manager.removeFromTeam('${userId}')" title="Убрать">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>`;
+                }).join('');
+            }
 
-            const assignedIds = projectTeam.map(u => String(u.id));
+            // Собираем ID уже назначенных
+            const assignedIds = projectTeam.map(m => String(m.users?.id));
             if (app.user) assignedIds.push(String(app.user.id));
 
+            // Фильтруем доступных
             const available = allMembers.filter(m => !assignedIds.includes(String(m.id)));
 
             if (available.length === 0) {
@@ -352,37 +373,57 @@ window.manager = {
                 select.disabled = false;
                 select.innerHTML = '<option value="">Выберите сотрудника...</option>' +
                     available.map(m => {
-                        const roleName = (window.ROLE_NAMES && window.ROLE_NAMES[m.role]) ? window.ROLE_NAMES[m.role] : m.role;
-                        return `<option value="${m.id}">${m.first_name} ${m.last_name || ''} (${roleName})</option>`;
+                        const companyRole = (window.ROLE_NAMES && window.ROLE_NAMES[m.role]) ? window.ROLE_NAMES[m.role] : m.role;
+                        return `<option value="${m.id}">${m.first_name} ${m.last_name || ''} (${companyRole})</option>`;
                     }).join('');
             }
 
-            // Удаляем старые слушатели (клонируем узел)
-            const newSelect = select.cloneNode(true);
-            select.parentNode.replaceChild(newSelect, select);
-
-            newSelect.onchange = async () => {
-                if (!newSelect.value) return;
-                const userId = newSelect.value;
-                newSelect.value = "";
-                await api.call('assignUserToProject', { projectId: projId, userId: userId }, 'POST');
-                this.renderTeamAvatars();
-                this.openTeam();
-            };
-
         } catch (e) {
+            console.error("Ошибка загрузки команды:", e);
+            listDiv.innerHTML = '<div style="padding:10px; color:red;">Ошибка загрузки</div>';
+        }
+    },
+
+    async addTeamMember() {
+        const projId = (typeof positions !== 'undefined') ? positions.currentProjectId : null;
+        const select = document.getElementById('teamSelect');
+        const roleSelect = document.getElementById('teamRoleSelect');
+
+        if (!projId) return alert("Проект не определён");
+        if (!select.value) return alert("Выберите сотрудника");
+
+        const userId = select.value;
+        const role = roleSelect ? roleSelect.value : 'member';
+
+        try {
+            await api.call('assignUserToProject', {
+                projectId: projId,
+                userId: userId,
+                role: role
+            }, 'POST');
+
+            select.value = "";
+            if (roleSelect) roleSelect.value = "member";
+
+            // Обновляем список
+            this.openTeam();
+        } catch (e) {
+            console.error("Ошибка добавления:", e);
             alert("Ошибка: " + e.message);
         }
     },
 
     async removeFromTeam(userId) {
-        if (!confirm("Убрать сотрудника из доступа к проекту?")) return;
+        if (!confirm("Убрать сотрудника из проекта?")) return;
         const projId = (typeof positions !== 'undefined') ? positions.currentProjectId : null;
-        if (projId) {
+        if (!projId) return;
+
+        try {
             await api.call('removeUserFromProject', { projectId: projId, userId: userId }, 'POST');
+            this.openTeam();
+        } catch (e) {
+            alert("Ошибка: " + e.message);
         }
-        this.renderTeamAvatars();
-        this.openTeam();
     },
 
     // Modals (Merge/Sup)

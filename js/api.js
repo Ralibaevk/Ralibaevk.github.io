@@ -42,7 +42,7 @@ window.api = {
 
         // --- TEAM --- 
         case 'getProjectTeam': result = await this._getProjectTeam(params.projectId); break;
-        case 'assignUserToProject': result = await this._assignUserToProject(params.projectId, params.userId); break;
+        case 'assignUserToProject': result = await this._assignUserToProject(params.projectId, params.userId, params.role); break;
         case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId); break;
 
         // --- PRODUCTION TASKS ---
@@ -341,8 +341,12 @@ window.api = {
     return { success: true };
   },
 
-  async _assignUserToProject(projectId, userId) {
-    const { error } = await supabase.from('project_assignments').insert({ project_id: projectId, user_id: userId });
+  async _assignUserToProject(projectId, userId, role = 'member') {
+    const { error } = await supabase.from('project_assignments').insert({
+      project_id: projectId,
+      user_id: userId,
+      role: role
+    });
     if (error && error.code !== '23505') throw error;
     return { success: true };
   },

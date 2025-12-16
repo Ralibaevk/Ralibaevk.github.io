@@ -956,3 +956,65 @@ td input:focus {
 .save-indicator.show {
   opacity: 1;
 }
+
+/* === TEAM MODAL === */
+.team-list-modal {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.team-row-modal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.team-avatar-modal {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.team-info-modal {
+  flex: 1;
+  min-width: 0;
+}
+
+.team-name-modal {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.team-role-modal {
+  font-size: 11px;
+  color: var(--text-sec);
+  text-transform: uppercase;
+}
+
+.btn-icon-del {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: 0.2s;
+}
+
+.btn-icon-del:hover {
+  background: #fee2e2;
+}
