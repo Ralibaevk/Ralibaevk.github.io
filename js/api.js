@@ -22,6 +22,7 @@ window.api = {
         case 'getGlobalProjects': result = await this._getGlobalProjects(); break;
         case 'createGlobalProject': result = await this._createGlobalProject(params); break;
         case 'getProjectById': result = await this._getProjectById(params.id); break;
+        case 'updateProject': result = await this._updateProject(params.id, params.data); break;
 
         case 'getPositions': result = await this._getPositions(params.projectId); break;
         case 'createPosition': result = await this._createPosition(params); break;
@@ -317,9 +318,27 @@ window.api = {
 
   async _getProjectTeam(projectId) {
     if (!window.CURRENT_COMPANY_ID) return [];
-    const { data, error } = await supabase.from('project_assignments').select('user_id, users(first_name, last_name, username, id)').eq('project_id', projectId);
+    const { data, error } = await supabase.from('project_assignments')
+      .select('user_id, role, users(first_name, last_name, username, id)')
+      .eq('project_id', projectId);
     if (error) { console.error(error); return []; }
-    return data.map(i => i.users);
+    // Возвращаем объекты с ролью и данными пользователя
+    return data.map(i => ({
+      role: i.role || 'member',
+      users: {
+        id: i.users?.id,
+        name: [i.users?.first_name, i.users?.last_name].filter(Boolean).join(' ') || i.users?.username || 'Без имени'
+      }
+    }));
+  },
+
+  async _updateProject(id, data) {
+    if (!id) throw new Error("ID проекта не передан");
+    const { error } = await supabase.from('projects')
+      .update(data)
+      .eq('id', id);
+    if (error) throw error;
+    return { success: true };
   },
 
   async _assignUserToProject(projectId, userId) {

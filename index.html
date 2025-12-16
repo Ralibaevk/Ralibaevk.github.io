@@ -106,12 +106,73 @@
               <p id="pDetailClient">Клиент...</p>
             </div>
           </div>
-          <button class="btn btn-primary" onclick="alert('Чат скоро')"><i class="fab fa-telegram"></i> Чат</button>
+          <button class="btn btn-primary" id="pDetailChatBtn" onclick="positions.openChat()"><i
+              class="fab fa-telegram"></i> Чат</button>
+        </div>
+
+        <!-- ИНФОРМАЦИЯ О ЗАКАЗЕ -->
+        <div class="project-info-section">
+          <h3 class="section-title">Информация о заказе</h3>
+          <div class="project-info-grid">
+            <div class="project-info-item">
+              <span class="info-label">Контакты</span>
+              <span class="info-value" id="pDetailPhone">—</span>
+            </div>
+            <div class="project-info-item">
+              <span class="info-label">Адрес установки</span>
+              <span class="info-value" id="pDetailAddress">—</span>
+            </div>
+            <div class="project-info-item">
+              <span class="info-label">Дата установки</span>
+              <span class="info-value" id="pDetailDeadline">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ФИНАНСЫ -->
+        <div class="project-info-section">
+          <h3 class="section-title">Финансы</h3>
+          <div class="project-finance-grid">
+            <div class="finance-item">
+              <span class="finance-label">Сумма договора</span>
+              <span class="finance-value" id="pDetailContract">0 ₸</span>
+            </div>
+            <div class="finance-item">
+              <span class="finance-label">Предоплата</span>
+              <span class="finance-value positive" id="pDetailPrepay">0 ₸</span>
+            </div>
+            <div class="finance-item">
+              <span class="finance-label">Остаток</span>
+              <span class="finance-value negative" id="pDetailBalance">0 ₸</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- УЧАСТНИКИ ПРОЕКТА -->
+        <div class="project-info-section">
+          <h3 class="section-title">Участники проекта</h3>
+          <div id="pDetailTeam" class="project-team-grid">
+            <!-- JS нарисует здесь участников -->
+          </div>
+        </div>
+
+        <!-- ДОКУМЕНТЫ -->
+        <div class="project-info-section">
+          <h3 class="section-title">Документы</h3>
+          <div class="project-docs-list" id="pDetailDocs">
+            <a href="#" class="doc-link hidden" id="pDetailContractFile">
+              <i class="fas fa-file-contract"></i> Договор
+            </a>
+            <a href="#" class="doc-link hidden" id="pDetailKpFile">
+              <i class="fas fa-file-alt"></i> КП
+            </a>
+            <span class="doc-empty" id="pDetailDocsEmpty">Документы не прикреплены</span>
+          </div>
         </div>
 
         <!-- Общие файлы -->
-        <div style="margin-bottom:20px;">
-          <h3 style="font-size:14px; text-transform:uppercase; color:#9ca3af; margin-bottom:10px;">Общие файлы</h3>
+        <div class="project-info-section">
+          <h3 class="section-title">Общие файлы</h3>
           <div id="pDetailFiles" class="grid-list"
             style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
             <!-- Файлы здесь -->
@@ -122,7 +183,7 @@
         </div>
 
         <!-- Список Позиций -->
-        <h3 style="font-size:14px; text-transform:uppercase; color:#9ca3af; margin-bottom:10px;">Изделия / Позиции</h3>
+        <h3 class="section-title" style="margin-top:20px;">Изделия / Позиции</h3>
         <div id="pDetailPositions" class="grid-list">
           <!-- Карточки позиций здесь -->
         </div>

@@ -38,16 +38,26 @@ window.positions = {
             const proj = await api.call('getProjectById', { id: projectId });
             console.log("📂 API response:", proj);
 
+            // Сохраняем данные проекта для использования в других функциях
+            this.currentProject = proj;
+
             if (proj) {
                 if (nameEl) nameEl.innerText = proj.name;
                 if (clientEl) clientEl.innerText = proj.client_name || 'Клиент не указан';
+
+                // Заполняем дополнительные поля
+                this.fillProjectDetails(proj);
+
                 console.log("✅ Project info loaded:", proj.name);
             } else {
                 console.warn("⚠️ Project not found or null response");
                 if (nameEl) nameEl.innerText = "Проект не найден";
             }
 
-            // 4. Грузим список изделий
+            // 4. Грузим команду проекта
+            await this.renderTeam(projectId);
+
+            // 5. Грузим список изделий
             console.log("📂 Calling renderList...");
             await this.renderList();
             console.log("✅ renderList completed");
@@ -62,6 +72,116 @@ window.positions = {
                         <button class="btn btn-text" onclick="positions.renderList()">Попробовать снова</button>
                     </div>`;
             }
+        }
+    },
+
+    // Заполнение полей карточки проекта
+    fillProjectDetails(proj) {
+        // Информация о заказе
+        const phoneEl = document.getElementById('pDetailPhone');
+        const addressEl = document.getElementById('pDetailAddress');
+        const deadlineEl = document.getElementById('pDetailDeadline');
+
+        if (phoneEl) phoneEl.innerText = proj.client_phone || '—';
+        if (addressEl) addressEl.innerText = proj.address || '—';
+        if (deadlineEl) deadlineEl.innerText = proj.deadline ? utils.formatDate(proj.deadline) : '—';
+
+        // Финансы
+        const contractEl = document.getElementById('pDetailContract');
+        const prepayEl = document.getElementById('pDetailPrepay');
+        const balanceEl = document.getElementById('pDetailBalance');
+
+        const contractAmount = parseFloat(proj.contract_amount) || 0;
+        const prepayAmount = parseFloat(proj.prepayment_amount) || 0;
+        const balance = contractAmount - prepayAmount;
+
+        if (contractEl) contractEl.innerText = utils.formatCurrency(contractAmount);
+        if (prepayEl) prepayEl.innerText = utils.formatCurrency(prepayAmount);
+        if (balanceEl) balanceEl.innerText = utils.formatCurrency(balance);
+
+        // Документы
+        const contractFile = document.getElementById('pDetailContractFile');
+        const kpFile = document.getElementById('pDetailKpFile');
+        const docsEmpty = document.getElementById('pDetailDocsEmpty');
+
+        let hasFiles = false;
+
+        if (proj.contract_file_url && contractFile) {
+            contractFile.href = proj.contract_file_url;
+            contractFile.target = '_blank';
+            contractFile.classList.remove('hidden');
+            hasFiles = true;
+        }
+
+        if (proj.kp_file_url && kpFile) {
+            kpFile.href = proj.kp_file_url;
+            kpFile.target = '_blank';
+            kpFile.classList.remove('hidden');
+            hasFiles = true;
+        }
+
+        if (docsEmpty) {
+            docsEmpty.classList.toggle('hidden', hasFiles);
+        }
+
+        // Ссылка на чат
+        const chatBtn = document.getElementById('pDetailChatBtn');
+        if (chatBtn && proj.chat_link) {
+            chatBtn.onclick = () => window.open(proj.chat_link, '_blank');
+        }
+    },
+
+    // Рендер команды проекта
+    async renderTeam(projectId) {
+        const container = document.getElementById('pDetailTeam');
+        if (!container) return;
+
+        const roleNames = {
+            'designer': 'Дизайнер',
+            'measurer': 'Замерщик',
+            'technologist': 'Технолог',
+            'supplier': 'Снабженец',
+            'production': 'Производство',
+            'installation': 'Монтаж',
+            'manager': 'Менеджер',
+            'member': 'Участник'
+        };
+
+        try {
+            const team = await api.call('getProjectTeam', { projectId });
+
+            if (!team || team.length === 0) {
+                container.innerHTML = '<div class="team-empty">Участники не назначены</div>';
+                return;
+            }
+
+            container.innerHTML = team.map(member => {
+                const name = member.users?.name || 'Без имени';
+                const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                const role = roleNames[member.role] || member.role || 'Участник';
+
+                return `
+                <div class="team-member">
+                    <div class="team-avatar">${initials}</div>
+                    <div class="team-info">
+                        <div class="team-role">${role}</div>
+                        <div class="team-name">${name}</div>
+                    </div>
+                </div>`;
+            }).join('');
+
+        } catch (e) {
+            console.error("Ошибка загрузки команды:", e);
+            container.innerHTML = '<div class="team-empty">Ошибка загрузки</div>';
+        }
+    },
+
+    // Открытие чата
+    openChat() {
+        if (this.currentProject?.chat_link) {
+            window.open(this.currentProject.chat_link, '_blank');
+        } else {
+            alert('Ссылка на чат не указана');
         }
     },
 
