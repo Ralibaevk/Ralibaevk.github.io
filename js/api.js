@@ -342,12 +342,37 @@ window.api = {
   },
 
   async _assignUserToProject(projectId, userId, role = 'member') {
+    console.log('🔧 _assignUserToProject called with:', { projectId, userId, role });
+
+    // Проверяем что проект существует
+    const { data: projectCheck, error: projectError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .maybeSingle();
+
+    if (projectError) {
+      console.error('❌ Project check error:', projectError);
+    }
+    if (!projectCheck) {
+      console.error('❌ Project not found with ID:', projectId);
+      throw new Error('Проект не найден');
+    }
+
+    console.log('✅ Project exists:', projectCheck);
+
     const { error } = await supabase.from('project_assignments').insert({
       project_id: projectId,
-      user_id: userId,
-      role: role
+      user_id: String(userId), // Убедимся что user_id это строка
+      role: role || 'member'
     });
-    if (error && error.code !== '23505') throw error;
+
+    if (error) {
+      console.error('❌ Assignment error:', error);
+      if (error.code !== '23505') throw error; // 23505 = unique_violation (уже существует)
+    }
+
+    console.log('✅ Assignment successful');
     return { success: true };
   },
 
