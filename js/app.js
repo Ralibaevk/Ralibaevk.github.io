@@ -11,13 +11,37 @@ window.app = {
             window.Telegram.WebApp.expand();
             document.documentElement.style.setProperty('--tg-safe-area-inset-top', (window.Telegram.WebApp.contentSafeAreaInset?.top || 20) + 'px');
             this.user = window.Telegram.WebApp.initDataUnsafe?.user;
+            // Получаем start_param (инвайт-код)
+            this.startParam = window.Telegram.WebApp.initDataUnsafe?.start_param || null;
+            console.log('📩 Start param (invite code):', this.startParam);
         }
 
         // 2. Auth & Session
         try {
             let userId = this.user ? String(this.user.id) : null;
             if (userId) {
+                // Сначала сохраняем пользователя в БД
+                await api.call('saveTelegramUser', { user: this.user }, 'POST', false);
+
+                // Пробуем инициализировать сессию
                 await api.call('initSession', { userId: userId });
+
+                // Если есть код приглашения и нет компании - присоединяемся
+                if (this.startParam && !window.CURRENT_COMPANY_ID) {
+                    console.log('🔗 Processing invite code:', this.startParam);
+                    try {
+                        await api.call('joinCompany', { code: this.startParam, userId: userId }, 'POST');
+                        // Повторно инициализируем сессию
+                        await api.call('initSession', { userId: userId });
+                        alert('Вы успешно присоединились к компании!');
+                    } catch (inviteError) {
+                        console.error('Invite error:', inviteError);
+                        // Не показываем alert если ошибка "уже в компании"
+                        if (!inviteError.message.includes('уже')) {
+                            alert('Ошибка присоединения: ' + inviteError.message);
+                        }
+                    }
+                }
             }
 
             // 3. Load Data
