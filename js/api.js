@@ -38,6 +38,7 @@ window.api = {
         case 'createInvite': result = await this._createInvite(params.userId); break;
         case 'getUserCompanies': result = await this._getUserCompanies(params.userId); break;
         case 'updateMemberRole': result = await this._updateMemberRole(params.targetId, params.newRole); break;
+        case 'updateMemberRoles': result = await this._updateMemberRoles(params.targetId, params.roles); break;
         case 'leaveCompany': result = await this._leaveCompany(params.userId); break;
 
         // --- TEAM --- 
@@ -281,13 +282,36 @@ window.api = {
 
   async _getCompanyMembers() {
     if (!window.CURRENT_COMPANY_ID) return [];
-    const { data } = await supabase.from('company_members').select('role, user_id, users(first_name, last_name, username)').eq('company_id', window.CURRENT_COMPANY_ID);
-    return data.map(m => ({ id: m.user_id, role: m.role, first_name: m.users?.first_name || 'Без имени', last_name: m.users?.last_name || '', username: m.users?.username }));
+    const { data } = await supabase.from('company_members')
+      .select('role, roles, user_id, users(first_name, last_name, username)')
+      .eq('company_id', window.CURRENT_COMPANY_ID);
+    return data.map(m => ({
+      id: m.user_id,
+      role: m.role, // Старое поле для совместимости
+      roles: m.roles || (m.role ? [m.role] : []), // Новое поле массив
+      first_name: m.users?.first_name || 'Без имени',
+      last_name: m.users?.last_name || '',
+      username: m.users?.username
+    }));
   },
 
+  // Старый метод для совместимости
   async _updateMemberRole(targetUserId, newRole) {
     if (!window.CURRENT_COMPANY_ID) return;
-    await supabase.from('company_members').update({ role: newRole }).eq('user_id', targetUserId).eq('company_id', window.CURRENT_COMPANY_ID);
+    await supabase.from('company_members')
+      .update({ role: newRole })
+      .eq('user_id', targetUserId)
+      .eq('company_id', window.CURRENT_COMPANY_ID);
+    return { success: true };
+  },
+
+  // Новый метод для массива ролей
+  async _updateMemberRoles(targetUserId, roles) {
+    if (!window.CURRENT_COMPANY_ID) return;
+    await supabase.from('company_members')
+      .update({ roles: roles })
+      .eq('user_id', targetUserId)
+      .eq('company_id', window.CURRENT_COMPANY_ID);
     return { success: true };
   },
 

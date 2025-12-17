@@ -67,67 +67,56 @@ window.profile = {
                 // Моя текущая роль
                 const myRole = window.CURRENT_USER_ROLE;
 
-                // Рендер списка сотрудников с НОВЫМИ РОЛЯМИ
+                // Рендер списка сотрудников с МНОЖЕСТВЕННЫМИ РОЛЯМИ
                 const membersList = members.map(m => {
                     const isMe = String(m.id) === String(user.id);
-                    const targetRole = m.role;
-
-                    // Логика прав: 
-                    // 1. Руководитель (owner) меняет всех, кроме себя.
-                    // 2. Менеджер/Админ (можно настроить) пока не меняет никого, либо меняет только рабочих.
-                    // Пока оставим жесткую логику: Только Владелец управляет ролями.
+                    const roles = m.roles || [];
 
                     let canEdit = (myRole === 'owner' && !isMe);
 
-                    // HTML для роли
-                    let roleEl = '';
+                    // Бейджики ролей
+                    const roleColors = {
+                        'owner': { bg: '#fef3c7', text: '#d97706' },
+                        'manager': { bg: '#e0e7ff', text: '#4f46e5' },
+                        'designer': { bg: '#dbeafe', text: '#2563eb' },
+                        'measurer': { bg: '#fce7f3', text: '#db2777' },
+                        'technologist': { bg: '#e0e7ff', text: '#4f46e5' },
+                        'supplier': { bg: '#dcfce7', text: '#166534' },
+                        'production': { bg: '#fef9c3', text: '#ca8a04' },
+                        'installation': { bg: '#ffedd5', text: '#ea580c' },
+                        'member': { bg: '#f3f4f6', text: '#4b5563' }
+                    };
 
-                    if (canEdit) {
-                        // Генерируем опции для селекта из словаря window.ROLE_NAMES
-                        // Исключаем 'owner' из списка выбора, чтобы случайно не передать права
-                        const options = Object.entries(window.ROLE_NAMES || {})
-                            .filter(([key]) => key !== 'owner')
-                            .map(([key, label]) =>
-                                `<option value="${key}" ${targetRole === key ? 'selected' : ''}>${label}</option>`
-                            ).join('');
+                    const roleBadges = roles.length > 0
+                        ? roles.map(r => {
+                            const color = roleColors[r] || roleColors.member;
+                            const name = (window.ROLE_NAMES && window.ROLE_NAMES[r]) || r;
+                            return `<span class="role-badge" style="background:${color.bg}; color:${color.text};">${name}</span>`;
+                        }).join(' ')
+                        : '<span class="role-badge" style="background:#f3f4f6; color:#999;">Нет ролей</span>';
 
-                        roleEl = `
-                            <select class="status-select" onchange="profile.changeRole('${m.id}', this.value)" style="padding:4px 8px; font-size:11px; max-width: 120px;">
-                                ${options}
-                                <option value="delete" style="color:red; font-weight:bold;">❌ Удалить</option>
-                            </select>
-                        `;
-                    } else {
-                        // Просто красивый бейджик
-                        let color = '#f3f4f6';
-                        let textCol = '#555';
-
-                        // Цветовая кодировка для разных групп
-                        if (targetRole === 'owner') { color = '#fef3c7'; textCol = '#d97706'; } // Руководитель (Золотой)
-                        else if (['manager', 'designer', 'technologist'].includes(targetRole)) { color = '#e0e7ff'; textCol = '#4f46e5'; } // ИТР (Синий)
-                        else if (['buyer'].includes(targetRole)) { color = '#dcfce7'; textCol = '#166534'; } // Снабжение (Зеленый)
-                        else { color = '#f3f4f6'; textCol = '#4b5563'; } // Цех (Серый)
-
-                        // Берем русское название из словаря или оставляем как есть
-                        const roleName = (window.ROLE_NAMES && window.ROLE_NAMES[targetRole]) || targetRole;
-
-                        roleEl = `<span class="card-tag" style="font-size:10px; background:${color}; color:${textCol}; border:none;">${roleName}</span>`;
-                    }
+                    // Кнопка редактирования
+                    const editBtn = canEdit
+                        ? `<button class="btn-icon-sm" onclick="profile.openRolesEditor('${m.id}', '${m.first_name}')" title="Редактировать роли">
+                             <i class="fas fa-edit"></i>
+                           </button>
+                           <button class="btn-icon-sm btn-danger" onclick="profile.removeMember('${m.id}')" title="Удалить">
+                             <i class="fas fa-trash"></i>
+                           </button>`
+                        : '';
 
                     return `
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #f3f4f6;">
-                            <div style="display:flex; align-items:center; gap:12px;">
-                                <div style="width:36px; height:36px; background:var(--primary); color:white; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;">
-                                    ${(m.first_name || 'U')[0]}
-                                </div>
+                        <div class="member-row">
+                            <div class="member-info">
+                                <div class="member-avatar">${(m.first_name || 'U')[0]}</div>
                                 <div>
-                                    <div style="font-size:14px; font-weight:600; color:var(--text-main);">
-                                        ${m.first_name} ${isMe ? '<span style="color:#aaa; font-weight:400;">(Вы)</span>' : ''}
+                                    <div class="member-name">
+                                        ${m.first_name} ${isMe ? '<span style="color:#aaa;">(Вы)</span>' : ''}
                                     </div>
-                                    <div style="font-size:11px; color:var(--text-sec);">@${m.username || '...'}</div>
+                                    <div class="member-roles">${roleBadges}</div>
                                 </div>
                             </div>
-                            <div>${roleEl}</div>
+                            <div class="member-actions">${editBtn}</div>
                         </div>
                     `;
                 }).join('');
@@ -271,8 +260,86 @@ window.profile = {
     async leave() {
         if (!confirm("Вы уверены? Вы потеряете доступ к проектам.")) return;
         await api.call('leaveCompany', { userId: app.user.id }, 'POST');
-        localStorage.removeItem('preferred_company_id'); // Забываем выбор
+        localStorage.removeItem('preferred_company_id');
         location.reload();
+    },
+
+    // === РЕДАКТОР РОЛЕЙ ===
+
+    membersCache: [], // Кеш сотрудников для редактора
+
+    async openRolesEditor(userId, name) {
+        // Находим сотрудника в кеше или загружаем заново
+        let members = await api.call('getCompanyMembers');
+        this.membersCache = members;
+        const member = members.find(m => String(m.id) === String(userId));
+        if (!member) return alert('Сотрудник не найден');
+
+        const currentRoles = member.roles || [];
+
+        // Генерируем чекбоксы
+        const roleOptions = Object.entries(window.ROLE_NAMES || {})
+            .filter(([key]) => key !== 'owner') // Owner нельзя назначить
+            .map(([key, label]) => {
+                const checked = currentRoles.includes(key) ? 'checked' : '';
+                return `
+                    <label class="role-checkbox">
+                        <input type="checkbox" value="${key}" ${checked}>
+                        <span>${label}</span>
+                    </label>
+                `;
+            }).join('');
+
+        // Создаём модальное окно
+        let modal = document.getElementById('rolesEditorModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'rolesEditorModal';
+            modal.className = 'modal-overlay hidden';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="modal-box" style="width:350px;">
+                <h3>Роли: ${name}</h3>
+                <div id="rolesCheckboxes" style="margin:20px 0;">
+                    ${roleOptions}
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-def" style="flex:1;" onclick="document.getElementById('rolesEditorModal').classList.add('hidden')">Отмена</button>
+                    <button class="btn btn-primary" style="flex:1;" onclick="profile.saveRoles('${userId}')">Сохранить</button>
+                </div>
+            </div>
+        `;
+
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+    },
+
+    async saveRoles(userId) {
+        const checkboxes = document.querySelectorAll('#rolesCheckboxes input[type="checkbox"]');
+        const selectedRoles = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) selectedRoles.push(cb.value);
+        });
+
+        try {
+            await api.call('updateMemberRoles', { targetId: userId, roles: selectedRoles }, 'POST');
+            document.getElementById('rolesEditorModal').classList.add('hidden');
+            this.render();
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
+    },
+
+    async removeMember(userId) {
+        if (!confirm("Удалить сотрудника из компании?")) return;
+        try {
+            await api.call('leaveCompany', { userId: userId }, 'POST');
+            this.render();
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
     },
 
 };

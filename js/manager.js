@@ -373,14 +373,53 @@ window.manager = {
                 select.disabled = false;
                 select.innerHTML = '<option value="">Выберите сотрудника...</option>' +
                     available.map(m => {
-                        const companyRole = (window.ROLE_NAMES && window.ROLE_NAMES[m.role]) ? window.ROLE_NAMES[m.role] : m.role;
-                        return `<option value="${m.id}">${m.first_name} ${m.last_name || ''} (${companyRole})</option>`;
+                        const rolesStr = (m.roles || []).map(r =>
+                            (window.ROLE_NAMES && window.ROLE_NAMES[r]) || r
+                        ).join(', ') || 'Без ролей';
+                        return `<option value="${m.id}" data-roles="${(m.roles || []).join(',')}">${m.first_name} ${m.last_name || ''} (${rolesStr})</option>`;
                     }).join('');
+
+                // При выборе сотрудника обновляем список доступных ролей
+                select.onchange = () => this.updateRoleOptions();
             }
+
+            // Сохраняем available для использования в updateRoleOptions
+            this.availableMembers = available;
 
         } catch (e) {
             console.error("Ошибка загрузки команды:", e);
             listDiv.innerHTML = '<div style="padding:10px; color:red;">Ошибка загрузки</div>';
+        }
+    },
+
+    availableMembers: [],
+
+    updateRoleOptions() {
+        const select = document.getElementById('teamSelect');
+        const roleSelect = document.getElementById('teamRoleSelect');
+        if (!select || !roleSelect) return;
+
+        const userId = select.value;
+        if (!userId) {
+            // Показываем все роли если сотрудник не выбран
+            roleSelect.innerHTML = Object.entries(window.ROLE_NAMES || {})
+                .filter(([k]) => k !== 'owner')
+                .map(([k, v]) => `<option value="${k}">${v}</option>`)
+                .join('');
+            return;
+        }
+
+        // Находим сотрудника
+        const member = this.availableMembers.find(m => String(m.id) === String(userId));
+        const roles = member?.roles || [];
+
+        if (roles.length === 0) {
+            roleSelect.innerHTML = '<option value="member">Участник</option>';
+        } else {
+            roleSelect.innerHTML = roles.map(r => {
+                const name = (window.ROLE_NAMES && window.ROLE_NAMES[r]) || r;
+                return `<option value="${r}">${name}</option>`;
+            }).join('');
         }
     },
 
