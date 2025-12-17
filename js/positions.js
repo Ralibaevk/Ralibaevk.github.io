@@ -333,6 +333,17 @@ window.positions = {
         const container = document.getElementById('pDetailTeamCompact');
         if (!container) return;
 
+        const roleNames = {
+            'designer': 'Дизайнер',
+            'measurer': 'Замерщик',
+            'technologist': 'Технолог',
+            'supplier': 'Снабженец',
+            'production': 'Производство',
+            'installation': 'Монтаж',
+            'manager': 'Менеджер',
+            'member': 'Участник'
+        };
+
         try {
             const team = await api.call('getProjectTeam', { projectId });
 
@@ -341,15 +352,21 @@ window.positions = {
                 return;
             }
 
-            // Показываем до 4 аватаров
-            const display = team.slice(0, 4);
-            const more = team.length - 4;
-
-            container.innerHTML = display.map(member => {
+            // Показываем участников с ролями
+            container.innerHTML = team.map(member => {
                 const name = member.users?.name || 'Без имени';
                 const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                return `<div class="team-avatar-sm" title="${name}">${initials}</div>`;
-            }).join('') + (more > 0 ? `<span class="team-more" onclick="positions.openTeamModal()">+${more}</span>` : '');
+                const role = roleNames[member.role] || member.role || 'Участник';
+
+                return `
+                <div class="team-member-compact" onclick="positions.openTeamModal()" title="${role}: ${name}">
+                    <div class="team-avatar-sm">${initials}</div>
+                    <div class="team-member-info">
+                        <div class="team-member-role">${role}</div>
+                        <div class="team-member-name">${name}</div>
+                    </div>
+                </div>`;
+            }).join('');
 
         } catch (e) {
             console.error('Ошибка загрузки команды:', e);
