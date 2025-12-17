@@ -450,16 +450,18 @@ window.positions = {
     // === УРОВЕНЬ 2: ВНУТРИ ИЗДЕЛИЯ (ТАБЫ) ===
     openPosition(posId, name) {
         this.currentPositionId = posId;
-        document.getElementById('posDetailName').innerText = name;
 
-        // Сброс статуса в шапке
-        document.getElementById('posDetailStatus').innerText = "Загрузка...";
+        // Обновляем breadcrumb
+        const nameEl = document.getElementById('posDetailName');
+        const projectEl = document.getElementById('posDetailProject');
+        const titleEl = document.getElementById('designTitle');
 
-        // По умолчанию открываем Инфо
-        app.switchPosTab('info');
+        if (nameEl) nameEl.innerText = name || 'Изделие';
+        if (projectEl) projectEl.innerText = this.currentProjectName || 'Проект';
+        if (titleEl) titleEl.innerText = `Дизайн проект — ${name || 'Изделие'}`;
 
-        // Подгружаем актуальный статус
-        // (Можно добавить отдельный API запрос, если нужно, но пока оставим так)
+        // Сброс на первую вкладку (Дизайн)
+        app.switchPipelineTab('design');
     },
 
     // === ПРОИЗВОДСТВО (Logic) ===

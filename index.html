@@ -178,44 +178,104 @@
         </button>
       </div>
 
-      <!-- 3. КАРТОЧКА ИЗДЕЛИЯ (Табы) -->
+      <!-- 3. КАРТОЧКА ИЗДЕЛИЯ (Pipeline) -->
       <div id="view-position-detail" class="screen">
-        <div class="view-header">
-          <div style="display:flex; align-items:center;">
-            <button class="btn-back" onclick="app.goToProject()"><i class="fas fa-arrow-left"></i></button>
-            <div class="view-title">
-              <h1 id="posDetailName">Изделие</h1>
-              <p id="posDetailStatus">Статус</p>
+        <!-- Breadcrumb -->
+        <div class="pipeline-header">
+          <button class="btn-back" onclick="app.goToProject()"><i class="fas fa-arrow-left"></i></button>
+          <div class="breadcrumb">
+            <span onclick="app.goHome()">Проекты</span>
+            <span class="sep">>></span>
+            <span id="posDetailProject" onclick="app.goToProject()">Проект</span>
+            <span class="sep">>></span>
+            <span id="posDetailName">Изделие</span>
+          </div>
+        </div>
+
+        <!-- Pipeline Tabs -->
+        <div class="pipeline-tabs">
+          <div class="pipeline-tab active" data-tab="design" onclick="app.switchPipelineTab('design')">
+            <span>Дизайн</span>
+          </div>
+          <div class="pipeline-tab" data-tab="measure" onclick="app.switchPipelineTab('measure')">
+            <span>Замер</span>
+          </div>
+          <div class="pipeline-tab" data-tab="detail" onclick="app.switchPipelineTab('detail')">
+            <span>Деталировка</span>
+          </div>
+          <div class="pipeline-tab" data-tab="supply" onclick="app.switchPipelineTab('supply')">
+            <span>Закуп</span>
+          </div>
+          <div class="pipeline-tab" data-tab="production" onclick="app.switchPipelineTab('production')">
+            <span>Производство</span>
+          </div>
+          <div class="pipeline-tab" data-tab="install" onclick="app.switchPipelineTab('install')">
+            <span>Монтаж</span>
+          </div>
+          <div class="pipeline-tab" data-tab="handover" onclick="app.switchPipelineTab('handover')">
+            <span>Сдача</span>
+          </div>
+        </div>
+
+        <!-- TAB: ДИЗАЙН -->
+        <div id="pipeline-design" class="pipeline-content active">
+          <div class="design-title-row">
+            <h2 id="designTitle">Дизайн проект</h2>
+            <div class="design-actions">
+              <button class="btn btn-def" onclick="design.uploadImages()"><i class="fas fa-upload"></i> Загрузить
+                эскизы</button>
+              <button class="btn btn-def" onclick="design.openSpecModal()"><i class="fas fa-list"></i>
+                Спецификация</button>
+              <button class="btn btn-def" onclick="design.openEditsModal()"><i class="fas fa-comments"></i> Правки из
+                чата</button>
             </div>
           </div>
-        </div>
 
-        <!-- Навигация по табам -->
-        <div class="tabs-scroll">
-          <div class="tab-chip active" onclick="app.switchPosTab('info')">Инфо</div>
-          <div class="tab-chip" onclick="app.switchPosTab('design')">Дизайн</div>
-          <div class="tab-chip" onclick="app.switchPosTab('supply')">Смета (Закуп)</div>
-          <div class="tab-chip" onclick="app.switchPosTab('production')">Цех</div>
-          <div class="tab-chip" onclick="app.switchPosTab('install')">Монтаж</div>
-        </div>
+          <div class="design-layout">
+            <!-- Левая колонка: Галерея -->
+            <div class="design-gallery">
+              <div class="gallery-main" id="galleryMain">
+                <div class="gallery-placeholder"><i class="fas fa-image"></i><span>Нет изображений</span></div>
+              </div>
+              <div class="gallery-thumbs" id="galleryThumbs"></div>
+            </div>
 
-        <!-- Контент Табов -->
-        <div id="tab-info" class="tab-content active">
-          <div class="card">
-            <h3>Основная информация</h3>
-            <p>Здесь будет рендер, описание и смена статусов.</p>
+            <!-- Правая колонка: Спецификация -->
+            <div class="design-spec-panel">
+              <h3>Спецификация</h3>
+              <div id="specContent" class="spec-content">
+                <span class="spec-empty">Спецификация пуста</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Нижние кнопки -->
+          <div class="design-footer">
+            <button class="btn btn-primary" onclick="design.approve()"><i class="fas fa-check"></i> Согласовать</button>
+            <button class="btn btn-success" onclick="design.toWork()"><i class="fas fa-play"></i> В работу</button>
           </div>
         </div>
 
-        <div id="tab-design" class="tab-content">
-          <div class="card">
-            <h3>Эскизы и история</h3>
+        <!-- TAB: ЗАМЕР (заглушка) -->
+        <div id="pipeline-measure" class="pipeline-content">
+          <div class="stub-content">
+            <i class="fas fa-ruler-combined"></i>
+            <h3>Замер</h3>
+            <p>Раздел в разработке</p>
           </div>
         </div>
 
-        <!-- ТАБ ЗАКУПА (Сюда мы встроим Manager.js) -->
-        <div id="tab-supply" class="tab-content">
-          <!-- Тулбар менеджера -->
+        <!-- TAB: ДЕТАЛИРОВКА (заглушка) -->
+        <div id="pipeline-detail" class="pipeline-content">
+          <div class="stub-content">
+            <i class="fas fa-drafting-compass"></i>
+            <h3>Деталировка</h3>
+            <p>Раздел в разработке</p>
+          </div>
+        </div>
+
+        <!-- TAB: ЗАКУП -->
+        <div id="pipeline-supply" class="pipeline-content">
           <div class="mgr-toolbar">
             <button class="btn btn-text" onclick="manager.addRow()"><i class="fas fa-plus"></i> Строка</button>
             <button class="btn btn-text" onclick="manager.openSup()"><i class="fas fa-truck"></i> Поставщик</button>
@@ -224,7 +284,6 @@
             <div style="flex:1"></div>
             <span id="mgrTotal" style="font-weight:700;">0 ₸</span>
           </div>
-          <!-- Таблица менеджера -->
           <div class="mgr-grid">
             <table id="mgrTable">
               <thead>
@@ -242,9 +301,30 @@
           </div>
         </div>
 
-        <div id="tab-production" class="tab-content">
-          <div class="card">
+        <!-- TAB: ПРОИЗВОДСТВО (заглушка) -->
+        <div id="pipeline-production" class="pipeline-content">
+          <div class="stub-content">
+            <i class="fas fa-industry"></i>
             <h3>Производство</h3>
+            <p>Раздел в разработке</p>
+          </div>
+        </div>
+
+        <!-- TAB: МОНТАЖ (заглушка) -->
+        <div id="pipeline-install" class="pipeline-content">
+          <div class="stub-content">
+            <i class="fas fa-tools"></i>
+            <h3>Монтаж</h3>
+            <p>Раздел в разработке</p>
+          </div>
+        </div>
+
+        <!-- TAB: СДАЧА (заглушка) -->
+        <div id="pipeline-handover" class="pipeline-content">
+          <div class="stub-content">
+            <i class="fas fa-handshake"></i>
+            <h3>Сдача</h3>
+            <p>Раздел в разработке</p>
           </div>
         </div>
       </div>

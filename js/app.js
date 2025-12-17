@@ -171,15 +171,13 @@ window.app = {
         target.classList.add('active');
     },
 
-    // Табы внутри позиции
+    // Табы внутри позиции (LEGACY - сохранено для обратной совместимости)
     switchPosTab(tabId) {
         document.querySelectorAll('.tab-chip').forEach(c => c.classList.remove('active'));
 
-        // New efficient way: click event is handled in HTML, but we might want to highlight programmatically
         if (typeof event !== 'undefined' && event.target && event.target.classList.contains('tab-chip')) {
             event.target.classList.add('active');
         } else {
-            // Fallback: find by onclick attr
             const btn = Array.from(document.querySelectorAll('.tab-chip')).find(el => el.getAttribute('onclick')?.includes(tabId));
             if (btn) btn.classList.add('active');
         }
@@ -188,9 +186,30 @@ window.app = {
         const content = document.getElementById('tab-' + tabId);
         if (content) content.classList.add('active');
 
-        // Если открыли Смету - грузим данные
         if (tabId === 'supply') {
             manager.open(positions.currentPositionId);
+        }
+    },
+
+    // НОВЫЕ Pipeline Табы
+    switchPipelineTab(tabId) {
+        // Переключаем активный таб
+        document.querySelectorAll('.pipeline-tab').forEach(t => t.classList.remove('active'));
+        const tab = document.querySelector(`.pipeline-tab[data-tab="${tabId}"]`);
+        if (tab) tab.classList.add('active');
+
+        // Переключаем контент
+        document.querySelectorAll('.pipeline-content').forEach(c => c.classList.remove('active'));
+        const content = document.getElementById('pipeline-' + tabId);
+        if (content) content.classList.add('active');
+
+        // Инициализация вкладок
+        const posId = positions.currentPositionId;
+
+        if (tabId === 'design' && window.design) {
+            design.init(posId);
+        } else if (tabId === 'supply' && window.manager) {
+            manager.open(posId);
         }
     },
 
