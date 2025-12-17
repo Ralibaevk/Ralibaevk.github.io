@@ -349,22 +349,31 @@ window.manager = {
                     <div class="team-row-modal">
                         <div class="team-avatar-modal">${initials}</div>
                         <div class="team-info-modal">
-                            <div class="team-name-modal">${name}</div>
                             <div class="team-role-modal">${role}</div>
+                            <div class="team-name-modal">${name}</div>
                         </div>
-                        <button class="btn-icon-del" onclick="manager.removeFromTeam('${userId}')" title="Убрать">
+                        <button class="btn-icon-del" onclick="manager.removeFromTeam('${userId}', '${member.role}')" title="Убрать">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>`;
                 }).join('');
             }
 
-            // Собираем ID уже назначенных
-            const assignedIds = projectTeam.map(m => String(m.users?.id));
-            if (app.user) assignedIds.push(String(app.user.id));
+            // Собираем уже назначенные пары user_id+role
+            const assignedPairs = projectTeam.map(m => `${m.users?.id}:${m.role}`);
 
-            // Фильтруем доступных
-            const available = allMembers.filter(m => !assignedIds.includes(String(m.id)));
+            // Формируем список доступных сотрудников с их доступными ролями
+            // Сотрудник доступен если хотя бы одна его роль ещё не назначена
+            const available = [];
+            allMembers.forEach(m => {
+                if (String(m.id) === String(app.user?.id)) return; // Исключаем себя
+                const memberRoles = m.roles || [];
+                // Фильтруем роли, которые ещё не назначены этому сотруднику
+                const availableRoles = memberRoles.filter(r => !assignedPairs.includes(`${m.id}:${r}`));
+                if (availableRoles.length > 0) {
+                    available.push({ ...m, availableRoles });
+                }
+            });
 
             if (available.length === 0) {
                 select.innerHTML = '<option value="">Все сотрудники уже добавлены</option>';
@@ -411,7 +420,8 @@ window.manager = {
 
         // Находим сотрудника
         const member = this.availableMembers.find(m => String(m.id) === String(userId));
-        const roles = member?.roles || [];
+        // Используем availableRoles если есть, иначе все роли
+        const roles = member?.availableRoles || member?.roles || [];
 
         if (roles.length === 0) {
             roleSelect.innerHTML = '<option value="member">Участник</option>';
@@ -452,13 +462,13 @@ window.manager = {
         }
     },
 
-    async removeFromTeam(userId) {
-        if (!confirm("Убрать сотрудника из проекта?")) return;
+    async removeFromTeam(userId, role) {
+        if (!confirm("Убрать эту роль сотрудника из проекта?")) return;
         const projId = (typeof positions !== 'undefined') ? positions.currentProjectId : null;
         if (!projId) return;
 
         try {
-            await api.call('removeUserFromProject', { projectId: projId, userId: userId }, 'POST');
+            await api.call('removeUserFromProject', { projectId: projId, userId: userId, role: role }, 'POST');
             this.openTeam();
         } catch (e) {
             alert("Ошибка: " + e.message);

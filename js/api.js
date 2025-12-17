@@ -44,7 +44,7 @@ window.api = {
         // --- TEAM --- 
         case 'getProjectTeam': result = await this._getProjectTeam(params.projectId); break;
         case 'assignUserToProject': result = await this._assignUserToProject(params.projectId, params.userId, params.role); break;
-        case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId); break;
+        case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId, params.role); break;
 
         // --- PRODUCTION TASKS ---
         case 'getProductionTasks': result = await this._getProductionTasks(params.positionId); break;
@@ -400,8 +400,17 @@ window.api = {
     return { success: true };
   },
 
-  async _removeUserFromProject(projectId, userId) {
-    const { error } = await supabase.from('project_assignments').delete().eq('project_id', projectId).eq('user_id', userId);
+  async _removeUserFromProject(projectId, userId, role) {
+    let query = supabase.from('project_assignments').delete()
+      .eq('project_id', projectId)
+      .eq('user_id', userId);
+
+    // Если указана роль, удаляем только эту конкретную запись
+    if (role) {
+      query = query.eq('role', role);
+    }
+
+    const { error } = await query;
     if (error) throw error;
     return { success: true };
   },
