@@ -993,15 +993,17 @@ td input:focus {
 }
 
 .team-name-modal {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sec);
 }
 
 .team-role-modal {
-  font-size: 11px;
-  color: var(--text-sec);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
   text-transform: uppercase;
+  margin-bottom: 2px;
 }
 
 .btn-icon-del {
