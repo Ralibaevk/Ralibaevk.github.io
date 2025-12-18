@@ -1,6 +1,12 @@
 // js/api.js
 console.log("✅ api.js file is loading...");
 
+// === НАСТРОЙКИ ТЕЛЕГРАМ ===
+const TG_BOT_TOKEN = "8480952626:AAEOC-1BE15Zwo4Efh6lu4SAD-C8CTXDvYk";
+const TG_CHANNEL_ID = "-1003537134867"; // ID канала с -100
+// Ссылка для просмотра (убираем -100 из ID для ссылки t.me/c/...)
+const TG_LINK_BASE = "https://t.me/c/" + TG_CHANNEL_ID.replace("-100", "") + "/";
+
 window.api = {
   async call(action, params = {}, method = 'GET', useLoader = true) {
     if (useLoader && document.getElementById('loader')) document.getElementById('loader').classList.remove('hidden');
@@ -11,23 +17,24 @@ window.api = {
         // --- AUTH & SYSTEM ---
         case 'saveTelegramUser': result = await this._saveUser(params.user); break;
         case 'initSession': result = await this._initSession(params.userId); break;
-        case 'uploadFile': result = await this._uploadFile(params.data, params.name, params.mime); break;
+
+        // 🔥 НОВАЯ ЗАГРУЗКА ЧЕРЕЗ ТЕЛЕГРАМ 🔥
+        case 'uploadFile': result = await this._uploadToTelegram(params.file, params.name); break;
 
         // --- DICTIONARIES ---
         case 'getSuppliers': result = await this._getSuppliers(); break;
         case 'saveSuppliers': result = await this._saveSuppliers(params.list); break;
         case 'getCatalog': result = await this._getCatalog(); break;
 
-        // --- NEW ERP STRUCTURE ---
+        // --- PROJECTS & POSITIONS ---
         case 'getGlobalProjects': result = await this._getGlobalProjects(); break;
         case 'createGlobalProject': result = await this._createGlobalProject(params); break;
         case 'getProjectById': result = await this._getProjectById(params.id); break;
         case 'updateProject': result = await this._updateProject(params.id, params.data); break;
-
         case 'getPositions': result = await this._getPositions(params.projectId); break;
         case 'createPosition': result = await this._createPosition(params); break;
 
-        // --- SUPPLY LISTS (Manager) ---
+        // --- SUPPLY LISTS ---
         case 'getSupplyByPosition': result = await this._getSupplyByPosition(params.positionId); break;
         case 'saveSupplyList': result = await this._saveSupplyList(params); break;
 
@@ -37,7 +44,6 @@ window.api = {
         case 'joinCompany': result = await this._joinCompany(params.code, params.userId); break;
         case 'createInvite': result = await this._createInvite(params.userId); break;
         case 'getUserCompanies': result = await this._getUserCompanies(params.userId); break;
-        case 'updateMemberRole': result = await this._updateMemberRole(params.targetId, params.newRole); break;
         case 'updateMemberRoles': result = await this._updateMemberRoles(params.targetId, params.roles); break;
         case 'leaveCompany': result = await this._leaveCompany(params.userId); break;
 
@@ -46,16 +52,18 @@ window.api = {
         case 'assignUserToProject': result = await this._assignUserToProject(params.projectId, params.userId, params.role); break;
         case 'removeUserFromProject': result = await this._removeUserFromProject(params.projectId, params.userId, params.role); break;
 
-        // --- PRODUCTION TASKS ---
+        // --- TASKS ---
         case 'getProductionTasks': result = await this._getProductionTasks(params.positionId); break;
         case 'createProductionTask': result = await this._createProductionTask(params); break;
         case 'updateTaskStatus': result = await this._updateTaskStatus(params.taskId, params.status); break;
         case 'deleteTask': result = await this._deleteTask(params.taskId); break;
 
-        // --- FILES & STATUSES ---
-        case 'getFiles': result = await this._getFiles(params.parentId, params.level); break;
-        case 'attachFile': result = await this._attachFile(params); break;
+        // --- FILES (DATABASE) ---
+        case 'getFiles': result = await this._getFiles(params.parentId, params.stage); break;
+        case 'saveFileRecord': result = await this._saveFileRecord(params); break;
         case 'deleteFile': result = await this._deleteFile(params.fileId); break;
+
+        // STATUS
         case 'updatePositionStatus': result = await this._updatePositionStatus(params.id, params.status); break;
 
         default: console.warn(`Action ${action} not implemented.`); result = {};
@@ -71,6 +79,67 @@ window.api = {
   },
 
   // --- INTERNAL METHODS ---
+
+  // 🔥 ЗАГРУЗКА В ТЕЛЕГРАМ
+  async _uploadToTelegram(file, fileName) {
+    const formData = new FormData();
+    formData.append('chat_id', TG_CHANNEL_ID);
+    formData.append('document', file, fileName);
+    formData.append('caption', `📂 Файл: ${fileName}\nЗагрузил: ${app.user?.first_name || 'User'}`);
+
+    // Отправляем напрямую в Telegram API
+    const response = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const json = await response.json();
+    if (!json.ok) throw new Error("Telegram Error: " + json.description);
+
+    // Получаем ID сообщения, чтобы сформировать ссылку
+    const msgId = json.result.message_id;
+    // Ссылка вида: https://t.me/c/3537134867/123
+    const publicUrl = `${TG_LINK_BASE}${msgId}`;
+
+    return { url: publicUrl, type: 'telegram_link' };
+  },
+
+  // Сохранение записи о файле в Supabase (чтобы он появился во вкладке)
+  async _saveFileRecord(params) {
+    const { error } = await supabase.from('project_files').insert({
+      project_id: params.projectId,   // Опционально
+      position_id: params.positionId, // Опционально
+      file_name: params.name,
+      file_url: params.url,
+      file_type: params.type || 'file',
+      stage: params.stage, // 'measure', 'detail' и т.д.
+      uploaded_by: app.user?.id
+    });
+    if (error) throw error;
+    return { success: true };
+  },
+
+  // Получение списка файлов
+  async _getFiles(parentId, stage) {
+    // parentId может быть id проекта или позиции
+    // Попробуем найти по position_id, так как мы сейчас работаем внутри изделия
+    const { data, error } = await supabase
+      .from('project_files')
+      .select('*')
+      .eq('position_id', parentId)
+      .eq('stage', stage)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async _deleteFile(fileId) {
+    // Удаляем только запись из БД. Из Телеграма файл удалить ботом сложно (удаление сообщения), пока оставим.
+    const { error } = await supabase.from('project_files').delete().eq('id', fileId);
+    if (error) throw error;
+    return { success: true };
+  },
 
   async _saveUser(user) {
     if (!user) return;
@@ -120,13 +189,13 @@ window.api = {
   },
 
   async _getProjectById(id) {
-    if (!id) throw new Error("ID проекта не передан");
+    if (!id) throw new Error("ID проекта нe переда н");
 
     const { data, error } = await supabase
       .from('projects')
       .select('*')
       .eq('id', id)
-      .maybeSingle(); // Используем maybeSingle вместо single, чтобы не крашилось
+      .maybeSingle();
 
     if (error) throw error;
     if (!data) throw new Error("Проект не найден (проверьте права доступа)");
@@ -134,37 +203,36 @@ window.api = {
     return data;
   },
 
-  async _getPositions(projectId) {
-    console.log("🔍 API._getPositions called with projectId:", projectId);
+  async _updateProject(id, data) {
+    if (!id) throw new Error("ID проекта не передан");
+    const { error } = await supabase.from('projects')
+      .update(data)
+      .eq('id', id);
+    if (error) throw error;
+    return { success: true };
+  },
 
+  async _getPositions(projectId) {
     if (!projectId) {
       console.error("❌ _getPositions: projectId is empty!");
       return [];
     }
-
     const { data, error } = await supabase
       .from('positions')
       .select('*')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true });
-
-    console.log("🔍 _getPositions result:", { data, error });
-
     if (error) {
       console.error("❌ Supabase error in _getPositions:", error);
       throw error;
     }
-
     return data || [];
   },
 
   async _createPosition(params) {
-    console.log("➕ API._createPosition called with:", params);
-
     if (!params.projectId) {
       throw new Error("projectId обязателен для создания позиции");
     }
-
     const { data, error } = await supabase
       .from('positions')
       .insert({
@@ -174,14 +242,10 @@ window.api = {
       })
       .select()
       .single();
-
-    console.log("➕ _createPosition result:", { data, error });
-
     if (error) {
       console.error("❌ Supabase error in _createPosition:", error);
       throw error;
     }
-
     return data;
   },
 
@@ -287,15 +351,14 @@ window.api = {
       .eq('company_id', window.CURRENT_COMPANY_ID);
     return data.map(m => ({
       id: m.user_id,
-      role: m.role, // Старое поле для совместимости
-      roles: m.roles || (m.role ? [m.role] : []), // Новое поле массив
+      role: m.role,
+      roles: m.roles || (m.role ? [m.role] : []),
       first_name: m.users?.first_name || 'Без имени',
       last_name: m.users?.last_name || '',
       username: m.users?.username
     }));
   },
 
-  // Старый метод для совместимости
   async _updateMemberRole(targetUserId, newRole) {
     if (!window.CURRENT_COMPANY_ID) return;
     await supabase.from('company_members')
@@ -305,7 +368,6 @@ window.api = {
     return { success: true };
   },
 
-  // Новый метод для массива ролей
   async _updateMemberRoles(targetUserId, roles) {
     if (!window.CURRENT_COMPANY_ID) return;
     await supabase.from('company_members')
@@ -326,27 +388,12 @@ window.api = {
     return data.map(item => ({ id: item.company_id, name: item.companies?.name, role: item.role }));
   },
 
-  async _uploadFile(base64Data, fileName, mimeType) {
-    if (!window.CURRENT_COMPANY_ID) throw new Error("Нет доступа");
-    const byteCharacters = atob(base64Data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: mimeType });
-    const filePath = `${window.CURRENT_COMPANY_ID}/${Date.now()}_${fileName}`;
-    const { error } = await supabase.storage.from('project-files').upload(filePath, blob, { contentType: mimeType, upsert: false });
-    if (error) throw error;
-    const { data: publicUrlData } = supabase.storage.from('project-files').getPublicUrl(filePath);
-    return { url: publicUrlData.publicUrl };
-  },
-
   async _getProjectTeam(projectId) {
     if (!window.CURRENT_COMPANY_ID) return [];
     const { data, error } = await supabase.from('project_assignments')
       .select('user_id, role, users(first_name, last_name, username, id)')
       .eq('project_id', projectId);
     if (error) { console.error(error); return []; }
-    // Возвращаем объекты с ролью и данными пользователя
     return data.map(i => ({
       role: i.role || 'member',
       users: {
@@ -356,60 +403,19 @@ window.api = {
     }));
   },
 
-  async _updateProject(id, data) {
-    if (!id) throw new Error("ID проекта не передан");
-    const { error } = await supabase.from('projects')
-      .update(data)
-      .eq('id', id);
-    if (error) throw error;
-    return { success: true };
-  },
-
   async _assignUserToProject(projectId, userId, role = 'member') {
-    console.log('🔧 _assignUserToProject called with:', { projectId, userId, role });
-
-    // Проверяем что проект существует
-    const { data: projectCheck, error: projectError } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('id', projectId)
-      .maybeSingle();
-
-    if (projectError) {
-      console.error('❌ Project check error:', projectError);
-    }
-    if (!projectCheck) {
-      console.error('❌ Project not found with ID:', projectId);
-      throw new Error('Проект не найден');
-    }
-
-    console.log('✅ Project exists:', projectCheck);
-
+    const { data: projectCheck, error: projectError } = await supabase.from('projects').select('id').eq('id', projectId).maybeSingle();
+    if (!projectCheck) throw new Error('Проект не найден');
     const { error } = await supabase.from('project_assignments').insert({
-      project_id: projectId,
-      user_id: String(userId), // Убедимся что user_id это строка
-      role: role || 'member'
+      project_id: projectId, user_id: String(userId), role: role || 'member'
     });
-
-    if (error) {
-      console.error('❌ Assignment error:', error);
-      if (error.code !== '23505') throw error; // 23505 = unique_violation (уже существует)
-    }
-
-    console.log('✅ Assignment successful');
+    if (error && error.code !== '23505') throw error;
     return { success: true };
   },
 
   async _removeUserFromProject(projectId, userId, role) {
-    let query = supabase.from('project_assignments').delete()
-      .eq('project_id', projectId)
-      .eq('user_id', userId);
-
-    // Если указана роль, удаляем только эту конкретную запись
-    if (role) {
-      query = query.eq('role', role);
-    }
-
+    let query = supabase.from('project_assignments').delete().eq('project_id', projectId).eq('user_id', userId);
+    if (role) query = query.eq('role', role);
     const { error } = await query;
     if (error) throw error;
     return { success: true };
@@ -438,25 +444,6 @@ window.api = {
   async _deleteTask(taskId) {
     const { error } = await supabase.from('production_tasks').delete().eq('id', taskId);
     if (error) throw error;
-    return { success: true };
-  },
-
-  async _getFiles(parentId, level) {
-    const { data } = await supabase.from('project_files').select('*').eq(level === 'project' ? 'project_id' : 'position_id', parentId).order('created_at', { ascending: false });
-    return data || [];
-  },
-
-  async _attachFile(params) {
-    const uploadRes = await this._uploadFile(params.base64, params.name, params.mime);
-    const payload = { file_name: params.name, file_url: uploadRes.url, file_type: params.type, uploaded_by: app.user?.id };
-    if (params.level === 'project') payload.project_id = params.parentId; else payload.position_id = params.parentId;
-    const { error } = await supabase.from('project_files').insert(payload);
-    if (error) throw error;
-    return { success: true };
-  },
-
-  async _deleteFile(fileId) {
-    await supabase.from('project_files').delete().eq('id', fileId);
     return { success: true };
   },
 
