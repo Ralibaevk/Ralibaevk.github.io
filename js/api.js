@@ -87,20 +87,32 @@ window.api = {
   // 1. Команда боту: "Жди файл от меня"
   async _setUploadMode(params) {
     const user = app.user;
-    if (!user) throw new Error("Откройте приложение через Telegram!");
+    if (!user) throw new Error("Сначала войдите через Telegram!");
 
-    // Вызываем нашу Edge Function
-    const { error } = await supabase.functions.invoke('telegram-proxy?action=set_upload_mode', {
-      body: {
+    // 👇 ПРЯМАЯ ССЫЛКА НА ТВОЮ ФУНКЦИЮ (Никакой магии, просто адрес)
+    const FUNCTION_URL = 'https://lonhhlcqjlcxnvyhkxgp.supabase.co/functions/v1/telegram-proxy';
+
+    console.log("Отправляем запрос на:", FUNCTION_URL);
+
+    const response = await fetch(`${FUNCTION_URL}?action=set_upload_mode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
         user_id: user.id,
-        project_id: null, // Если нужно привязать к проекту в целом
+        project_id: null,
         position_id: params.positionId,
         stage: params.stage,
         item_name: params.itemName
-      }
+      })
     });
 
-    if (error) throw error;
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Ошибка сервера: ${errText}`);
+    }
+
     return { success: true };
   },
 
