@@ -39,21 +39,20 @@ window.measure = {
     async loadFiles() {
         const list = document.getElementById('measureFilesList');
         try {
-            // Запрашиваем файлы этапа 'measure'
+            // 🔥 Исправлено: передаём stage = 'measure'
             const files = await api.call('getFiles', {
                 parentId: this.currentPositionId,
-                level: 'position' // Указываем, что ищем по position_id
+                stage: 'measure'  // ✅ Правильный параметр!
             });
 
-            // Фильтруем только те, что относятся к этапу 'measure'
-            const measureFiles = files.filter(f => f.stage === 'measure');
+            console.log('📂 Загружено файлов:', files.length, files);
 
-            if (measureFiles.length === 0) {
+            if (!files || files.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding:30px; color:#ccc;">Нет загруженных файлов</div>`;
                 return;
             }
 
-            list.innerHTML = measureFiles.map(f => {
+            list.innerHTML = files.map(f => {
                 // Иконка
                 let icon = 'fa-file';
                 if (f.file_name.endsWith('.pdf')) icon = 'fa-file-pdf';
