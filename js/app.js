@@ -208,10 +208,10 @@ window.app = {
 
         if (tabId === 'design' && window.design) {
             design.init(posId);
-        } else if (tabId === 'supply' && window.manager) {
-            manager.open(posId);
         } else if (tabId === 'measure' && window.measure) {
             measure.init(posId);
+        } else if (tabId === 'supply' && window.manager) {
+            manager.open(posId);
         }
     },
 

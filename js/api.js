@@ -58,6 +58,10 @@ window.api = {
         case 'updateTaskStatus': result = await this._updateTaskStatus(params.taskId, params.status); break;
         case 'deleteTask': result = await this._deleteTask(params.taskId); break;
 
+        // --- TELEGRAM INTERACTION ---
+        case 'setUploadMode': result = await this._setUploadMode(params); break;
+        case 'requestFileInChat': result = await this._requestFileInChat(params); break;
+
         // --- FILES (DATABASE) ---
         case 'getFiles': result = await this._getFiles(params.parentId, params.stage); break;
         case 'saveFileRecord': result = await this._saveFileRecord(params); break;
@@ -79,6 +83,42 @@ window.api = {
   },
 
   // --- INTERNAL METHODS ---
+
+  // 1. Команда боту: "Жди файл от меня"
+  async _setUploadMode(params) {
+    const user = app.user;
+    if (!user) throw new Error("Откройте приложение через Telegram!");
+
+    // Вызываем нашу Edge Function
+    const { error } = await supabase.functions.invoke('telegram-proxy?action=set_upload_mode', {
+      body: {
+        user_id: user.id,
+        project_id: null, // Если нужно привязать к проекту в целом
+        position_id: params.positionId,
+        stage: params.stage,
+        item_name: params.itemName
+      }
+    });
+
+    if (error) throw error;
+    return { success: true };
+  },
+
+  // 2. Команда боту: "Пришли мне этот файл"
+  async _requestFileInChat(fileId) {
+    const user = app.user;
+    if (!user) throw new Error("Нужен Telegram!");
+
+    const { error } = await supabase.functions.invoke('telegram-proxy?action=send_file', {
+      body: {
+        file_id: fileId,
+        chat_id: user.id
+      }
+    });
+
+    if (error) throw error;
+    return { success: true };
+  },
 
   // 🔥 ЗАГРУЗКА В ТЕЛЕГРАМ
   async _uploadToTelegram(file, fileName) {

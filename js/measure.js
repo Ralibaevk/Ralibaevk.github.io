@@ -14,43 +14,47 @@ window.measure = {
         const container = document.getElementById('pipeline-measure');
         if (!container) return;
 
+        // Определяем имя изделия для заголовка
+        const itemName = document.getElementById('posDetailName')?.innerText || 'Изделие';
+
         container.innerHTML = `
             <div class="design-title-row">
                 <h2>Замеры и Файлы</h2>
-                <button class="btn btn-primary" onclick="measure.uploadPrompt()">
-                    <i class="fas fa-upload"></i> Добавить файл
+                <button class="btn btn-primary" onclick="measure.uploadPrompt('${itemName}')">
+                    <i class="fas fa-plus"></i> Добавить файл
                 </button>
             </div>
 
             <div class="p-card" style="margin-bottom:20px;">
                 <div style="font-size:13px; color:#666; margin-bottom:15px;">
-                    <i class="fas fa-info-circle"></i> Файлы сохраняются в закрытом Telegram-канале.
+                    <i class="fas fa-info-circle"></i> Файлы хранятся в чате с ботом.
                 </div>
                 <div id="measureFilesList" class="file-list-grid">
                     <div style="text-align:center; padding:20px; color:#999;">Загрузка списка...</div>
                 </div>
             </div>
-            
-            <input type="file" id="measureFileInput" style="display:none" onchange="measure.handleFileSelect(this)">
         `;
     },
 
     async loadFiles() {
         const list = document.getElementById('measureFilesList');
         try {
-            // Запрашиваем файлы с этапа 'measure'
+            // Запрашиваем файлы этапа 'measure'
             const files = await api.call('getFiles', {
                 parentId: this.currentPositionId,
-                stage: 'measure'
+                level: 'position' // Указываем, что ищем по position_id
             });
 
-            if (files.length === 0) {
+            // Фильтруем только те, что относятся к этапу 'measure'
+            const measureFiles = files.filter(f => f.stage === 'measure');
+
+            if (measureFiles.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding:30px; color:#ccc;">Нет загруженных файлов</div>`;
                 return;
             }
 
-            list.innerHTML = files.map(f => {
-                // Иконка в зависимости от типа (простая логика)
+            list.innerHTML = measureFiles.map(f => {
+                // Иконка
                 let icon = 'fa-file';
                 if (f.file_name.endsWith('.pdf')) icon = 'fa-file-pdf';
                 if (f.file_name.match(/\.(jpg|jpeg|png)$/i)) icon = 'fa-file-image';
@@ -68,9 +72,9 @@ window.measure = {
                         </div>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <a href="${f.file_url}" target="_blank" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
-                            <i class="fas fa-external-link-alt"></i> Открыть
-                        </a>
+                        <button onclick="measure.requestFile('${f.file_url}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                             <i class="fab fa-telegram-plane"></i> В чат
+                        </button>
                         <button class="btn-icon-del" onclick="measure.deleteFile('${f.id}')"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>`;
@@ -82,37 +86,36 @@ window.measure = {
         }
     },
 
-    uploadPrompt() {
-        document.getElementById('measureFileInput').click();
-    },
-
-    async handleFileSelect(input) {
-        const file = input.files[0];
-        if (!file) return;
-
-        // Ограничение по размеру (Телеграм принимает до 50МБ ботом легко, но лучше не жестить)
-        if (file.size > 20 * 1024 * 1024) return alert("Файл слишком большой (макс 20МБ)");
-
+    // 1. ЗАГРУЗКА: Говорим боту, что сейчас пришлем файл
+    async uploadPrompt(itemName) {
         try {
-            // 1. Грузим в Телеграм
-            const res = await api.call('uploadFile', { file: file, name: file.name }, 'POST');
-
-            // 2. Сохраняем ссылку в Supabase
-            await api.call('saveFileRecord', {
+            await api.call('setUploadMode', {
                 positionId: this.currentPositionId,
-                name: file.name,
-                url: res.url,
-                type: 'file',
-                stage: 'measure' // <--- Метка этапа
-            }, 'POST', false);
+                stage: 'measure',
+                itemName: itemName
+            });
 
-            alert("Файл загружен!");
-            this.loadFiles(); // Обновляем список
-
+            // Закрываем приложение, чтобы перекинуть юзера в чат
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.close();
+            } else {
+                alert("Это работает только внутри Telegram! (Бот сейчас ждет ваш файл)");
+            }
         } catch (e) {
             alert("Ошибка: " + e.message);
-        } finally {
-            input.value = '';
+        }
+    },
+
+    // 2. СКАЧИВАНИЕ: Просим бота прислать файл обратно в чат
+    async requestFile(tgFileId) {
+        try {
+            await api.call('requestFileInChat', tgFileId);
+            // Можно тоже закрыть, чтобы юзер сразу увидел файл
+            if (confirm("Бот отправил файл! Перейти в чат?")) {
+                if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close();
+            }
+        } catch (e) {
+            alert("Ошибка: " + e.message);
         }
     },
 
