@@ -130,8 +130,9 @@ window.app = {
             this.showScreen('view-profile');
             profile.render();
         } else if (['design', 'measure', 'detail', 'supply', 'production', 'install', 'handover'].includes(sectionId)) {
-            // Заглушки
-            this.showScreen('view-stub');
+            // 🔥 Канбан-доски для этапов pipeline
+            this.showScreen('view-kanban');
+            if (window.kanban) kanban.init(sectionId);
         } else {
             console.warn('Unknown section:', sectionId);
         }

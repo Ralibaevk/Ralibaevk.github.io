@@ -67,8 +67,9 @@ window.api = {
         case 'saveFileRecord': result = await this._saveFileRecord(params); break;
         case 'deleteFile': result = await this._deleteFile(params.fileId); break;
 
-        // STATUS
-        case 'updatePositionStatus': result = await this._updatePositionStatus(params.id, params.status); break;
+        // --- KANBAN ---
+        case 'getPositionsByStage': result = await this._getPositionsByStage(params.stage); break;
+        case 'updatePositionStatus': result = await this._updatePositionKanbanStatus(params.positionId, params.status); break;
 
         default: console.warn(`Action ${action} not implemented.`); result = {};
       }
@@ -534,6 +535,43 @@ window.api = {
 
   async _updatePositionStatus(id, status) {
     await supabase.from('positions').update({ status: status }).eq('id', id);
+    return { success: true };
+  },
+
+  // 🔥 KANBAN METHODS
+  async _getPositionsByStage(stage) {
+    // Получаем все позиции компании на определённом этапе pipeline
+    // Присоединяем информацию о проекте
+    const { data, error } = await supabase
+      .from('positions')
+      .select(`
+        *,
+        projects!inner (
+          id,
+          name,
+          client_name,
+          deadline,
+          company_id
+        )
+      `)
+      .eq('stage', stage)
+      .eq('projects.company_id', window.CURRENT_COMPANY_ID)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Ошибка загрузки позиций:', error);
+      throw error;
+    }
+    return data || [];
+  },
+
+  async _updatePositionKanbanStatus(positionId, status) {
+    const { error } = await supabase
+      .from('positions')
+      .update({ kanban_status: status })
+      .eq('id', positionId);
+
+    if (error) throw error;
     return { success: true };
   }
 };
