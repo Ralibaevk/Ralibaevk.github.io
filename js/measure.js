@@ -71,7 +71,7 @@ window.measure = {
                         </div>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <button onclick="measure.requestFile('${f.file_url}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                        <button onclick="measure.requestFile('${f.file_url}', '${f.file_name.replace(/'/g, "\\'")}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
                              <i class="fab fa-telegram-plane"></i> В чат
                         </button>
                         <button class="btn-icon-del" onclick="measure.deleteFile('${f.id}')"><i class="fas fa-trash"></i></button>
@@ -88,10 +88,14 @@ window.measure = {
     // 1. ЗАГРУЗКА: Говорим боту, что сейчас пришлем файл
     async uploadPrompt(itemName) {
         try {
+            // 🔥 Передаём полную информацию
             await api.call('setUploadMode', {
                 positionId: this.currentPositionId,
+                projectId: positions.currentProjectId || null,
                 stage: 'measure',
-                itemName: itemName
+                itemName: itemName,
+                companyName: window.CURRENT_COMPANY_NAME || 'Компания',
+                projectName: positions.currentProject?.name || 'Проект'
             });
 
             // Закрываем приложение, чтобы перекинуть юзера в чат
@@ -106,12 +110,16 @@ window.measure = {
     },
 
     // 2. СКАЧИВАНИЕ: Просим бота прислать файл обратно в чат
-    async requestFile(tgFileId) {
+    async requestFile(tgFileUrl, fileName) {
         try {
-            await api.call('requestFileInChat', tgFileId);
-            // Можно тоже закрыть, чтобы юзер сразу увидел файл
-            if (confirm("Бот отправил файл! Перейти в чат?")) {
-                if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close();
+            // 🔥 Передаём имя файла для красивого сообщения
+            await api.call('requestFileInChat', {
+                fileUrl: tgFileUrl,
+                fileName: fileName
+            });
+            // Закрываем чтобы юзер увидел файл
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.close();
             }
         } catch (e) {
             alert("Ошибка: " + e.message);

@@ -94,21 +94,24 @@ window.api = {
     const user = app.user;
     if (!user) throw new Error("Сначала войдите через Telegram!");
 
-    console.log("� Отправляем запрос 'Жди файл' на:", this._EDGE_FUNCTION_URL);
+    console.log("📤 Отправляем запрос 'Жди файл' на:", this._EDGE_FUNCTION_URL);
     console.log("📦 Параметры:", params);
 
     const response = await fetch(`${this._EDGE_FUNCTION_URL}?action=set_upload_mode`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this._SUPABASE_ANON_KEY}` // 👈 КЛЮЧ!
+        'Authorization': `Bearer ${this._SUPABASE_ANON_KEY}`
       },
       body: JSON.stringify({
-        user_id: String(user.id), // Приводим к строке на всякий случай
-        project_id: null,
+        user_id: String(user.id),
+        project_id: params.projectId || null,
         position_id: params.positionId,
         stage: params.stage,
-        item_name: params.itemName
+        item_name: params.itemName,
+        // 🔥 Дополнительная информация для красивых сообщений
+        company_name: params.companyName || window.CURRENT_COMPANY_NAME || 'Компания',
+        project_name: params.projectName || 'Проект'
       })
     });
 
@@ -127,21 +130,27 @@ window.api = {
   },
 
   // 2. Команда боту: "Пришли мне этот файл"
-  async _requestFileInChat(fileId) {
+  async _requestFileInChat(params) {
     const user = app.user;
     if (!user) throw new Error("Нужен Telegram!");
 
+    // Поддерживаем старый формат (просто fileId) и новый ({fileUrl, fileName})
+    const fileUrl = typeof params === 'string' ? params : params.fileUrl;
+    const fileName = typeof params === 'string' ? 'Файл' : (params.fileName || 'Файл');
+
     console.log("📤 Отправляем запрос 'Пришли файл' на:", this._EDGE_FUNCTION_URL);
+    console.log("📦 Параметры:", { fileUrl, fileName });
 
     const response = await fetch(`${this._EDGE_FUNCTION_URL}?action=send_file`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this._SUPABASE_ANON_KEY}` // 👈 КЛЮЧ!
+        'Authorization': `Bearer ${this._SUPABASE_ANON_KEY}`
       },
       body: JSON.stringify({
-        file_id: fileId,
-        chat_id: String(user.id)
+        file_id: fileUrl,
+        chat_id: String(user.id),
+        file_name: fileName  // 🔥 Передаём имя файла
       })
     });
 
