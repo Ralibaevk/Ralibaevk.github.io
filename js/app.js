@@ -58,18 +58,22 @@ window.app = {
                 projects.init();
 
                 // 🔥 5. Обработка deeplink для возврата на нужную страницу
-                if (this.startParam && this.startParam.startsWith('p')) {
+                if (this.startParam && this.startParam.startsWith('p') && this.startParam.includes('_pos')) {
                     console.log('📍 Processing deeplink:', this.startParam);
-                    const match = this.startParam.match(/p(\w+)_pos(\w+)_(\w+)/);
+                    const match = this.startParam.match(/p([\w-]+)_pos([\w-]+)_(\w+)/);
                     if (match) {
                         const [, projectId, positionId, tab] = match;
                         console.log('📍 Deeplink parsed:', { projectId, positionId, tab });
-                        // Открываем позицию с небольшой задержкой для загрузки данных
+                        // Увеличенная задержка для загрузки данных
                         setTimeout(() => {
+                            console.log('📍 Opening position:', positionId);
                             this.openPosition(positionId, '');
                             // Переключаем вкладку после открытия позиции
-                            setTimeout(() => this.switchPipelineTab(tab), 300);
-                        }, 500);
+                            setTimeout(() => {
+                                console.log('📍 Switching to tab:', tab);
+                                this.switchPipelineTab(tab);
+                            }, 500);
+                        }, 1000);
                     }
                 }
             } else {
