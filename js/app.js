@@ -56,6 +56,22 @@ window.app = {
 
                 // Start App
                 projects.init();
+
+                // 🔥 5. Обработка deeplink для возврата на нужную страницу
+                if (this.startParam && this.startParam.startsWith('p')) {
+                    console.log('📍 Processing deeplink:', this.startParam);
+                    const match = this.startParam.match(/p(\w+)_pos(\w+)_(\w+)/);
+                    if (match) {
+                        const [, projectId, positionId, tab] = match;
+                        console.log('📍 Deeplink parsed:', { projectId, positionId, tab });
+                        // Открываем позицию с небольшой задержкой для загрузки данных
+                        setTimeout(() => {
+                            this.openPosition(positionId, '');
+                            // Переключаем вкладку после открытия позиции
+                            setTimeout(() => this.switchPipelineTab(tab), 300);
+                        }, 500);
+                    }
+                }
             } else {
                 // No Company
                 if (window.profile) this.navTo('profile');
@@ -63,10 +79,10 @@ window.app = {
 
             if (window.manager) manager.updateDatalist();
 
-            // 4. Восстанавливаем состояние Сайдбара (Добавить в конец init)
+            // 4. Восстанавливаем состояние Сайдбара
             const sidebarState = localStorage.getItem('logiqa_sidebar_state');
             if (sidebarState === 'closed') {
-                this.toggleSidebar(false); // false = не менять, просто применить
+                this.toggleSidebar(false);
             }
 
         } catch (e) { console.error(e); }

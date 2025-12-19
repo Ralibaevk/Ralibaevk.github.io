@@ -88,25 +88,22 @@ window.measure = {
     // 1. ЗАГРУЗКА: Говорим боту, что сейчас пришлем файл
     async uploadPrompt(itemName) {
         try {
-            // 🔥 Передаём полную информацию
+            // 🔥 Формируем состояние для возврата
+            const returnState = `p${positions.currentProjectId}_pos${this.currentPositionId}_measure`;
+
             await api.call('setUploadMode', {
                 positionId: this.currentPositionId,
                 projectId: positions.currentProjectId || null,
                 stage: 'measure',
                 itemName: itemName,
                 companyName: window.CURRENT_COMPANY_NAME || 'Компания',
-                projectName: positions.currentProject?.name || 'Проект'
+                projectName: positions.currentProject?.name || 'Проект',
+                returnState: returnState  // 🔥 Для deeplink возврата
             });
 
-            // 🔥 СВОРАЧИВАЕМ приложение вместо закрытия — лучший UX!
+            // Закрываем приложение, чтобы пользователь попал в чат
             if (window.Telegram && window.Telegram.WebApp) {
-                // minimize() сворачивает, пользователь легко вернётся
-                if (window.Telegram.WebApp.minimize) {
-                    window.Telegram.WebApp.minimize();
-                } else {
-                    // Fallback для старых версий
-                    window.Telegram.WebApp.close();
-                }
+                window.Telegram.WebApp.close();
             } else {
                 alert("Это работает только внутри Telegram! (Бот сейчас ждет ваш файл)");
             }
@@ -118,19 +115,18 @@ window.measure = {
     // 2. СКАЧИВАНИЕ: Просим бота прислать файл обратно в чат
     async requestFile(tgFileUrl, fileName, fileDbId) {
         try {
-            // 🔥 Передаём ID файла из БД для получения полной информации
+            // 🔥 Формируем состояние для возврата
+            const returnState = `p${positions.currentProjectId}_pos${this.currentPositionId}_measure`;
+
             await api.call('requestFileInChat', {
                 fileUrl: tgFileUrl,
                 fileName: fileName,
-                fileDbId: fileDbId
+                fileDbId: fileDbId,
+                returnState: returnState  // 🔥 Для deeplink возврата
             });
-            // 🔥 СВОРАЧИВАЕМ чтобы юзер увидел файл и легко вернулся
+            // Закрываем чтобы пользователь увидел файл в чате
             if (window.Telegram && window.Telegram.WebApp) {
-                if (window.Telegram.WebApp.minimize) {
-                    window.Telegram.WebApp.minimize();
-                } else {
-                    window.Telegram.WebApp.close();
-                }
+                window.Telegram.WebApp.close();
             }
         } catch (e) {
             alert("Ошибка: " + e.message);

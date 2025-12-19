@@ -109,9 +109,9 @@ window.api = {
         position_id: params.positionId,
         stage: params.stage,
         item_name: params.itemName,
-        // 🔥 Дополнительная информация для красивых сообщений
         company_name: params.companyName || window.CURRENT_COMPANY_NAME || 'Компания',
-        project_name: params.projectName || 'Проект'
+        project_name: params.projectName || 'Проект',
+        return_state: params.returnState || null  // 🔥 Для deeplink возврата
       })
     });
 
@@ -152,7 +152,8 @@ window.api = {
         file_id: fileUrl,
         chat_id: String(user.id),
         file_name: fileName,
-        file_db_id: fileDbId  // 🔥 ID записи в project_files для получения полной информации
+        file_db_id: fileDbId,
+        return_state: params.returnState || null  // 🔥 Для deeplink возврата
       })
     });
 
