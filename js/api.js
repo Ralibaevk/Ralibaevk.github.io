@@ -134,12 +134,13 @@ window.api = {
     const user = app.user;
     if (!user) throw new Error("Нужен Telegram!");
 
-    // Поддерживаем старый формат (просто fileId) и новый ({fileUrl, fileName})
+    // Поддерживаем старый формат (просто fileId) и новый ({fileUrl, fileName, fileDbId})
     const fileUrl = typeof params === 'string' ? params : params.fileUrl;
     const fileName = typeof params === 'string' ? 'Файл' : (params.fileName || 'Файл');
+    const fileDbId = typeof params === 'object' ? params.fileDbId : null;
 
     console.log("📤 Отправляем запрос 'Пришли файл' на:", this._EDGE_FUNCTION_URL);
-    console.log("📦 Параметры:", { fileUrl, fileName });
+    console.log("📦 Параметры:", { fileUrl, fileName, fileDbId });
 
     const response = await fetch(`${this._EDGE_FUNCTION_URL}?action=send_file`, {
       method: 'POST',
@@ -150,7 +151,8 @@ window.api = {
       body: JSON.stringify({
         file_id: fileUrl,
         chat_id: String(user.id),
-        file_name: fileName  // 🔥 Передаём имя файла
+        file_name: fileName,
+        file_db_id: fileDbId  // 🔥 ID записи в project_files для получения полной информации
       })
     });
 

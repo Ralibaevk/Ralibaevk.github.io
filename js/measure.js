@@ -71,7 +71,7 @@ window.measure = {
                         </div>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <button onclick="measure.requestFile('${f.file_url}', '${f.file_name.replace(/'/g, "\\'")}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                        <button onclick="measure.requestFile('${f.file_url}', '${f.file_name.replace(/'/g, "\\'")}', '${f.id}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
                              <i class="fab fa-telegram-plane"></i> В чат
                         </button>
                         <button class="btn-icon-del" onclick="measure.deleteFile('${f.id}')"><i class="fas fa-trash"></i></button>
@@ -110,12 +110,13 @@ window.measure = {
     },
 
     // 2. СКАЧИВАНИЕ: Просим бота прислать файл обратно в чат
-    async requestFile(tgFileUrl, fileName) {
+    async requestFile(tgFileUrl, fileName, fileDbId) {
         try {
-            // 🔥 Передаём имя файла для красивого сообщения
+            // 🔥 Передаём ID файла из БД для получения полной информации
             await api.call('requestFileInChat', {
                 fileUrl: tgFileUrl,
-                fileName: fileName
+                fileName: fileName,
+                fileDbId: fileDbId  // ID записи в project_files
             });
             // Закрываем чтобы юзер увидел файл
             if (window.Telegram && window.Telegram.WebApp) {
