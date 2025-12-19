@@ -98,9 +98,15 @@ window.measure = {
                 projectName: positions.currentProject?.name || 'Проект'
             });
 
-            // Закрываем приложение, чтобы перекинуть юзера в чат
+            // 🔥 СВОРАЧИВАЕМ приложение вместо закрытия — лучший UX!
             if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.close();
+                // minimize() сворачивает, пользователь легко вернётся
+                if (window.Telegram.WebApp.minimize) {
+                    window.Telegram.WebApp.minimize();
+                } else {
+                    // Fallback для старых версий
+                    window.Telegram.WebApp.close();
+                }
             } else {
                 alert("Это работает только внутри Telegram! (Бот сейчас ждет ваш файл)");
             }
@@ -116,11 +122,15 @@ window.measure = {
             await api.call('requestFileInChat', {
                 fileUrl: tgFileUrl,
                 fileName: fileName,
-                fileDbId: fileDbId  // ID записи в project_files
+                fileDbId: fileDbId
             });
-            // Закрываем чтобы юзер увидел файл
+            // 🔥 СВОРАЧИВАЕМ чтобы юзер увидел файл и легко вернулся
             if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.close();
+                if (window.Telegram.WebApp.minimize) {
+                    window.Telegram.WebApp.minimize();
+                } else {
+                    window.Telegram.WebApp.close();
+                }
             }
         } catch (e) {
             alert("Ошибка: " + e.message);
