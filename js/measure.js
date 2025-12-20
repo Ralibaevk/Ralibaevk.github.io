@@ -66,11 +66,11 @@ window.measure = {
                 if (f.file_name.match(/\.(doc|docx)$/i)) icon = 'fa-file-word';
                 if (f.file_name.match(/\.(zip|rar|7z)$/i)) icon = 'fa-file-archive';
 
-                // Определяем можно ли просмотреть файл
-                const isDocument = f.file_name.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i);
-                const canPreview = isImage || isDocument;
+                // Определяем можно ли просмотреть файл (только изображения и PDF!)
+                const isPDF = f.file_name.match(/\.pdf$/i);
+                const canPreview = isImage || isPDF;
 
-                // Кнопка просмотра (для изображений и документов)
+                // Кнопка просмотра (только для изображений и PDF)
                 const previewBtn = f.tg_file_id && canPreview
                     ? `<button onclick="measure.viewFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
                          <i class="fas fa-eye"></i>
