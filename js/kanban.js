@@ -114,7 +114,7 @@ window.kanban = {
                     </span>
                 </div>
                 <div class="kanban-card-actions">
-                    <select class="status-mini-select" onchange="kanban.changeStatus('${position.id}', this.value); event.stopPropagation();">
+                    <select class="status-mini-select" onclick="event.stopPropagation();" onchange="kanban.changeStatus('${position.id}', this.value); event.stopPropagation();">
                         <option value="inbox" ${position.kanban_status === 'inbox' || !position.kanban_status ? 'selected' : ''}>📥 Входящие</option>
                         <option value="active" ${position.kanban_status === 'active' ? 'selected' : ''}>🔵 В работе</option>
                         <option value="done" ${position.kanban_status === 'done' ? 'selected' : ''}>✅ Выполнено</option>
