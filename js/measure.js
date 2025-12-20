@@ -190,6 +190,9 @@ window.measure = {
 
     // Модальное окно для просмотра PDF
     showDocumentModal(url, fileName) {
+        // Извлекаем fileId из URL
+        const fileId = url.split('/file/')[1];
+
         const modal = document.createElement('div');
         modal.id = 'docModal';
         modal.style.cssText = `
@@ -201,9 +204,9 @@ window.measure = {
             <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
                 <span style="font-size:14px;">${fileName}</span>
                 <div>
-                    <button onclick="measure.downloadFile('${url.split('/file/')[1]}', '${fileName.replace(/'/g, "\\'")}')" style="background:none; border:none; color:white; font-size:18px; cursor:pointer; margin-right:15px;">
+                    <a href="${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px; margin-right:15px;">
                         <i class="fas fa-download"></i>
-                    </button>
+                    </a>
                     <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
                         <i class="fas fa-times"></i>
                     </button>
