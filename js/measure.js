@@ -188,11 +188,8 @@ window.measure = {
         }
     },
 
-    // Модальное окно для просмотра документов (PDF, Word, Excel)
+    // Модальное окно для просмотра PDF
     showDocumentModal(url, fileName) {
-        // Google Docs Viewer URL
-        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-
         const modal = document.createElement('div');
         modal.id = 'docModal';
         modal.style.cssText = `
@@ -203,11 +200,16 @@ window.measure = {
         modal.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
                 <span style="font-size:14px;">${fileName}</span>
-                <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
-                    <i class="fas fa-times"></i>
-                </button>
+                <div>
+                    <button onclick="measure.downloadFile('${url.split('/file/')[1]}', '${fileName.replace(/'/g, "\\'")}')" style="background:none; border:none; color:white; font-size:18px; cursor:pointer; margin-right:15px;">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
-            <iframe src="${viewerUrl}" style="flex:1; border:none; border-radius:8px; background:white;"></iframe>
+            <iframe src="${url}" style="flex:1; border:none; border-radius:8px; background:white;"></iframe>
         `;
         document.body.appendChild(modal);
     },
@@ -235,17 +237,11 @@ window.measure = {
         document.body.appendChild(modal);
     },
 
-    // 🔥 СКАЧИВАНИЕ файла
+    // 🔥 СКАЧИВАНИЕ файла (через /download/ endpoint)
     downloadFile(fileId, fileName) {
-        const url = `${FILE_PROXY_URL}/file/${fileId}`;
-        // Создаём скрытую ссылку для скачивания
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const url = `${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}`;
+        // Открываем в новой вкладке — браузер сам предложит скачать
+        window.open(url, '_blank');
     },
 
     async deleteFile(id) {
