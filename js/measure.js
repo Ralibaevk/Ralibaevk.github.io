@@ -1,8 +1,8 @@
 // js/measure.js
 console.log("✅ measure.js file is loading...");
 
-// 🔥 URL нашего file-proxy сервера
-const FILE_PROXY_URL = 'http://89.35.125.110';
+// 🔥 URL нашего file-proxy сервера (HTTPS!)
+const FILE_PROXY_URL = 'https://files.logiqa.kz';
 
 window.measure = {
     currentPositionId: null,
