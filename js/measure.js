@@ -1,6 +1,9 @@
 // js/measure.js
 console.log("✅ measure.js file is loading...");
 
+// 🔥 URL нашего file-proxy сервера
+const FILE_PROXY_URL = 'http://89.35.125.110';
+
 window.measure = {
     currentPositionId: null,
 
@@ -14,20 +17,23 @@ window.measure = {
         const container = document.getElementById('pipeline-measure');
         if (!container) return;
 
-        // Определяем имя изделия для заголовка
         const itemName = document.getElementById('posDetailName')?.innerText || 'Изделие';
 
         container.innerHTML = `
             <div class="design-title-row">
                 <h2>Замеры и Файлы</h2>
-                <button class="btn btn-primary" onclick="measure.uploadPrompt('${itemName}')">
+                <label class="btn btn-primary" style="cursor:pointer;">
                     <i class="fas fa-plus"></i> Добавить файл
-                </button>
+                    <input type="file" id="fileUploadInput" style="display:none;" onchange="measure.uploadFile(this.files[0], '${itemName}')" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
+                </label>
             </div>
 
             <div class="p-card" style="margin-bottom:20px;">
-                <div style="font-size:13px; color:#666; margin-bottom:15px;">
-                    <i class="fas fa-info-circle"></i> Файлы хранятся в чате с ботом.
+                <div id="uploadProgress" style="display:none; margin-bottom:15px;">
+                    <div style="background:#e5e7eb; border-radius:8px; overflow:hidden;">
+                        <div id="uploadBar" style="height:6px; background:var(--primary); width:0%; transition:width 0.3s;"></div>
+                    </div>
+                    <div style="font-size:12px; color:#666; margin-top:5px;">Загрузка...</div>
                 </div>
                 <div id="measureFilesList" class="file-list-grid">
                     <div style="text-align:center; padding:20px; color:#999;">Загрузка списка...</div>
@@ -39,13 +45,12 @@ window.measure = {
     async loadFiles() {
         const list = document.getElementById('measureFilesList');
         try {
-            // 🔥 Исправлено: передаём stage = 'measure'
             const files = await api.call('getFiles', {
                 parentId: this.currentPositionId,
-                stage: 'measure'  // ✅ Правильный параметр!
+                stage: 'measure'
             });
 
-            console.log('📂 Загружено файлов:', files.length, files);
+            console.log('📂 Загружено файлов:', files.length);
 
             if (!files || files.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding:30px; color:#ccc;">Нет загруженных файлов</div>`;
@@ -53,11 +58,18 @@ window.measure = {
             }
 
             list.innerHTML = files.map(f => {
-                // Иконка
                 let icon = 'fa-file';
+                const isImage = f.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
                 if (f.file_name.endsWith('.pdf')) icon = 'fa-file-pdf';
-                if (f.file_name.match(/\.(jpg|jpeg|png)$/i)) icon = 'fa-file-image';
+                if (isImage) icon = 'fa-file-image';
                 if (f.file_name.match(/\.(xls|xlsx)$/i)) icon = 'fa-file-excel';
+
+                // Если это изображение и есть file_id — можем показать превью
+                const previewBtn = f.tg_file_id
+                    ? `<button onclick="measure.viewFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                         <i class="fas fa-eye"></i> Просмотр
+                       </button>`
+                    : '';
 
                 return `
                 <div class="file-item" style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #eee;">
@@ -71,9 +83,7 @@ window.measure = {
                         </div>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <button onclick="measure.requestFile('${f.file_url}', '${f.file_name.replace(/'/g, "\\'")}', '${f.id}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
-                             <i class="fab fa-telegram-plane"></i> В чат
-                        </button>
+                        ${previewBtn}
                         <button class="btn-icon-del" onclick="measure.deleteFile('${f.id}')"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>`;
@@ -85,52 +95,102 @@ window.measure = {
         }
     },
 
-    // 1. ЗАГРУЗКА: Говорим боту, что сейчас пришлем файл
-    async uploadPrompt(itemName) {
-        try {
-            // 🔥 Формируем состояние для возврата
-            const returnState = `p${positions.currentProjectId}_pos${this.currentPositionId}_measure`;
+    // 🔥 НОВАЯ ЗАГРУЗКА через сервер (без закрытия Mini App!)
+    async uploadFile(file, itemName) {
+        if (!file) return;
 
-            await api.call('setUploadMode', {
-                positionId: this.currentPositionId,
-                projectId: positions.currentProjectId || null,
-                stage: 'measure',
-                itemName: itemName,
-                companyName: window.CURRENT_COMPANY_NAME || 'Компания',
-                projectName: positions.currentProject?.name || 'Проект',
-                returnState: returnState  // 🔥 Для deeplink возврата
+        const progress = document.getElementById('uploadProgress');
+        const bar = document.getElementById('uploadBar');
+
+        try {
+            progress.style.display = 'block';
+            bar.style.width = '30%';
+
+            // Создаём FormData
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('caption', `📎 ${itemName} | ${file.name}`);
+
+            bar.style.width = '60%';
+
+            // Отправляем на наш сервер
+            const response = await fetch(`${FILE_PROXY_URL}/upload`, {
+                method: 'POST',
+                body: formData
             });
 
-            // Закрываем приложение, чтобы пользователь попал в чат
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.close();
-            } else {
-                alert("Это работает только внутри Telegram! (Бот сейчас ждет ваш файл)");
-            }
+            const result = await response.json();
+
+            if (!result.success) throw new Error(result.error);
+
+            bar.style.width = '90%';
+
+            // Сохраняем запись в Supabase
+            await api.call('saveFileRecord', {
+                parentId: this.currentPositionId,
+                stage: 'measure',
+                fileName: result.file_name,
+                fileUrl: `tg://${result.file_id}`,  // Сохраняем file_id
+                tgFileId: result.file_id
+            });
+
+            bar.style.width = '100%';
+
+            // Перезагружаем список
+            await this.loadFiles();
+
+            // Скрываем прогресс
+            setTimeout(() => {
+                progress.style.display = 'none';
+                bar.style.width = '0%';
+            }, 500);
+
         } catch (e) {
-            alert("Ошибка: " + e.message);
+            console.error('Upload error:', e);
+            alert('Ошибка загрузки: ' + e.message);
+            progress.style.display = 'none';
+            bar.style.width = '0%';
+        }
+
+        // Сбрасываем input
+        document.getElementById('fileUploadInput').value = '';
+    },
+
+    // 🔥 ПРОСМОТР файла прямо в приложении
+    async viewFile(fileId, fileName) {
+        // Открываем файл через наш proxy
+        const url = `${FILE_PROXY_URL}/file/${fileId}`;
+
+        // Для изображений — показываем в модальном окне
+        if (fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+            this.showImageModal(url, fileName);
+        } else {
+            // Для других файлов — открываем в новой вкладке
+            window.open(url, '_blank');
         }
     },
 
-    // 2. СКАЧИВАНИЕ: Просим бота прислать файл обратно в чат
-    async requestFile(tgFileUrl, fileName, fileDbId) {
-        try {
-            // 🔥 Формируем состояние для возврата
-            const returnState = `p${positions.currentProjectId}_pos${this.currentPositionId}_measure`;
-
-            await api.call('requestFileInChat', {
-                fileUrl: tgFileUrl,
-                fileName: fileName,
-                fileDbId: fileDbId,
-                returnState: returnState  // 🔥 Для deeplink возврата
-            });
-            // Закрываем чтобы пользователь увидел файл в чате
-            if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.close();
-            }
-        } catch (e) {
-            alert("Ошибка: " + e.message);
-        }
+    // Модальное окно для просмотра изображений
+    showImageModal(url, fileName) {
+        const modal = document.createElement('div');
+        modal.id = 'imageModal';
+        modal.style.cssText = `
+            position:fixed; top:0; left:0; right:0; bottom:0; 
+            background:rgba(0,0,0,0.9); z-index:9999; 
+            display:flex; align-items:center; justify-content:center;
+            padding:20px;
+        `;
+        modal.innerHTML = `
+            <div style="position:relative; max-width:100%; max-height:100%;">
+                <img src="${url}" style="max-width:100%; max-height:90vh; border-radius:8px;" onclick="event.stopPropagation();">
+                <div style="text-align:center; color:white; margin-top:10px; font-size:14px;">${fileName}</div>
+            </div>
+            <button onclick="this.parentElement.remove()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:32px; cursor:pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        modal.onclick = () => modal.remove();
+        document.body.appendChild(modal);
     },
 
     async deleteFile(id) {

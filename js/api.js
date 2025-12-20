@@ -193,12 +193,13 @@ window.api = {
   // Сохранение записи о файле в Supabase (чтобы он появился во вкладке)
   async _saveFileRecord(params) {
     const { error } = await supabase.from('project_files').insert({
-      project_id: params.projectId,   // Опционально
-      position_id: params.positionId, // Опционально
-      file_name: params.name,
-      file_url: params.url,
+      project_id: params.projectId || null,
+      position_id: params.parentId || params.positionId || null,
+      file_name: params.fileName || params.name,
+      file_url: params.fileUrl || params.url,
       file_type: params.type || 'file',
-      stage: params.stage, // 'measure', 'detail' и т.д.
+      stage: params.stage,
+      tg_file_id: params.tgFileId || null,  // 🔥 Новое поле для Telegram file_id
       uploaded_by: app.user?.id
     });
     if (error) throw error;
