@@ -96,8 +96,9 @@
         </button>
       </div>
 
-      <!-- 2. ДАШБОРД ЗАКАЗА (Компактный) -->
+      <!-- 2. ДАШБОРД ПРОЕКТА (NEW DESIGN) -->
       <div id="view-project-detail" class="screen">
+        <!-- HEADER -->
         <div class="view-header">
           <div style="display:flex; align-items:center;">
             <button class="btn-back" onclick="app.goHome()"><i class="fas fa-arrow-left"></i></button>
@@ -108,74 +109,83 @@
           </div>
           <div style="display:flex; gap:8px;">
             <button class="btn btn-def" onclick="positions.openTeamModal()"><i class="fas fa-users"></i></button>
-            <button class="btn btn-primary" id="pDetailChatBtn" onclick="positions.openChat()"><i
-                class="fab fa-telegram"></i> Чат</button>
+            <button class="btn btn-primary" id="pDetailChatBtn" onclick="positions.openChat()">
+              <i class="fab fa-telegram"></i> Чат
+            </button>
           </div>
         </div>
 
-        <!-- КОМПАКТНАЯ СЕТКА: ИНФО + ФИНАНСЫ -->
-        <div class="project-compact-grid">
-          <!-- Левая колонка: Информация -->
-          <div class="compact-card">
-            <div class="compact-row">
-              <i class="fas fa-phone"></i>
-              <span class="compact-label">Телефон</span>
-              <span class="compact-value editable-field" id="pDetailPhone" data-field="client_phone">—</span>
-            </div>
-            <div class="compact-row">
-              <i class="fas fa-map-marker-alt"></i>
-              <span class="compact-label">Адрес</span>
-              <span class="compact-value editable-field" id="pDetailAddress" data-field="address">—</span>
-            </div>
-            <div class="compact-row">
-              <i class="fas fa-calendar"></i>
-              <span class="compact-label">Установка</span>
-              <span class="compact-value editable-field" id="pDetailDeadline" data-field="deadline"
-                data-type="date">—</span>
+        <!-- KPI CARDS (2 шт) -->
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-icon blue"><i class="fas fa-chart-pie"></i></div>
+            <div class="kpi-content">
+              <span class="kpi-label">Прогресс проекта</span>
+              <span class="kpi-value" id="kpiProgress">0%</span>
             </div>
           </div>
+          <div class="kpi-card">
+            <div class="kpi-icon green"><i class="fas fa-calendar-check"></i></div>
+            <div class="kpi-content">
+              <span class="kpi-label">Плановая дата сдачи</span>
+              <span class="kpi-value" id="kpiDeadline">—</span>
+            </div>
+          </div>
+        </div>
 
-          <!-- Правая колонка: Финансы -->
-          <div class="compact-card finance-card">
-            <div class="finance-row">
-              <span class="finance-label-sm">Договор</span>
-              <span class="finance-val editable-field" id="pDetailContract" data-field="contract_amount"
+        <!-- MAIN: Info + Positions -->
+        <div class="project-main-grid">
+          <!-- LEFT: Info -->
+          <div class="project-info-card">
+            <div class="info-row">
+              <span>Телефон</span>
+              <span id="pDetailPhone" class="editable-field" data-field="client_phone">—</span>
+            </div>
+            <div class="info-row">
+              <span>Адрес</span>
+              <span id="pDetailAddress" class="editable-field" data-field="address">—</span>
+            </div>
+            <div class="info-row">
+              <span>Договор</span>
+              <span id="pDetailContract" class="editable-field" data-field="contract_amount" data-type="number">0
+                ₸</span>
+            </div>
+            <div class="info-row">
+              <span>Предоплата</span>
+              <span id="pDetailPrepay" class="editable-field positive" data-field="prepayment_amount"
                 data-type="number">0 ₸</span>
             </div>
-            <div class="finance-row">
-              <span class="finance-label-sm">Предоплата</span>
-              <span class="finance-val positive editable-field" id="pDetailPrepay" data-field="prepayment_amount"
-                data-type="number">0 ₸</span>
-            </div>
-            <div class="finance-row">
-              <span class="finance-label-sm">Остаток</span>
-              <span class="finance-val negative" id="pDetailBalance">0 ₸</span>
+            <div class="info-row">
+              <span>Остаток</span>
+              <span id="pDetailBalance" class="negative">0 ₸</span>
             </div>
           </div>
-        </div>
 
-        <!-- УЧАСТНИКИ + ДОКУМЕНТЫ (компактный ряд) -->
-        <div class="project-meta-row">
-          <div id="pDetailTeamCompact" class="team-compact">
-            <!-- Аватары участников -->
+          <!-- RIGHT: Positions Grid -->
+          <div class="positions-panel">
+            <h3>ПОЗИЦИИ</h3>
+            <div id="pDetailPositions" class="positions-grid">
+              <!-- JS renders position cards -->
+            </div>
+            <button class="btn-add-position" onclick="positions.createPrompt()">
+              <i class="fas fa-plus"></i> Добавить позицию
+            </button>
           </div>
-          <div class="docs-compact" id="pDetailDocs">
-            <a href="#" class="doc-chip hidden" id="pDetailContractFile"><i class="fas fa-file-contract"></i></a>
-            <a href="#" class="doc-chip hidden" id="pDetailKpFile"><i class="fas fa-file-alt"></i></a>
-            <span class="doc-empty" id="pDetailDocsEmpty" style="font-size:12px; color:#999;">Нет документов</span>
+        </div>
+
+        <!-- TEAM -->
+        <div id="pDetailTeamCompact" class="team-row">
+          <!-- JS renders team avatars -->
+        </div>
+
+        <!-- STAGES PIPELINE -->
+        <div class="stages-section">
+          <h3>Лента этапов</h3>
+          <div id="stagesRibbon" class="stages-ribbon">
+            <!-- JS renders stages -->
           </div>
         </div>
 
-        <!-- Список Позиций -->
-        <h3 class="section-title" style="margin-top:16px;">Изделия / Позиции</h3>
-        <div id="pDetailPositions" class="grid-list">
-          <!-- Карточки позиций здесь -->
-        </div>
-
-        <button class="btn" onclick="positions.createPrompt()"
-          style="width:100%; margin-top:16px; background:#eff6ff; color:var(--primary); border:1px dashed var(--primary); justify-content:center; padding:12px;">
-          + Добавить изделие
-        </button>
       </div>
 
       <!-- 3. КАРТОЧКА ИЗДЕЛИЯ (Pipeline) -->

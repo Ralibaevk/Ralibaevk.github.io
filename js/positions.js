@@ -59,10 +59,16 @@ window.positions = {
 
             // 5. Грузим список изделий
             console.log("📂 Calling renderList...");
-            await this.renderList();
+            const positionsList = await this.renderList();
             console.log("✅ renderList completed");
 
-            // 6. Инициализация inline-редактирования
+            // 6. Рендер KPI карточек
+            this.renderKPI(proj, positionsList);
+
+            // 7. Рендер ленты этапов
+            this.renderStagesPipeline(positionsList);
+
+            // 8. Инициализация inline-редактирования
             this.initEditing();
 
         } catch (e) {
@@ -83,11 +89,9 @@ window.positions = {
         // Информация о заказе
         const phoneEl = document.getElementById('pDetailPhone');
         const addressEl = document.getElementById('pDetailAddress');
-        const deadlineEl = document.getElementById('pDetailDeadline');
 
         if (phoneEl) phoneEl.innerText = proj.client_phone || '—';
         if (addressEl) addressEl.innerText = proj.address || '—';
-        if (deadlineEl) deadlineEl.innerText = proj.deadline ? utils.formatDate(proj.deadline) : '—';
 
         // Финансы
         const contractEl = document.getElementById('pDetailContract');
@@ -101,31 +105,6 @@ window.positions = {
         if (contractEl) contractEl.innerText = utils.formatCurrency(contractAmount);
         if (prepayEl) prepayEl.innerText = utils.formatCurrency(prepayAmount);
         if (balanceEl) balanceEl.innerText = utils.formatCurrency(balance);
-
-        // Документы
-        const contractFile = document.getElementById('pDetailContractFile');
-        const kpFile = document.getElementById('pDetailKpFile');
-        const docsEmpty = document.getElementById('pDetailDocsEmpty');
-
-        let hasFiles = false;
-
-        if (proj.contract_file_url && contractFile) {
-            contractFile.href = proj.contract_file_url;
-            contractFile.target = '_blank';
-            contractFile.classList.remove('hidden');
-            hasFiles = true;
-        }
-
-        if (proj.kp_file_url && kpFile) {
-            kpFile.href = proj.kp_file_url;
-            kpFile.target = '_blank';
-            kpFile.classList.remove('hidden');
-            hasFiles = true;
-        }
-
-        if (docsEmpty) {
-            docsEmpty.classList.toggle('hidden', hasFiles);
-        }
 
         // Ссылка на чат
         const chatBtn = document.getElementById('pDetailChatBtn');
@@ -394,27 +373,22 @@ window.positions = {
             console.log("📋 Positions received:", list);
 
             if (!list || list.length === 0) {
-                container.innerHTML = '<div style="text-align:center; color:#ccc; padding:20px;">В этом проекте пока нет изделий.<br>Нажмите "Добавить изделие"</div>';
-                return;
+                container.innerHTML = '<div style="text-align:center; color:#999; padding:20px; font-size:13px;">Нет позиций</div>';
+                return [];
             }
 
+            // Рендер позиций как карточки
             container.innerHTML = list.map(pos => {
-                // Используем encodeURIComponent для безопасной передачи имени
                 const safeName = encodeURIComponent(pos.name || 'Без названия');
                 return `
-                <div class="card" data-pos-id="${pos.id}" data-pos-name="${safeName}" style="display:flex; gap:15px; align-items:center; cursor:pointer;">
-                    <div style="width:50px; height:50px; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-                        <i class="fas fa-cube" style="color:#cbd5e1;"></i>
-                    </div>
-                    <div>
-                        <h3 style="margin:0; font-size:16px;">${pos.name}</h3>
-                        <div style="font-size:12px; color:#6b7280; margin-top:2px;">Статус: ${pos.status || 'design'}</div>
-                    </div>
+                <div class="position-card" data-pos-id="${pos.id}" data-pos-name="${safeName}">
+                    <i class="fas fa-cube"></i>
+                    <span>${pos.name || 'Без названия'}</span>
                 </div>
             `}).join('');
 
-            // Добавляем обработчики кликов
-            container.querySelectorAll('.card[data-pos-id]').forEach(card => {
+            // Обработчики кликов
+            container.querySelectorAll('.position-card').forEach(card => {
                 card.onclick = () => {
                     const id = card.dataset.posId;
                     const name = decodeURIComponent(card.dataset.posName);
@@ -423,9 +397,11 @@ window.positions = {
             });
 
             console.log("✅ Positions rendered:", list.length, "items");
+            return list;
         } catch (e) {
             console.error("❌ Error in renderList:", e);
-            container.innerHTML = `<div style="color:red; text-align:center;">Ошибка загрузки: ${e.message}</div>`;
+            container.innerHTML = `<div style="color:red; text-align:center;">Ошибка: ${e.message}</div>`;
+            return [];
         }
     },
 
@@ -571,5 +547,92 @@ window.positions = {
 
         document.getElementById('prodModal').classList.add('hidden');
         this.renderProduction();
+    },
+
+    // === NEW: KPI CARDS ===
+    renderKPI(project, positions) {
+        const progressEl = document.getElementById('kpiProgress');
+        const deadlineEl = document.getElementById('kpiDeadline');
+
+        // Прогресс: % позиций на последних этапах (production, install, handover)
+        if (positions && positions.length > 0) {
+            const doneStages = ['production', 'install', 'handover'];
+            const doneCount = positions.filter(p => doneStages.includes(p.status)).length;
+            const progress = Math.round((doneCount / positions.length) * 100);
+            if (progressEl) progressEl.innerText = progress + '%';
+        } else {
+            if (progressEl) progressEl.innerText = '0%';
+        }
+
+        // Дедлайн
+        if (deadlineEl) {
+            deadlineEl.innerText = project?.deadline
+                ? utils.formatDate(project.deadline)
+                : '—';
+        }
+    },
+
+    // === NEW: STAGES PIPELINE ===
+    renderStagesPipeline(positions) {
+        const container = document.getElementById('stagesRibbon');
+        if (!container) return;
+
+        // 7 этапов
+        const stages = [
+            { id: 'design', name: '1. Дизайн' },
+            { id: 'measure', name: '2. Замер' },
+            { id: 'detail', name: '3. Деталировка' },
+            { id: 'supply', name: '4. Закуп' },
+            { id: 'production', name: '5. Изготовление' },
+            { id: 'install', name: '6. Монтаж' },
+            { id: 'handover', name: '7. Сдача' }
+        ];
+
+        // Подсчёт позиций по этапам
+        const positionsList = positions || [];
+        const statusCounts = {};
+        positionsList.forEach(p => {
+            const st = p.status || 'design';
+            statusCounts[st] = (statusCounts[st] || 0) + 1;
+        });
+
+        container.innerHTML = stages.map(stage => {
+            const count = statusCounts[stage.id] || 0;
+            const total = positionsList.length;
+            const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+
+            // Определяем статус этапа
+            let statusClass = 'pending';
+            let statusLabel = 'Ожидание';
+
+            if (count > 0 && count === total) {
+                statusClass = 'done';
+                statusLabel = 'Готово';
+            } else if (count > 0) {
+                statusClass = 'in-progress';
+                statusLabel = 'В работе';
+            }
+
+            return `
+                <div class="stage-card ${statusClass}" onclick="positions.openStageDetails('${stage.id}')">
+                    <div class="stage-name">${stage.name}</div>
+                    <div class="stage-status">${statusLabel}, ${percent}%</div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    // Клик по этапу — заглушка
+    openStageDetails(stageId) {
+        const stageNames = {
+            'design': 'Дизайн',
+            'measure': 'Замер',
+            'detail': 'Деталировка',
+            'supply': 'Закуп',
+            'production': 'Изготовление',
+            'install': 'Монтаж',
+            'handover': 'Сдача'
+        };
+        alert(`Этап: ${stageNames[stageId] || stageId}\n\nСводка по этапу будет доступна в следующем обновлении.`);
     },
 };
