@@ -76,11 +76,11 @@ window.measure = {
                          <i class="fas fa-eye"></i>
                        </button>`
                     : '';
-                // Кнопка скачивания для всех файлов
+                // Кнопка скачивания для всех файлов (ссылка, чтобы не блокировалось браузером)
                 const downloadBtn = f.tg_file_id
-                    ? `<button onclick="measure.downloadFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                    ? `<a href="${FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}" target="_blank" class="btn btn-def" style="padding:6px 12px; font-size:12px; text-decoration:none;">
                          <i class="fas fa-download"></i>
-                       </button>`
+                       </a>`
                     : '';
 
                 return `
