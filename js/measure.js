@@ -76,11 +76,14 @@ window.measure = {
                          <i class="fas fa-eye"></i>
                        </button>`
                     : '';
-                // Кнопка скачивания для всех файлов (ссылка, чтобы не блокировалось браузером)
-                const downloadBtn = f.tg_file_id
-                    ? `<a href="${FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}" target="_blank" class="btn btn-def" style="padding:6px 12px; font-size:12px; text-decoration:none;">
+                // Кнопка скачивания для всех файлов (используем Telegram.WebApp.openLink для web-версии)
+                const downloadUrl = f.tg_file_id
+                    ? `${FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}`
+                    : null;
+                const downloadBtn = downloadUrl
+                    ? `<button onclick="measure.openDownload('${downloadUrl}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
                          <i class="fas fa-download"></i>
-                       </a>`
+                       </button>`
                     : '';
 
                 return `
@@ -240,11 +243,20 @@ window.measure = {
         document.body.appendChild(modal);
     },
 
-    // 🔥 СКАЧИВАНИЕ файла (через /download/ endpoint)
+    // 🔥 СКАЧИВАНИЕ файла (через Telegram.WebApp.openLink для совместимости с web-версией)
+    openDownload(url) {
+        // Telegram.WebApp.openLink работает в web.telegram.org, обходя блокировку popup
+        if (window.Telegram?.WebApp?.openLink) {
+            Telegram.WebApp.openLink(url);
+        } else {
+            // Фолбек для десктопа или если WebApp API недоступен
+            window.open(url, '_blank');
+        }
+    },
+
     downloadFile(fileId, fileName) {
         const url = `${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}`;
-        // Открываем в новой вкладке — браузер сам предложит скачать
-        window.open(url, '_blank');
+        this.openDownload(url);
     },
 
     async deleteFile(id) {
