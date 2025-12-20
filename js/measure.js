@@ -24,7 +24,7 @@ window.measure = {
                 <h2>Замеры и Файлы</h2>
                 <label class="btn btn-primary" style="cursor:pointer;">
                     <i class="fas fa-plus"></i> Добавить файл
-                    <input type="file" id="fileUploadInput" style="display:none;" onchange="measure.uploadFile(this.files[0], '${itemName}')" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx">
+                    <input type="file" id="fileUploadInput" style="display:none;" onchange="measure.uploadFile(this.files[0], '${itemName}')">
                 </label>
             </div>
 
@@ -63,11 +63,23 @@ window.measure = {
                 if (f.file_name.endsWith('.pdf')) icon = 'fa-file-pdf';
                 if (isImage) icon = 'fa-file-image';
                 if (f.file_name.match(/\.(xls|xlsx)$/i)) icon = 'fa-file-excel';
+                if (f.file_name.match(/\.(doc|docx)$/i)) icon = 'fa-file-word';
+                if (f.file_name.match(/\.(zip|rar|7z)$/i)) icon = 'fa-file-archive';
 
-                // Если это изображение и есть file_id — можем показать превью
-                const previewBtn = f.tg_file_id
+                // Определяем можно ли просмотреть файл
+                const isDocument = f.file_name.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i);
+                const canPreview = isImage || isDocument;
+
+                // Кнопка просмотра (для изображений и документов)
+                const previewBtn = f.tg_file_id && canPreview
                     ? `<button onclick="measure.viewFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
-                         <i class="fas fa-eye"></i> Просмотр
+                         <i class="fas fa-eye"></i>
+                       </button>`
+                    : '';
+                // Кнопка скачивания для всех файлов
+                const downloadBtn = f.tg_file_id
+                    ? `<button onclick="measure.downloadFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}')" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                         <i class="fas fa-download"></i>
                        </button>`
                     : '';
 
@@ -82,8 +94,9 @@ window.measure = {
                             <div style="font-size:11px; color:#999;">${utils.formatDate(f.created_at)}</div>
                         </div>
                     </div>
-                    <div style="display:flex; gap:8px;">
+                    <div style="display:flex; gap:6px;">
                         ${previewBtn}
+                        ${downloadBtn}
                         <button class="btn-icon-del" onclick="measure.deleteFile('${f.id}')"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>`;
@@ -164,10 +177,39 @@ window.measure = {
         // Для изображений — показываем в модальном окне
         if (fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
             this.showImageModal(url, fileName);
-        } else {
+        }
+        // Для документов — используем Google Docs Viewer
+        else if (fileName.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i)) {
+            this.showDocumentModal(url, fileName);
+        }
+        else {
             // Для других файлов — открываем в новой вкладке
             window.open(url, '_blank');
         }
+    },
+
+    // Модальное окно для просмотра документов (PDF, Word, Excel)
+    showDocumentModal(url, fileName) {
+        // Google Docs Viewer URL
+        const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+
+        const modal = document.createElement('div');
+        modal.id = 'docModal';
+        modal.style.cssText = `
+            position:fixed; top:0; left:0; right:0; bottom:0; 
+            background:rgba(0,0,0,0.9); z-index:9999; 
+            display:flex; flex-direction:column; padding:10px;
+        `;
+        modal.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
+                <span style="font-size:14px;">${fileName}</span>
+                <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <iframe src="${viewerUrl}" style="flex:1; border:none; border-radius:8px; background:white;"></iframe>
+        `;
+        document.body.appendChild(modal);
     },
 
     // Модальное окно для просмотра изображений
@@ -191,6 +233,19 @@ window.measure = {
         `;
         modal.onclick = () => modal.remove();
         document.body.appendChild(modal);
+    },
+
+    // 🔥 СКАЧИВАНИЕ файла
+    downloadFile(fileId, fileName) {
+        const url = `${FILE_PROXY_URL}/file/${fileId}`;
+        // Создаём скрытую ссылку для скачивания
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     },
 
     async deleteFile(id) {
