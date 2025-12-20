@@ -1,9 +1,13 @@
 // js/kanban.js
 console.log("✅ kanban.js file is loading...");
 
+// 🔥 URL нашего file-proxy сервера (HTTPS!)
+const KANBAN_FILE_PROXY_URL = 'https://files.logiqa.kz';
+
 window.kanban = {
     currentStage: null,
     positions: [],
+    currentPosition: null, // Текущая открытая позиция
 
     // Названия этапов
     STAGE_NAMES: {
@@ -102,7 +106,7 @@ window.kanban = {
             : '—';
 
         return `
-            <div class="kanban-card" onclick="kanban.openPosition('${position.id}')">
+            <div class="kanban-card" onclick="kanban.openProjectCard('${position.id}')">
                 <div class="kanban-card-project">${projectName}</div>
                 <div class="kanban-card-title">${position.name || 'Без названия'}</div>
                 <div class="kanban-card-meta">
@@ -141,9 +145,262 @@ window.kanban = {
         }
     },
 
-    openPosition(positionId) {
-        // Открываем карточку позиции
-        app.openPosition(positionId, '');
+    // 🔥 НОВЫЙ МЕТОД: Открытие карточки проекта
+    async openProjectCard(positionId) {
+        // Находим позицию в загруженных данных
+        this.currentPosition = this.positions.find(p => p.id === positionId);
+        if (!this.currentPosition) {
+            console.error('Позиция не найдена:', positionId);
+            return;
+        }
+
+        const project = this.currentPosition.projects || {};
+
+        // Заполняем модальное окно
+        document.getElementById('pcmProjectName').textContent = project.name || 'Проект';
+        document.getElementById('pcmPositionName').textContent = this.currentPosition.name || 'Изделие';
+        document.getElementById('pcmClient').textContent = project.client_name || '—';
+        document.getElementById('pcmDeadline').textContent = project.deadline
+            ? new Date(project.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+            : '—';
+        document.getElementById('pcmAddress').textContent = project.address || '—';
+
+        // Показываем модал
+        document.getElementById('projectCardModal').classList.remove('hidden');
+
+        // Загружаем файлы
+        await this.loadFiles();
+    },
+
+    // Закрыть модальное окно
+    closeProjectCard() {
+        document.getElementById('projectCardModal').classList.add('hidden');
+        this.currentPosition = null;
+    },
+
+    // Открыть полную карточку позиции
+    openFullPosition() {
+        if (this.currentPosition) {
+            this.closeProjectCard();
+            app.openPosition(this.currentPosition.id, '');
+        }
+    },
+
+    // === РАБОТА С ФАЙЛАМИ ===
+
+    async loadFiles() {
+        const list = document.getElementById('pcmFilesList');
+        if (!this.currentPosition) return;
+
+        try {
+            const files = await api.call('getFiles', {
+                parentId: this.currentPosition.id,
+                stage: this.currentStage
+            });
+
+            console.log('📂 Загружено файлов:', files.length);
+
+            if (!files || files.length === 0) {
+                list.innerHTML = `<div style="text-align:center; padding:30px; color:#ccc;">Нет загруженных файлов</div>`;
+                return;
+            }
+
+            list.innerHTML = files.map(f => {
+                let icon = 'fa-file';
+                const isImage = f.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                if (f.file_name.endsWith('.pdf')) icon = 'fa-file-pdf';
+                if (isImage) icon = 'fa-file-image';
+                if (f.file_name.match(/\.(xls|xlsx)$/i)) icon = 'fa-file-excel';
+                if (f.file_name.match(/\.(doc|docx)$/i)) icon = 'fa-file-word';
+                if (f.file_name.match(/\.(zip|rar|7z)$/i)) icon = 'fa-file-archive';
+
+                // Определяем можно ли просмотреть файл (только изображения и PDF!)
+                const isPDF = f.file_name.match(/\.pdf$/i);
+                const canPreview = isImage || isPDF;
+
+                // Кнопка просмотра (только для изображений и PDF)
+                const previewBtn = f.tg_file_id && canPreview
+                    ? `<button onclick="kanban.viewFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}'); event.stopPropagation();" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                         <i class="fas fa-eye"></i>
+                       </button>`
+                    : '';
+
+                // Кнопка скачивания
+                const downloadUrl = f.tg_file_id
+                    ? `${KANBAN_FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}`
+                    : null;
+                const downloadBtn = downloadUrl
+                    ? `<button onclick="kanban.openDownload('${downloadUrl}'); event.stopPropagation();" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                         <i class="fas fa-download"></i>
+                       </button>`
+                    : '';
+
+                return `
+                <div class="file-item" style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #eee;">
+                    <div style="display:flex; align-items:center; gap:12px; overflow:hidden;">
+                        <div style="width:40px; height:40px; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#666;">
+                            <i class="fas ${icon}"></i>
+                        </div>
+                        <div style="min-width:0;">
+                            <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f.file_name}</div>
+                            <div style="font-size:11px; color:#999;">${utils.formatDate(f.created_at)}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        ${previewBtn}
+                        ${downloadBtn}
+                        <button class="btn-icon-del" onclick="kanban.deleteFile('${f.id}'); event.stopPropagation();"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+
+        } catch (e) {
+            console.error(e);
+            list.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки</div>`;
+        }
+    },
+
+    // 🔥 Загрузка файла через прокси
+    async uploadFile(file) {
+        if (!file || !this.currentPosition) return;
+
+        const progress = document.getElementById('pcmUploadProgress');
+        const bar = document.getElementById('pcmUploadBar');
+
+        try {
+            progress.style.display = 'block';
+            bar.style.width = '30%';
+
+            // Создаём FormData
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('caption', `📎 ${this.currentPosition.name || 'Файл'} | ${file.name}`);
+
+            bar.style.width = '60%';
+
+            // Отправляем на наш сервер
+            const response = await fetch(`${KANBAN_FILE_PROXY_URL}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (!result.success) throw new Error(result.error);
+
+            bar.style.width = '90%';
+
+            // Сохраняем запись в Supabase
+            await api.call('saveFileRecord', {
+                parentId: this.currentPosition.id,
+                stage: this.currentStage,
+                fileName: result.file_name,
+                fileUrl: `tg://${result.file_id}`,
+                tgFileId: result.file_id
+            });
+
+            bar.style.width = '100%';
+
+            // Перезагружаем список
+            await this.loadFiles();
+
+            // Скрываем прогресс
+            setTimeout(() => {
+                progress.style.display = 'none';
+                bar.style.width = '0%';
+            }, 500);
+
+        } catch (e) {
+            console.error('Upload error:', e);
+            alert('Ошибка загрузки: ' + e.message);
+            progress.style.display = 'none';
+            bar.style.width = '0%';
+        }
+
+        // Сбрасываем input
+        document.getElementById('pcmFileInput').value = '';
+    },
+
+    // 🔥 ПРОСМОТР файла
+    viewFile(fileId, fileName) {
+        const url = `${KANBAN_FILE_PROXY_URL}/file/${fileId}`;
+
+        // Для изображений — показываем в модальном окне
+        if (fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+            this.showImageModal(url, fileName);
+        }
+        // Для документов — используем iframe
+        else if (fileName.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx)$/i)) {
+            this.showDocumentModal(url, fileName, fileId);
+        }
+        else {
+            window.open(url, '_blank');
+        }
+    },
+
+    // Модальное окно для PDF
+    showDocumentModal(url, fileName, fileId) {
+        const modal = document.createElement('div');
+        modal.id = 'docModal';
+        modal.style.cssText = `
+            position:fixed; top:0; left:0; right:0; bottom:0; 
+            background:rgba(0,0,0,0.9); z-index:10000; 
+            display:flex; flex-direction:column; padding:10px;
+        `;
+        modal.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
+                <span style="font-size:14px;">${fileName}</span>
+                <div>
+                    <a href="${KANBAN_FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px; margin-right:15px;">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <iframe src="${url}" style="flex:1; border:none; border-radius:8px; background:white;"></iframe>
+        `;
+        document.body.appendChild(modal);
+    },
+
+    // Модальное окно для изображений
+    showImageModal(url, fileName) {
+        const modal = document.createElement('div');
+        modal.id = 'imageModal';
+        modal.style.cssText = `
+            position:fixed; top:0; left:0; right:0; bottom:0; 
+            background:rgba(0,0,0,0.9); z-index:10000; 
+            display:flex; align-items:center; justify-content:center;
+            padding:20px;
+        `;
+        modal.innerHTML = `
+            <div style="position:relative; max-width:100%; max-height:100%;">
+                <img src="${url}" style="max-width:100%; max-height:90vh; border-radius:8px;" onclick="event.stopPropagation();">
+                <div style="text-align:center; color:white; margin-top:10px; font-size:14px;">${fileName}</div>
+            </div>
+            <button onclick="this.parentElement.remove()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:32px; cursor:pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        modal.onclick = () => modal.remove();
+        document.body.appendChild(modal);
+    },
+
+    // 🔥 СКАЧИВАНИЕ файла
+    openDownload(url) {
+        if (window.Telegram?.WebApp?.openLink) {
+            Telegram.WebApp.openLink(url);
+        } else {
+            window.open(url, '_blank');
+        }
+    },
+
+    // Удаление файла
+    async deleteFile(id) {
+        if (!confirm("Удалить запись о файле?")) return;
+        await api.call('deleteFile', { fileId: id });
+        this.loadFiles();
     },
 
     async refresh() {
