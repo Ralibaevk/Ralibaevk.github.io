@@ -400,8 +400,8 @@ window.kanban = {
                         </button>
                     </div>
                 </div>
-                <div id="kbPdfContainer" style="flex:1; display:flex; justify-content:center; align-items:center; overflow:auto; background:#525659; border-radius:8px;">
-                    <canvas id="pdfCanvas" style="max-width:100%; max-height:100%;"></canvas>
+                <div id="kbPdfContainer" style="flex:1; overflow:auto; background:#525659; border-radius:8px; padding:20px;">
+                    <canvas id="pdfCanvas"></canvas>
                 </div>
             `;
             document.body.appendChild(modal);
@@ -658,32 +658,48 @@ window.kanban = {
     async renderPDFPage(pageNum) {
         if (!this.pdfDoc) return;
 
-        const page = await this.pdfDoc.getPage(pageNum);
-        const canvas = document.getElementById('pdfCanvas');
-        const ctx = canvas.getContext('2d');
+        // Отменяем предыдущий рендер если есть
+        if (this.pdfRenderTask) {
+            this.pdfRenderTask.cancel();
+            this.pdfRenderTask = null;
+        }
 
-        // Подбираем масштаб под размер контейнера
-        const container = canvas.parentElement;
-        const containerWidth = container.clientWidth - 40;
-        const containerHeight = container.clientHeight - 40;
+        try {
+            const page = await this.pdfDoc.getPage(pageNum);
+            const canvas = document.getElementById('pdfCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
 
-        const viewport = page.getViewport({ scale: 1 });
-        const scaleX = containerWidth / viewport.width;
-        const scaleY = containerHeight / viewport.height;
-        const baseScale = Math.min(scaleX, scaleY, 2);
+            // Подбираем масштаб под размер контейнера
+            const container = canvas.parentElement;
+            const containerWidth = container.clientWidth - 40;
+            const containerHeight = container.clientHeight - 40;
 
-        // Применяем пользовательский зум
-        const finalScale = baseScale * (this.pdfZoom || 1);
+            const viewport = page.getViewport({ scale: 1 });
+            const scaleX = containerWidth / viewport.width;
+            const scaleY = containerHeight / viewport.height;
+            const baseScale = Math.min(scaleX, scaleY, 2);
 
-        const scaledViewport = page.getViewport({ scale: finalScale });
+            // Применяем пользовательский зум
+            const finalScale = baseScale * (this.pdfZoom || 1);
 
-        canvas.width = scaledViewport.width;
-        canvas.height = scaledViewport.height;
+            const scaledViewport = page.getViewport({ scale: finalScale });
 
-        await page.render({
-            canvasContext: ctx,
-            viewport: scaledViewport
-        }).promise;
+            canvas.width = scaledViewport.width;
+            canvas.height = scaledViewport.height;
+
+            this.pdfRenderTask = page.render({
+                canvasContext: ctx,
+                viewport: scaledViewport
+            });
+
+            await this.pdfRenderTask.promise;
+            this.pdfRenderTask = null;
+        } catch (error) {
+            if (error.name !== 'RenderingCancelledException') {
+                console.error('Ошибка рендера PDF:', error);
+            }
+        }
     },
 
     // Переключение страниц PDF
