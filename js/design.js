@@ -157,27 +157,80 @@ window.design = {
         this.viewFileByUrl(url, fileName, fileId);
     },
 
-    // Модальное окно для изображений
+    // Модальное окно для изображений с зумом по колёсику
     showImageModal(url, fileName) {
+        let currentZoom = 1;
+        const minZoom = 0.5;
+        const maxZoom = 5;
+        const zoomStep = 0.15;
+
         const modal = document.createElement('div');
         modal.id = 'designImageModal';
         modal.style.cssText = `
             position:fixed; top:0; left:0; right:0; bottom:0; 
             background:rgba(0,0,0,0.9); z-index:10000; 
             display:flex; align-items:center; justify-content:center;
-            padding:20px;
+            padding:20px; overflow:hidden;
         `;
         modal.innerHTML = `
-            <div style="position:relative; max-width:100%; max-height:100%;">
-                <img src="${url}" style="max-width:100%; max-height:90vh; border-radius:8px;" onclick="event.stopPropagation();">
+            <div id="imageContainer" style="position:relative; display:flex; flex-direction:column; align-items:center;">
+                <img id="zoomableImage" src="${url}" style="max-width:90vw; max-height:85vh; border-radius:8px; transition:transform 0.1s; cursor:zoom-in;" onclick="event.stopPropagation();">
                 <div style="text-align:center; color:white; margin-top:10px; font-size:14px;">${fileName}</div>
+                <div id="zoomIndicator" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:20px; font-size:14px;">100%</div>
             </div>
             <button onclick="this.parentElement.remove()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:32px; cursor:pointer;">
                 <i class="fas fa-times"></i>
             </button>
+            <div style="position:absolute; bottom:20px; right:20px; display:flex; gap:10px;">
+                <button id="zoomOutBtn" style="width:40px; height:40px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:18px; cursor:pointer;">−</button>
+                <button id="zoomInBtn" style="width:40px; height:40px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:18px; cursor:pointer;">+</button>
+            </div>
         `;
-        modal.onclick = () => modal.remove();
+
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+
         document.body.appendChild(modal);
+
+        const img = document.getElementById('zoomableImage');
+        const indicator = document.getElementById('zoomIndicator');
+
+        const updateZoom = () => {
+            img.style.transform = `scale(${currentZoom})`;
+            indicator.textContent = `${Math.round(currentZoom * 100)}%`;
+            img.style.cursor = currentZoom > 1 ? 'zoom-out' : 'zoom-in';
+        };
+
+        // Зум колёсиком мыши
+        modal.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                currentZoom = Math.min(maxZoom, currentZoom + zoomStep);
+            } else {
+                currentZoom = Math.max(minZoom, currentZoom - zoomStep);
+            }
+            updateZoom();
+        }, { passive: false });
+
+        // Кнопки зума
+        document.getElementById('zoomInBtn').onclick = (e) => {
+            e.stopPropagation();
+            currentZoom = Math.min(maxZoom, currentZoom + zoomStep);
+            updateZoom();
+        };
+        document.getElementById('zoomOutBtn').onclick = (e) => {
+            e.stopPropagation();
+            currentZoom = Math.max(minZoom, currentZoom - zoomStep);
+            updateZoom();
+        };
+
+        // Клик на изображение для переключения зума
+        img.onclick = (e) => {
+            e.stopPropagation();
+            currentZoom = currentZoom > 1 ? 1 : 2;
+            updateZoom();
+        };
     },
 
     // Модальное окно для документов (PDF, Excel, Word)
@@ -210,6 +263,7 @@ window.design = {
         `;
 
         if (isPDF && window.pdfjsLib) {
+            this.pdfZoom = 1;
             modal.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
                     <span style="font-size:14px;">${fileName}</span>
@@ -219,6 +273,11 @@ window.design = {
                             <span id="designPdfPageInfo" style="font-size:12px;">Загрузка...</span>
                             <button id="designPdfNextPage" style="background:#333; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">&gt;</button>
                         </div>
+                        <div style="display:flex; align-items:center; gap:6px; background:#333; padding:4px 8px; border-radius:4px;">
+                            <button id="designPdfZoomOut" style="background:none; border:none; color:white; font-size:14px; cursor:pointer; padding:2px 6px;">−</button>
+                            <span id="designPdfZoomInfo" style="font-size:12px; min-width:40px; text-align:center;">100%</span>
+                            <button id="designPdfZoomIn" style="background:none; border:none; color:white; font-size:14px; cursor:pointer; padding:2px 6px;">+</button>
+                        </div>
                         <a href="${DESIGN_FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px;">
                             <i class="fas fa-download"></i>
                         </a>
@@ -227,11 +286,23 @@ window.design = {
                         </button>
                     </div>
                 </div>
-                <div style="flex:1; display:flex; justify-content:center; align-items:center; overflow:auto; background:#525659; border-radius:8px;">
+                <div id="pdfContainer" style="flex:1; display:flex; justify-content:center; align-items:center; overflow:auto; background:#525659; border-radius:8px;">
                     <canvas id="designPdfCanvas" style="max-width:100%; max-height:100%;"></canvas>
                 </div>
             `;
             document.body.appendChild(modal);
+
+            // Обработчик зума колёсиком
+            const pdfContainer = document.getElementById('pdfContainer');
+            pdfContainer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    this.pdfChangeZoom(0.1);
+                } else {
+                    this.pdfChangeZoom(-0.1);
+                }
+            }, { passive: false });
+
             this.renderPDF(url);
 
         } else if (isExcel && window.XLSX) {
@@ -275,11 +346,15 @@ window.design = {
             this.pdfDoc = pdf;
             this.pdfCurrentPage = 1;
             this.pdfTotalPages = pdf.numPages;
+            this.pdfZoom = 1;
 
             document.getElementById('designPdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
+            document.getElementById('designPdfZoomInfo').textContent = '100%';
 
             document.getElementById('designPdfPrevPage').onclick = () => this.pdfChangePage(-1);
             document.getElementById('designPdfNextPage').onclick = () => this.pdfChangePage(1);
+            document.getElementById('designPdfZoomIn').onclick = () => this.pdfChangeZoom(0.25);
+            document.getElementById('designPdfZoomOut').onclick = () => this.pdfChangeZoom(-0.25);
 
             await this.renderPDFPage(1);
         } catch (error) {
@@ -302,9 +377,12 @@ window.design = {
         const viewport = page.getViewport({ scale: 1 });
         const scaleX = containerWidth / viewport.width;
         const scaleY = containerHeight / viewport.height;
-        const scale = Math.min(scaleX, scaleY, 2);
+        const baseScale = Math.min(scaleX, scaleY, 2);
 
-        const scaledViewport = page.getViewport({ scale });
+        // Применяем пользовательский зум
+        const finalScale = baseScale * this.pdfZoom;
+
+        const scaledViewport = page.getViewport({ scale: finalScale });
 
         canvas.width = scaledViewport.width;
         canvas.height = scaledViewport.height;
@@ -321,6 +399,15 @@ window.design = {
             this.pdfCurrentPage = newPage;
             document.getElementById('designPdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
             this.renderPDFPage(newPage);
+        }
+    },
+
+    pdfChangeZoom(delta) {
+        const newZoom = this.pdfZoom + delta;
+        if (newZoom >= 0.5 && newZoom <= 4) {
+            this.pdfZoom = newZoom;
+            document.getElementById('designPdfZoomInfo').textContent = `${Math.round(this.pdfZoom * 100)}%`;
+            this.renderPDFPage(this.pdfCurrentPage);
         }
     },
 

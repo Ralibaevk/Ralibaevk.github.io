@@ -218,11 +218,13 @@ window.kanban = {
                 if (f.file_name.match(/\.(doc|docx)$/i)) icon = 'fa-file-word';
                 if (f.file_name.match(/\.(zip|rar|7z)$/i)) icon = 'fa-file-archive';
 
-                // Определяем можно ли просмотреть файл (только изображения и PDF!)
+                // Определяем можно ли просмотреть файл
                 const isPDF = f.file_name.match(/\.pdf$/i);
-                const canPreview = isImage || isPDF;
+                const isExcel = f.file_name.match(/\.(xls|xlsx)$/i);
+                const isWord = f.file_name.match(/\.(doc|docx)$/i);
+                const canPreview = isImage || isPDF || isExcel || isWord;
 
-                // Кнопка просмотра (только для изображений и PDF)
+                // Кнопка просмотра
                 const previewBtn = f.tg_file_id && canPreview
                     ? `<button onclick="kanban.viewFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}'); event.stopPropagation();" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
                          <i class="fas fa-eye"></i>
@@ -674,27 +676,77 @@ window.kanban = {
         }
     },
 
-    // Модальное окно для изображений
+    // Модальное окно для изображений с зумом
     showImageModal(url, fileName) {
+        let currentZoom = 1;
+        const minZoom = 0.5;
+        const maxZoom = 5;
+        const zoomStep = 0.15;
+
         const modal = document.createElement('div');
         modal.id = 'imageModal';
         modal.style.cssText = `
             position:fixed; top:0; left:0; right:0; bottom:0; 
             background:rgba(0,0,0,0.9); z-index:10000; 
             display:flex; align-items:center; justify-content:center;
-            padding:20px;
+            padding:20px; overflow:hidden;
         `;
         modal.innerHTML = `
-            <div style="position:relative; max-width:100%; max-height:100%;">
-                <img src="${url}" style="max-width:100%; max-height:90vh; border-radius:8px;" onclick="event.stopPropagation();">
+            <div id="kbImageContainer" style="position:relative; display:flex; flex-direction:column; align-items:center;">
+                <img id="kbZoomableImage" src="${url}" style="max-width:90vw; max-height:85vh; border-radius:8px; transition:transform 0.1s; cursor:zoom-in;" onclick="event.stopPropagation();">
                 <div style="text-align:center; color:white; margin-top:10px; font-size:14px;">${fileName}</div>
+                <div id="kbZoomIndicator" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:20px; font-size:14px;">100%</div>
             </div>
             <button onclick="this.parentElement.remove()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:32px; cursor:pointer;">
                 <i class="fas fa-times"></i>
             </button>
+            <div style="position:absolute; bottom:20px; right:20px; display:flex; gap:10px;">
+                <button id="kbZoomOutBtn" style="width:40px; height:40px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:18px; cursor:pointer;">−</button>
+                <button id="kbZoomInBtn" style="width:40px; height:40px; border-radius:50%; border:none; background:rgba(255,255,255,0.2); color:white; font-size:18px; cursor:pointer;">+</button>
+            </div>
         `;
-        modal.onclick = () => modal.remove();
+
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.remove();
+        };
+
         document.body.appendChild(modal);
+
+        const img = document.getElementById('kbZoomableImage');
+        const indicator = document.getElementById('kbZoomIndicator');
+
+        const updateZoom = () => {
+            img.style.transform = `scale(${currentZoom})`;
+            indicator.textContent = `${Math.round(currentZoom * 100)}%`;
+            img.style.cursor = currentZoom > 1 ? 'zoom-out' : 'zoom-in';
+        };
+
+        modal.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                currentZoom = Math.min(maxZoom, currentZoom + zoomStep);
+            } else {
+                currentZoom = Math.max(minZoom, currentZoom - zoomStep);
+            }
+            updateZoom();
+        }, { passive: false });
+
+        document.getElementById('kbZoomInBtn').onclick = (e) => {
+            e.stopPropagation();
+            currentZoom = Math.min(maxZoom, currentZoom + zoomStep);
+            updateZoom();
+        };
+        document.getElementById('kbZoomOutBtn').onclick = (e) => {
+            e.stopPropagation();
+            currentZoom = Math.max(minZoom, currentZoom - zoomStep);
+            updateZoom();
+        };
+
+        img.onclick = (e) => {
+            e.stopPropagation();
+            currentZoom = currentZoom > 1 ? 1 : 2;
+            updateZoom();
+        };
     },
 
     // 🔥 СКАЧИВАНИЕ файла
