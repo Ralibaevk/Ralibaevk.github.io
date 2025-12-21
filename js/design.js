@@ -7,7 +7,6 @@ const DESIGN_FILE_PROXY_URL = 'https://files.logiqa.kz';
 window.design = {
     currentPositionId: null,
     files: [],
-    images: [],
 
     // Инициализация вкладки Дизайн
     async init(positionId) {
@@ -19,13 +18,12 @@ window.design = {
 
     // === ЗАГРУЗКА ФАЙЛОВ (из project_files со stage='design') ===
     async loadFiles() {
-        const galleryMain = document.getElementById('galleryMain');
-        const galleryThumbs = document.getElementById('galleryThumbs');
-        const specContent = document.getElementById('specContent');
+        const filesList = document.getElementById('designFilesList');
+        const filesCount = document.getElementById('designFilesCount');
 
         if (!this.currentPositionId) {
-            if (galleryMain) galleryMain.innerHTML = '<div class="gallery-placeholder"><i class="fas fa-image"></i><span>Нет изображений</span></div>';
-            if (specContent) specContent.innerHTML = '<div class="files-empty">Файлы не загружены</div>';
+            if (filesList) filesList.innerHTML = '<div class="files-empty"><i class="fas fa-folder-open"></i> Файлы не загружены</div>';
+            if (filesCount) filesCount.textContent = '0';
             return;
         }
 
@@ -40,89 +38,107 @@ window.design = {
 
             this.files = files || [];
 
-            // Разделяем на изображения и прочие файлы
-            this.images = this.files.filter(f =>
-                f.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-            );
-            const otherFiles = this.files.filter(f =>
-                !f.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-            );
+            // Обновляем счётчик
+            if (filesCount) filesCount.textContent = this.files.length;
 
-            // Рендерим галерею изображений
-            this.renderGallery();
-
-            // Рендерим список файлов (PDF, документы и т.д.)
-            this.renderFilesList(otherFiles);
+            // Рендерим список ВСЕХ файлов
+            this.renderFilesList();
 
         } catch (e) {
             console.error('Ошибка загрузки файлов дизайна:', e);
-            if (galleryMain) galleryMain.innerHTML = '<div class="gallery-placeholder"><i class="fas fa-exclamation-triangle"></i><span>Ошибка загрузки</span></div>';
+            if (filesList) filesList.innerHTML = '<div class="files-empty" style="color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> Ошибка загрузки</div>';
         }
     },
 
-    // === ГАЛЕРЕЯ ИЗОБРАЖЕНИЙ ===
-    renderGallery() {
-        const mainEl = document.getElementById('galleryMain');
-        const thumbsEl = document.getElementById('galleryThumbs');
+    // === СПИСОК ВСЕХ ФАЙЛОВ с кнопкой предпросмотра ===
+    renderFilesList() {
+        const filesList = document.getElementById('designFilesList');
+        if (!filesList) return;
 
-        if (!mainEl) return;
-
-        if (this.images.length === 0) {
-            mainEl.innerHTML = '<div class="gallery-placeholder"><i class="fas fa-image"></i><span>Нет изображений</span></div>';
-            if (thumbsEl) thumbsEl.innerHTML = '';
+        if (!this.files || this.files.length === 0) {
+            filesList.innerHTML = `
+                <div class="files-empty">
+                    <i class="fas fa-folder-open"></i> 
+                    Файлы не загружены<br>
+                    <small>Загрузите через канбан-доску "Дизайн"</small>
+                </div>`;
             return;
         }
 
-        // Показываем первое изображение как главное
-        const mainImg = this.images[0];
-        const mainUrl = mainImg.tg_file_id
-            ? `${DESIGN_FILE_PROXY_URL}/file/${mainImg.tg_file_id}`
-            : mainImg.file_url;
+        filesList.innerHTML = this.files.map((f, index) => {
+            // Определяем иконку по типу файла
+            let icon = 'fa-file';
+            let iconColor = '#6b7280';
 
-        mainEl.innerHTML = `<img src="${mainUrl}" alt="${mainImg.file_name}" onclick="design.openLightbox(0)">`;
+            if (f.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                icon = 'fa-file-image';
+                iconColor = '#3b82f6';
+            } else if (f.file_name?.endsWith('.pdf')) {
+                icon = 'fa-file-pdf';
+                iconColor = '#ef4444';
+            } else if (f.file_name?.match(/\.(xls|xlsx)$/i)) {
+                icon = 'fa-file-excel';
+                iconColor = '#10b981';
+            } else if (f.file_name?.match(/\.(doc|docx)$/i)) {
+                icon = 'fa-file-word';
+                iconColor = '#3b82f6';
+            } else if (f.file_name?.match(/\.(zip|rar|7z)$/i)) {
+                icon = 'fa-file-archive';
+                iconColor = '#f59e0b';
+            }
 
-        // Миниатюры
-        if (thumbsEl && this.images.length > 1) {
-            thumbsEl.innerHTML = this.images.map((img, idx) => {
-                const url = img.tg_file_id
-                    ? `${DESIGN_FILE_PROXY_URL}/file/${img.tg_file_id}`
-                    : img.file_url;
-                return `<img src="${url}" class="gallery-thumb ${idx === 0 ? 'active' : ''}" 
-                              onclick="design.selectImage(${idx})">`;
-            }).join('');
-        } else if (thumbsEl) {
-            thumbsEl.innerHTML = '';
+            // Проверяем можно ли предпросматривать файл (PDF, Excel, Word, изображения)
+            const canPreview = f.file_name?.match(/\.(jpg|jpeg|png|gif|webp|pdf|xls|xlsx|doc|docx)$/i);
+
+            const downloadUrl = f.tg_file_id
+                ? `${DESIGN_FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}`
+                : f.file_url;
+
+            return `
+                <div class="design-file-item">
+                    <div class="design-file-icon" style="color:${iconColor};">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div class="design-file-info">
+                        <div class="design-file-name">${f.file_name}</div>
+                        <div class="design-file-date">${utils.formatDate(f.created_at)}</div>
+                    </div>
+                    <div class="design-file-actions">
+                        ${canPreview && f.tg_file_id ? `
+                            <button class="btn-icon" onclick="design.viewFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        ` : ''}
+                        <a href="${downloadUrl}" target="_blank" class="btn-icon">
+                            <i class="fas fa-download"></i>
+                        </a>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    },
+
+    // === ПРЕДПРОСМОТР ФАЙЛА ===
+    viewFile(fileId, fileName) {
+        const url = `${DESIGN_FILE_PROXY_URL}/file/${fileId}`;
+
+        // Для изображений — показываем в модальном окне
+        if (fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+            this.showImageModal(url, fileName);
+        }
+        // Для документов — используем showDocumentModal как в kanban.js
+        else if (fileName.match(/\.(pdf|doc|docx|xls|xlsx)$/i)) {
+            this.showDocumentModal(url, fileName, fileId);
+        }
+        else {
+            window.open(url, '_blank');
         }
     },
 
-    selectImage(index) {
-        if (index < 0 || index >= this.images.length) return;
-
-        const img = this.images[index];
-        const mainEl = document.getElementById('galleryMain');
-        const url = img.tg_file_id
-            ? `${DESIGN_FILE_PROXY_URL}/file/${img.tg_file_id}`
-            : img.file_url;
-
-        mainEl.innerHTML = `<img src="${url}" alt="${img.file_name}" onclick="design.openLightbox(${index})">`;
-
-        // Обновляем активную миниатюру
-        document.querySelectorAll('.gallery-thumb').forEach((el, i) => {
-            el.classList.toggle('active', i === index);
-        });
-    },
-
-    // Лайтбокс для просмотра изображения
-    openLightbox(index) {
-        const img = this.images[index];
-        if (!img) return;
-
-        const url = img.tg_file_id
-            ? `${DESIGN_FILE_PROXY_URL}/file/${img.tg_file_id}`
-            : img.file_url;
-
+    // Модальное окно для изображений
+    showImageModal(url, fileName) {
         const modal = document.createElement('div');
-        modal.id = 'designLightbox';
+        modal.id = 'designImageModal';
         modal.style.cssText = `
             position:fixed; top:0; left:0; right:0; bottom:0; 
             background:rgba(0,0,0,0.9); z-index:10000; 
@@ -132,7 +148,7 @@ window.design = {
         modal.innerHTML = `
             <div style="position:relative; max-width:100%; max-height:100%;">
                 <img src="${url}" style="max-width:100%; max-height:90vh; border-radius:8px;" onclick="event.stopPropagation();">
-                <div style="text-align:center; color:white; margin-top:10px; font-size:14px;">${img.file_name}</div>
+                <div style="text-align:center; color:white; margin-top:10px; font-size:14px;">${fileName}</div>
             </div>
             <button onclick="this.parentElement.remove()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:32px; cursor:pointer;">
                 <i class="fas fa-times"></i>
@@ -142,43 +158,242 @@ window.design = {
         document.body.appendChild(modal);
     },
 
-    // === СПИСОК ФАЙЛОВ (не изображения) ===
-    renderFilesList(files) {
-        const specContent = document.getElementById('specContent');
-        if (!specContent) return;
+    // Модальное окно для документов (PDF, Excel, Word)
+    showDocumentModal(url, fileName, fileId) {
+        const modal = document.createElement('div');
+        modal.id = 'docModal';
+        modal.style.cssText = `
+            position:fixed; top:0; left:0; right:0; bottom:0; 
+            background:rgba(0,0,0,0.9); z-index:10000; 
+            display:flex; flex-direction:column; padding:10px;
+        `;
 
-        if (!files || files.length === 0) {
-            // Показываем информацию о количестве изображений
-            if (this.images.length > 0) {
-                specContent.innerHTML = `<div class="files-info">
-                    <i class="fas fa-images"></i> ${this.images.length} изображений загружено
-                </div>`;
-            } else {
-                specContent.innerHTML = '<div class="files-empty"><i class="fas fa-folder-open"></i> Файлы не загружены<br><small>Загрузите через канбан-доску "Дизайн"</small></div>';
-            }
-            return;
-        }
+        const isPDF = fileName.match(/\.pdf$/i);
+        const isExcel = fileName.match(/\.(xls|xlsx)$/i);
+        const isWord = fileName.match(/\.(doc|docx)$/i);
 
-        specContent.innerHTML = files.map(f => {
-            let icon = 'fa-file';
-            if (f.file_name?.endsWith('.pdf')) icon = 'fa-file-pdf';
-            if (f.file_name?.match(/\.(xls|xlsx)$/i)) icon = 'fa-file-excel';
-            if (f.file_name?.match(/\.(doc|docx)$/i)) icon = 'fa-file-word';
-
-            const downloadUrl = f.tg_file_id
-                ? `${DESIGN_FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}`
-                : f.file_url;
-
-            return `
-                <div class="spec-file-item">
-                    <i class="fas ${icon}"></i>
-                    <span class="spec-file-name">${f.file_name}</span>
-                    <a href="${downloadUrl}" target="_blank" class="spec-file-download">
+        const headerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
+                <span style="font-size:14px;">${fileName}</span>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <span id="designDocInfo" style="font-size:12px; color:#888;"></span>
+                    <a href="${DESIGN_FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px;">
                         <i class="fas fa-download"></i>
                     </a>
+                    <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        if (isPDF && window.pdfjsLib) {
+            modal.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
+                    <span style="font-size:14px;">${fileName}</span>
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button id="designPdfPrevPage" style="background:#333; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">&lt;</button>
+                            <span id="designPdfPageInfo" style="font-size:12px;">Загрузка...</span>
+                            <button id="designPdfNextPage" style="background:#333; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">&gt;</button>
+                        </div>
+                        <a href="${DESIGN_FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px;">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="flex:1; display:flex; justify-content:center; align-items:center; overflow:auto; background:#525659; border-radius:8px;">
+                    <canvas id="designPdfCanvas" style="max-width:100%; max-height:100%;"></canvas>
                 </div>
             `;
-        }).join('');
+            document.body.appendChild(modal);
+            this.renderPDF(url);
+
+        } else if (isExcel && window.XLSX) {
+            modal.innerHTML = headerHTML + `
+                <div id="designExcelContent" style="flex:1; overflow:auto; background:white; border-radius:8px; padding:10px;">
+                    <div style="text-align:center; padding:40px; color:#666;">
+                        <i class="fas fa-spinner fa-spin" style="font-size:32px;"></i>
+                        <p style="margin-top:15px;">Загрузка Excel файла...</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            this.renderExcel(url, fileId, fileName);
+
+        } else if (isWord && window.mammoth) {
+            modal.innerHTML = headerHTML + `
+                <div id="designWordContent" style="flex:1; overflow:auto; background:white; border-radius:8px; padding:20px;">
+                    <div style="text-align:center; padding:40px; color:#666;">
+                        <i class="fas fa-spinner fa-spin" style="font-size:32px;"></i>
+                        <p style="margin-top:15px;">Загрузка Word документа...</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            this.renderWord(url, fileId, fileName);
+
+        } else {
+            modal.innerHTML = headerHTML + `
+                <iframe src="${url}" style="flex:1; border:none; border-radius:8px; background:white;"></iframe>
+            `;
+            document.body.appendChild(modal);
+        }
+    },
+
+    // Рендер PDF
+    async renderPDF(url) {
+        try {
+            const loadingTask = pdfjsLib.getDocument(url);
+            const pdf = await loadingTask.promise;
+
+            this.pdfDoc = pdf;
+            this.pdfCurrentPage = 1;
+            this.pdfTotalPages = pdf.numPages;
+
+            document.getElementById('designPdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
+
+            document.getElementById('designPdfPrevPage').onclick = () => this.pdfChangePage(-1);
+            document.getElementById('designPdfNextPage').onclick = () => this.pdfChangePage(1);
+
+            await this.renderPDFPage(1);
+        } catch (error) {
+            console.error('Ошибка загрузки PDF:', error);
+            document.getElementById('designPdfPageInfo').textContent = 'Ошибка загрузки';
+        }
+    },
+
+    async renderPDFPage(pageNum) {
+        if (!this.pdfDoc) return;
+
+        const page = await this.pdfDoc.getPage(pageNum);
+        const canvas = document.getElementById('designPdfCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const container = canvas.parentElement;
+        const containerWidth = container.clientWidth - 40;
+        const containerHeight = container.clientHeight - 40;
+
+        const viewport = page.getViewport({ scale: 1 });
+        const scaleX = containerWidth / viewport.width;
+        const scaleY = containerHeight / viewport.height;
+        const scale = Math.min(scaleX, scaleY, 2);
+
+        const scaledViewport = page.getViewport({ scale });
+
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
+
+        await page.render({
+            canvasContext: ctx,
+            viewport: scaledViewport
+        }).promise;
+    },
+
+    pdfChangePage(delta) {
+        const newPage = this.pdfCurrentPage + delta;
+        if (newPage >= 1 && newPage <= this.pdfTotalPages) {
+            this.pdfCurrentPage = newPage;
+            document.getElementById('designPdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
+            this.renderPDFPage(newPage);
+        }
+    },
+
+    // Рендер Excel
+    async renderExcel(url, fileId, fileName) {
+        const container = document.getElementById('designExcelContent');
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Не удалось загрузить файл');
+
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const html = XLSX.utils.sheet_to_html(sheet, { id: 'designExcelTable' });
+
+            this.currentWorkbook = workbook;
+
+            let tabsHTML = '';
+            if (workbook.SheetNames.length > 1) {
+                tabsHTML = `
+                    <div style="display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap;">
+                        ${workbook.SheetNames.map((name, i) => `
+                            <button class="design-excel-tab ${i === 0 ? 'active' : ''}" 
+                                    onclick="design.switchExcelSheet(${i})"
+                                    style="padding:5px 12px; border:1px solid #ddd; border-radius:4px; 
+                                           background:${i === 0 ? '#3b82f6' : '#f3f4f6'}; 
+                                           color:${i === 0 ? 'white' : '#333'}; cursor:pointer; font-size:12px;">
+                                ${name}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            container.innerHTML = tabsHTML + `<div id="designExcelTableContainer" style="overflow:auto;">${html}</div>`;
+
+            const table = container.querySelector('table');
+            if (table) {
+                table.style.cssText = 'border-collapse:collapse; width:100%; font-size:13px;';
+                table.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.cssText = 'border:1px solid #e5e7eb; padding:6px 10px; text-align:left;';
+                });
+            }
+
+            document.getElementById('designDocInfo').textContent = `${workbook.SheetNames.length} лист(ов)`;
+
+        } catch (error) {
+            console.error('Ошибка загрузки Excel:', error);
+            container.innerHTML = `<div style="text-align:center; padding:40px; color:#666;">Ошибка загрузки файла</div>`;
+        }
+    },
+
+    switchExcelSheet(index) {
+        if (!this.currentWorkbook) return;
+
+        const sheetName = this.currentWorkbook.SheetNames[index];
+        const sheet = this.currentWorkbook.Sheets[sheetName];
+        const html = XLSX.utils.sheet_to_html(sheet, { id: 'designExcelTable' });
+
+        const tableContainer = document.getElementById('designExcelTableContainer');
+        if (tableContainer) {
+            tableContainer.innerHTML = html;
+            const table = tableContainer.querySelector('table');
+            if (table) {
+                table.style.cssText = 'border-collapse:collapse; width:100%; font-size:13px;';
+                table.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.cssText = 'border:1px solid #e5e7eb; padding:6px 10px; text-align:left;';
+                });
+            }
+        }
+
+        document.querySelectorAll('.design-excel-tab').forEach((btn, i) => {
+            btn.style.background = i === index ? '#3b82f6' : '#f3f4f6';
+            btn.style.color = i === index ? 'white' : '#333';
+        });
+    },
+
+    // Рендер Word
+    async renderWord(url, fileId, fileName) {
+        const container = document.getElementById('designWordContent');
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Не удалось загрузить файл');
+
+            const arrayBuffer = await response.arrayBuffer();
+            const result = await mammoth.convertToHtml({ arrayBuffer });
+
+            container.innerHTML = `<div style="max-width:800px; margin:0 auto; line-height:1.6;">${result.value}</div>`;
+
+        } catch (error) {
+            console.error('Ошибка загрузки Word:', error);
+            container.innerHTML = `<div style="text-align:center; padding:40px; color:#666;">Ошибка загрузки. Формат .doc не поддерживается, только .docx</div>`;
+        }
     },
 
     // === КОММЕНТАРИИ ===

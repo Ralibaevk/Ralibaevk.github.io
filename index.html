@@ -287,39 +287,37 @@
           </div>
 
           <div class="design-layout">
-            <!-- Левая колонка: Галерея -->
-            <div class="design-gallery">
-              <div class="gallery-main" id="galleryMain">
-                <div class="gallery-placeholder"><i class="fas fa-image"></i><span>Нет изображений</span></div>
+            <!-- Левая колонка: Комментарии -->
+            <div class="design-comments-panel">
+              <div class="design-comments-header">
+                <h3><i class="fas fa-comments"></i> Комментарии</h3>
+                <span id="designCommentsCount" class="comments-count">0</span>
               </div>
-              <div class="gallery-thumbs" id="galleryThumbs"></div>
+              <div id="designCommentsList" class="design-comments-list">
+                <div class="comments-empty">Нет комментариев</div>
+              </div>
+              <div class="design-comments-input">
+                <input type="text" id="designCommentInput" placeholder="Написать комментарий..."
+                  onkeypress="if(event.key==='Enter')design.addComment()">
+                <button class="btn btn-primary" onclick="design.addComment()">
+                  <i class="fas fa-paper-plane"></i>
+                </button>
+              </div>
             </div>
 
             <!-- Правая колонка: Файлы -->
-            <div class="design-spec-panel">
-              <h3><i class="fas fa-folder-open"></i> Файлы</h3>
-              <div id="specContent" class="spec-content">
-                <div class="files-empty"><i class="fas fa-folder-open"></i> Файлы не загружены<br><small>Загрузите через
-                    канбан-доску "Дизайн"</small></div>
+            <div class="design-files-panel">
+              <div class="design-files-header">
+                <h3><i class="fas fa-folder-open"></i> Файлы</h3>
+                <span id="designFilesCount" class="files-count">0</span>
               </div>
-            </div>
-          </div>
-
-          <!-- Блок комментариев -->
-          <div class="design-comments-section">
-            <div class="design-comments-header">
-              <h3><i class="fas fa-comments"></i> Комментарии</h3>
-              <span id="designCommentsCount" class="comments-count">0</span>
-            </div>
-            <div id="designCommentsList" class="design-comments-list">
-              <div class="comments-empty">Нет комментариев</div>
-            </div>
-            <div class="design-comments-input">
-              <input type="text" id="designCommentInput" placeholder="Написать комментарий..."
-                onkeypress="if(event.key==='Enter')design.addComment()">
-              <button class="btn btn-primary" onclick="design.addComment()">
-                <i class="fas fa-paper-plane"></i>
-              </button>
+              <div id="designFilesList" class="design-files-list">
+                <div class="files-empty">
+                  <i class="fas fa-folder-open"></i>
+                  Файлы не загружены<br>
+                  <small>Загрузите через канбан-доску "Дизайн"</small>
+                </div>
+              </div>
             </div>
           </div>
 
