@@ -191,7 +191,7 @@ window.measure = {
         }
     },
 
-    // Модальное окно для просмотра PDF с использованием PDF.js
+    // Модальное окно для документов с использованием PDF.js, SheetJS, Mammoth
     showDocumentModal(url, fileName) {
         // Извлекаем fileId из URL
         const fileId = url.split('/file/')[1];
@@ -204,11 +204,29 @@ window.measure = {
             display:flex; flex-direction:column; padding:10px;
         `;
 
-        // Проверяем, PDF ли это
+        // Определяем тип файла
         const isPDF = fileName.match(/\.pdf$/i);
+        const isExcel = fileName.match(/\.(xls|xlsx)$/i);
+        const isWord = fileName.match(/\.(doc|docx)$/i);
+
+        // Базовая шапка модалки
+        const headerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
+                <span style="font-size:14px;">${fileName}</span>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <span id="measureDocPageInfo" style="font-size:12px; color:#888;"></span>
+                    <a href="${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px;">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
 
         if (isPDF && window.pdfjsLib) {
-            // Используем PDF.js для рендеринга
+            // PDF: Используем PDF.js для рендеринга
             modal.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
                     <span style="font-size:14px;">${fileName}</span>
@@ -231,26 +249,186 @@ window.measure = {
                 </div>
             `;
             document.body.appendChild(modal);
-
-            // Загружаем и рендерим PDF
             this.renderPDF(url);
-        } else {
-            // Для других документов или если PDF.js не загружен — fallback на iframe
-            modal.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
-                    <span style="font-size:14px;">${fileName}</span>
-                    <div>
-                        <a href="${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px; margin-right:15px;">
-                            <i class="fas fa-download"></i>
-                        </a>
-                        <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
-                            <i class="fas fa-times"></i>
-                        </button>
+
+        } else if (isExcel && window.XLSX) {
+            // Excel: Используем SheetJS
+            modal.innerHTML = headerHTML + `
+                <div id="measureExcelContent" style="flex:1; overflow:auto; background:white; border-radius:8px; padding:10px;">
+                    <div style="text-align:center; padding:40px; color:#666;">
+                        <i class="fas fa-spinner fa-spin" style="font-size:32px;"></i>
+                        <p style="margin-top:15px;">Загрузка Excel файла...</p>
                     </div>
                 </div>
+            `;
+            document.body.appendChild(modal);
+            this.renderExcel(url, fileId, fileName);
+
+        } else if (isWord && window.mammoth) {
+            // Word: Используем Mammoth.js
+            modal.innerHTML = headerHTML + `
+                <div id="measureWordContent" style="flex:1; overflow:auto; background:white; border-radius:8px; padding:20px;">
+                    <div style="text-align:center; padding:40px; color:#666;">
+                        <i class="fas fa-spinner fa-spin" style="font-size:32px;"></i>
+                        <p style="margin-top:15px;">Загрузка Word документа...</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            this.renderWord(url, fileId, fileName);
+
+        } else {
+            // Для других документов — fallback на iframe
+            modal.innerHTML = headerHTML + `
                 <iframe src="${url}" style="flex:1; border:none; border-radius:8px; background:white;"></iframe>
             `;
             document.body.appendChild(modal);
+        }
+    },
+
+    // Рендер Excel с помощью SheetJS
+    async renderExcel(url, fileId, fileName) {
+        const container = document.getElementById('measureExcelContent');
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Не удалось загрузить файл');
+
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const html = XLSX.utils.sheet_to_html(sheet, { id: 'measureExcelTable' });
+
+            let tabsHTML = '';
+            if (workbook.SheetNames.length > 1) {
+                tabsHTML = `
+                    <div style="display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap;">
+                        ${workbook.SheetNames.map((name, i) => `
+                            <button class="measure-excel-tab ${i === 0 ? 'active' : ''}" 
+                                    onclick="measure.switchExcelSheet(${i})"
+                                    style="padding:5px 12px; border:1px solid #ddd; border-radius:4px; 
+                                           background:${i === 0 ? '#3b82f6' : '#f3f4f6'}; 
+                                           color:${i === 0 ? 'white' : '#333'}; cursor:pointer; font-size:12px;">
+                                ${name}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            this.currentWorkbook = workbook;
+
+            container.innerHTML = tabsHTML + `
+                <div id="measureExcelTableContainer" style="overflow:auto;">
+                    ${html}
+                </div>
+            `;
+
+            const table = container.querySelector('table');
+            if (table) {
+                table.style.cssText = 'border-collapse:collapse; width:100%; font-size:13px;';
+                table.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.cssText = 'border:1px solid #e5e7eb; padding:6px 10px; text-align:left;';
+                });
+                table.querySelectorAll('th').forEach(cell => {
+                    cell.style.background = '#f8fafc';
+                    cell.style.fontWeight = '600';
+                });
+            }
+
+            document.getElementById('measureDocPageInfo').textContent = `${workbook.SheetNames.length} лист(ов)`;
+
+        } catch (error) {
+            console.error('Ошибка загрузки Excel:', error);
+            container.innerHTML = `
+                <div style="text-align:center; padding:40px; color:#666;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#f59e0b; margin-bottom:15px;"></i>
+                    <p style="margin-bottom:15px;">Не удалось открыть Excel файл</p>
+                    <a href="${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" 
+                       target="_blank" style="display:inline-block; padding:10px 20px; background:#3b82f6; color:white; border-radius:8px; text-decoration:none;">
+                        <i class="fas fa-download"></i> Скачать файл
+                    </a>
+                </div>
+            `;
+        }
+    },
+
+    // Переключение листов Excel
+    switchExcelSheet(index) {
+        if (!this.currentWorkbook) return;
+
+        const sheetName = this.currentWorkbook.SheetNames[index];
+        const sheet = this.currentWorkbook.Sheets[sheetName];
+        const html = XLSX.utils.sheet_to_html(sheet, { id: 'measureExcelTable' });
+
+        const tableContainer = document.getElementById('measureExcelTableContainer');
+        if (tableContainer) {
+            tableContainer.innerHTML = html;
+
+            const table = tableContainer.querySelector('table');
+            if (table) {
+                table.style.cssText = 'border-collapse:collapse; width:100%; font-size:13px;';
+                table.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.cssText = 'border:1px solid #e5e7eb; padding:6px 10px; text-align:left;';
+                });
+                table.querySelectorAll('th').forEach(cell => {
+                    cell.style.background = '#f8fafc';
+                    cell.style.fontWeight = '600';
+                });
+            }
+        }
+
+        document.querySelectorAll('.measure-excel-tab').forEach((btn, i) => {
+            btn.style.background = i === index ? '#3b82f6' : '#f3f4f6';
+            btn.style.color = i === index ? 'white' : '#333';
+        });
+    },
+
+    // Рендер Word с помощью Mammoth.js
+    async renderWord(url, fileId, fileName) {
+        const container = document.getElementById('measureWordContent');
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Не удалось загрузить файл');
+
+            const arrayBuffer = await response.arrayBuffer();
+            const result = await mammoth.convertToHtml({ arrayBuffer });
+
+            container.innerHTML = `
+                <div style="max-width:800px; margin:0 auto; line-height:1.6; font-family: 'Segoe UI', Arial, sans-serif;">
+                    ${result.value}
+                </div>
+            `;
+
+            container.querySelectorAll('table').forEach(table => {
+                table.style.cssText = 'border-collapse:collapse; width:100%; margin:15px 0;';
+                table.querySelectorAll('td, th').forEach(cell => {
+                    cell.style.cssText = 'border:1px solid #e5e7eb; padding:8px;';
+                });
+            });
+
+            container.querySelectorAll('img').forEach(img => {
+                img.style.cssText = 'max-width:100%; height:auto; margin:10px 0;';
+            });
+
+            if (result.messages.length > 0) {
+                console.warn('Mammoth warnings:', result.messages);
+            }
+
+        } catch (error) {
+            console.error('Ошибка загрузки Word:', error);
+            container.innerHTML = `
+                <div style="text-align:center; padding:40px; color:#666;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:48px; color:#f59e0b; margin-bottom:15px;"></i>
+                    <p style="margin-bottom:15px;">Не удалось открыть Word документ</p>
+                    <p style="font-size:12px; color:#999; margin-bottom:15px;">Формат .doc не поддерживается, только .docx</p>
+                    <a href="${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" 
+                       target="_blank" style="display:inline-block; padding:10px 20px; background:#3b82f6; color:white; border-radius:8px; text-decoration:none;">
+                        <i class="fas fa-download"></i> Скачать файл
+                    </a>
+                </div>
+            `;
         }
     },
 
