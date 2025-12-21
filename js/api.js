@@ -584,36 +584,34 @@ window.api = {
   async _getComments(parentId, stage) {
     const { data, error } = await supabase
       .from('position_comments')
-      .select(`
-        *,
-        users:user_id (
-          id,
-          first_name,
-          last_name,
-          username
-        )
-      `)
+      .select('*')
       .eq('position_id', parentId)
       .eq('stage', stage)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
 
-    // Формируем имя для каждого комментария
+    // Формируем структуру для отображения
     return (data || []).map(c => ({
       ...c,
       users: {
-        name: [c.users?.first_name, c.users?.last_name].filter(Boolean).join(' ') || c.users?.username || 'Пользователь'
+        name: c.author_name || 'Пользователь'
       }
     }));
   },
 
   async _addComment(params) {
+    // Формируем имя автора
+    const authorName = [app.user?.first_name, app.user?.last_name].filter(Boolean).join(' ')
+      || app.user?.username
+      || 'Пользователь';
+
     const { error } = await supabase.from('position_comments').insert({
       position_id: params.parentId,
       stage: params.stage,
       text: params.text,
-      user_id: app.user?.id
+      user_id: String(app.user?.id),
+      author_name: authorName
     });
     if (error) throw error;
     return { success: true };
