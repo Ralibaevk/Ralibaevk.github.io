@@ -274,12 +274,6 @@
         <div id="pipeline-design" class="pipeline-content active">
           <div class="design-title-row">
             <h2 id="designTitle">Дизайн проект</h2>
-            <div class="design-actions">
-              <button class="btn btn-def" onclick="design.openSpecModal()"><i class="fas fa-list"></i>
-                Спецификация</button>
-              <button class="btn btn-def" onclick="design.openEditsModal()"><i class="fas fa-comments"></i> Правки из
-                чата</button>
-            </div>
           </div>
 
           <div class="design-layout">
@@ -298,6 +292,24 @@
                 <div class="files-empty"><i class="fas fa-folder-open"></i> Файлы не загружены<br><small>Загрузите через
                     канбан-доску "Дизайн"</small></div>
               </div>
+            </div>
+          </div>
+
+          <!-- Блок комментариев -->
+          <div class="design-comments-section">
+            <div class="design-comments-header">
+              <h3><i class="fas fa-comments"></i> Комментарии</h3>
+              <span id="designCommentsCount" class="comments-count">0</span>
+            </div>
+            <div id="designCommentsList" class="design-comments-list">
+              <div class="comments-empty">Нет комментариев</div>
+            </div>
+            <div class="design-comments-input">
+              <input type="text" id="designCommentInput" placeholder="Написать комментарий..."
+                onkeypress="if(event.key==='Enter')design.addComment()">
+              <button class="btn btn-primary" onclick="design.addComment()">
+                <i class="fas fa-paper-plane"></i>
+              </button>
             </div>
           </div>
 

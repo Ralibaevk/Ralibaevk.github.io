@@ -14,6 +14,7 @@ window.design = {
         console.log('📐 design.init:', positionId);
         this.currentPositionId = positionId;
         await this.loadFiles();
+        await this.loadComments();
     },
 
     // === ЗАГРУЗКА ФАЙЛОВ (из project_files со stage='design') ===
@@ -180,13 +181,77 @@ window.design = {
         }).join('');
     },
 
-    // === PLACEHOLDER ACTIONS ===
-    openSpecModal() {
-        alert('Спецификация — в разработке');
+    // === КОММЕНТАРИИ ===
+    async loadComments() {
+        const list = document.getElementById('designCommentsList');
+        const countEl = document.getElementById('designCommentsCount');
+        if (!this.currentPositionId || !list) return;
+
+        try {
+            const comments = await api.call('getComments', {
+                parentId: this.currentPositionId,
+                stage: 'design'
+            });
+
+            console.log('💬 Design comments loaded:', comments?.length || 0);
+
+            if (!comments || comments.length === 0) {
+                list.innerHTML = '<div class="comments-empty">Нет комментариев</div>';
+                if (countEl) countEl.textContent = '0';
+                return;
+            }
+
+            if (countEl) countEl.textContent = comments.length;
+            list.innerHTML = comments.map(c => this.renderComment(c)).join('');
+            list.scrollTop = list.scrollHeight;
+
+        } catch (e) {
+            console.error('Ошибка загрузки комментариев:', e);
+            list.innerHTML = '<div class="comments-empty" style="color:#ef4444;">Ошибка загрузки</div>';
+        }
     },
 
-    openEditsModal() {
-        alert('Правки из чата — в разработке');
+    renderComment(comment) {
+        const authorName = comment.users?.name || comment.author_name || 'Пользователь';
+        const date = utils.formatDate(comment.created_at);
+
+        return `
+            <div class="design-comment-item">
+                <div class="design-comment-avatar">
+                    ${authorName.charAt(0).toUpperCase()}
+                </div>
+                <div class="design-comment-content">
+                    <div class="design-comment-header">
+                        <span class="design-comment-author">${authorName}</span>
+                        <span class="design-comment-date">${date}</span>
+                    </div>
+                    <div class="design-comment-text">${comment.text}</div>
+                </div>
+            </div>
+        `;
+    },
+
+    async addComment() {
+        const input = document.getElementById('designCommentInput');
+        const text = input?.value.trim();
+
+        if (!text || !this.currentPositionId) return;
+
+        try {
+            await api.call('addComment', {
+                parentId: this.currentPositionId,
+                stage: 'design',
+                text: text
+            });
+
+            input.value = '';
+            console.log('✅ Design comment added');
+            await this.loadComments();
+
+        } catch (e) {
+            console.error('Ошибка добавления комментария:', e);
+            alert('Ошибка: ' + e.message);
+        }
     },
 
     // === ДЕЙСТВИЯ ===
