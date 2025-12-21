@@ -7,6 +7,8 @@ const KANBAN_FILE_PROXY_URL = 'https://files.logiqa.kz';
 window.kanban = {
     currentStage: null,
     positions: [],
+    projects: [],
+    selectedProjectId: null,
     currentPosition: null, // Текущая открытая позиция
 
     // Названия этапов
@@ -30,6 +32,15 @@ window.kanban = {
 
     async init(stage) {
         this.currentStage = stage;
+        // Загружаем проекты для фильтра (если ещё не загружены)
+        if (this.projects.length === 0) {
+            try {
+                this.projects = await api.call('getGlobalProjects');
+            } catch (e) {
+                console.error('Ошибка загрузки проектов:', e);
+                this.projects = [];
+            }
+        }
         await this.loadPositions();
         this.render();
     },
@@ -53,20 +64,38 @@ window.kanban = {
 
         const stageInfo = this.STAGE_NAMES[this.currentStage] || { name: this.currentStage, icon: 'fa-tasks' };
 
+        // Фильтруем позиции по выбранному проекту
+        let filteredPositions = this.positions;
+        if (this.selectedProjectId) {
+            filteredPositions = this.positions.filter(p => p.projects?.id === this.selectedProjectId);
+        }
+
         // Группируем позиции по статусу
         const grouped = {
-            inbox: this.positions.filter(p => !p.kanban_status || p.kanban_status === 'inbox'),
-            active: this.positions.filter(p => p.kanban_status === 'active'),
-            done: this.positions.filter(p => p.kanban_status === 'done'),
-            waiting: this.positions.filter(p => p.kanban_status === 'waiting')
+            inbox: filteredPositions.filter(p => !p.kanban_status || p.kanban_status === 'inbox'),
+            active: filteredPositions.filter(p => p.kanban_status === 'active'),
+            done: filteredPositions.filter(p => p.kanban_status === 'done'),
+            waiting: filteredPositions.filter(p => p.kanban_status === 'waiting')
         };
+
+        // Генерируем опции для dropdown
+        const projectOptions = this.projects.map(p =>
+            `<option value="${p.id}" ${this.selectedProjectId === p.id ? 'selected' : ''}>${p.name}</option>`
+        ).join('');
 
         container.innerHTML = `
             <div class="kanban-header">
                 <h1><i class="fas ${stageInfo.icon}"></i> ${stageInfo.name}</h1>
-                <button class="btn btn-def" onclick="kanban.refresh()">
-                    <i class="fas fa-sync-alt"></i> Обновить
-                </button>
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <select id="kanbanProjectFilter" onchange="kanban.filterByProject(this.value)" 
+                            style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-card); min-width:180px; font-size:14px;">
+                        <option value="">📂 Все проекты</option>
+                        ${projectOptions}
+                    </select>
+                    <button class="btn btn-def" onclick="kanban.refresh()">
+                        <i class="fas fa-sync-alt"></i> Обновить
+                    </button>
+                </div>
             </div>
             
             <div class="kanban-board">
@@ -76,6 +105,11 @@ window.kanban = {
                 ${this.renderColumn('waiting', grouped.waiting)}
             </div>
         `;
+    },
+
+    filterByProject(projectId) {
+        this.selectedProjectId = projectId || null;
+        this.render();
     },
 
     renderColumn(status, items) {
