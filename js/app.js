@@ -251,10 +251,10 @@ window.app = {
         }
     },
 
-    openPosition(id, name) {
-        console.log('🚀 app.openPosition called:', id, name);
+    openPosition(id, name, projectId = null) {
+        console.log('🚀 app.openPosition called:', id, name, projectId);
         this.showScreen('view-position-detail');
-        if (window.positions) positions.openPosition(id, name);
+        if (window.positions) positions.openPosition(id, name, projectId);
     },
 
     goToProject() {

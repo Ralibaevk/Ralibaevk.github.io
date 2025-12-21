@@ -424,8 +424,23 @@ window.positions = {
     },
 
     // === УРОВЕНЬ 2: ВНУТРИ ИЗДЕЛИЯ (ТАБЫ) ===
-    openPosition(posId, name) {
+    async openPosition(posId, name, projectId = null) {
+        console.log('📄 positions.openPosition called:', { posId, name, projectId });
+
         this.currentPositionId = posId;
+
+        // Если передан projectId (из канбана), нужно загрузить данные проекта
+        if (projectId && projectId !== this.currentProjectId) {
+            console.log('📂 Loading project data for position...');
+            try {
+                const proj = await api.call('getProjectById', { id: projectId });
+                this.currentProjectId = projectId;
+                this.currentProject = proj;
+                this.currentProjectName = proj?.name || 'Проект';
+            } catch (e) {
+                console.error('Ошибка загрузки проекта:', e);
+            }
+        }
 
         // Обновляем breadcrumb
         const nameEl = document.getElementById('posDetailName');

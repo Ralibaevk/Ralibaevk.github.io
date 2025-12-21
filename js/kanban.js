@@ -184,8 +184,9 @@ window.kanban = {
         if (this.currentPosition) {
             const positionId = this.currentPosition.id; // Сохраняем id до закрытия
             const positionName = this.currentPosition.name || '';
+            const projectId = this.currentPosition.project_id || this.currentPosition.projects?.id;
             this.closeProjectCard();
-            app.openPosition(positionId, positionName);
+            app.openPosition(positionId, positionName, projectId);
         }
     },
 
