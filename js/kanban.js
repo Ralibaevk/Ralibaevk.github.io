@@ -377,6 +377,7 @@ window.kanban = {
 
         if (isPDF && window.pdfjsLib) {
             // PDF: Используем PDF.js для рендеринга
+            this.pdfZoom = 1;
             modal.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
                     <span style="font-size:14px;">${fileName}</span>
@@ -386,6 +387,11 @@ window.kanban = {
                             <span id="pdfPageInfo" style="font-size:12px;">Загрузка...</span>
                             <button id="pdfNextPage" style="background:#333; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">&gt;</button>
                         </div>
+                        <div style="display:flex; align-items:center; gap:6px; background:#333; padding:4px 8px; border-radius:4px;">
+                            <button id="pdfZoomOut" style="background:none; border:none; color:white; font-size:14px; cursor:pointer; padding:2px 6px;">−</button>
+                            <span id="pdfZoomInfo" style="font-size:12px; min-width:40px; text-align:center;">100%</span>
+                            <button id="pdfZoomIn" style="background:none; border:none; color:white; font-size:14px; cursor:pointer; padding:2px 6px;">+</button>
+                        </div>
                         <a href="${KANBAN_FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px;">
                             <i class="fas fa-download"></i>
                         </a>
@@ -394,11 +400,18 @@ window.kanban = {
                         </button>
                     </div>
                 </div>
-                <div style="flex:1; display:flex; justify-content:center; align-items:center; overflow:auto; background:#525659; border-radius:8px;">
+                <div id="kbPdfContainer" style="flex:1; display:flex; justify-content:center; align-items:center; overflow:auto; background:#525659; border-radius:8px;">
                     <canvas id="pdfCanvas" style="max-width:100%; max-height:100%;"></canvas>
                 </div>
             `;
             document.body.appendChild(modal);
+
+            // Зум колёсиком
+            document.getElementById('kbPdfContainer').addEventListener('wheel', (e) => {
+                e.preventDefault();
+                this.pdfChangeZoom(e.deltaY < 0 ? 0.1 : -0.1);
+            }, { passive: false });
+
             this.renderPDF(url);
 
         } else if (isExcel && window.XLSX) {
@@ -606,13 +619,17 @@ window.kanban = {
             this.pdfDoc = pdf;
             this.pdfCurrentPage = 1;
             this.pdfTotalPages = pdf.numPages;
+            this.pdfZoom = this.pdfZoom || 1;
 
-            // Обновляем информацию о страницах
+            // Обновляем информацию о страницах и зуме
             document.getElementById('pdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
+            document.getElementById('pdfZoomInfo').textContent = `${Math.round(this.pdfZoom * 100)}%`;
 
             // Настраиваем кнопки навигации
             document.getElementById('pdfPrevPage').onclick = () => this.pdfChangePage(-1);
             document.getElementById('pdfNextPage').onclick = () => this.pdfChangePage(1);
+            document.getElementById('pdfZoomIn').onclick = () => this.pdfChangeZoom(0.25);
+            document.getElementById('pdfZoomOut').onclick = () => this.pdfChangeZoom(-0.25);
 
             // Рендерим первую страницу
             await this.renderPDFPage(1);
@@ -653,9 +670,12 @@ window.kanban = {
         const viewport = page.getViewport({ scale: 1 });
         const scaleX = containerWidth / viewport.width;
         const scaleY = containerHeight / viewport.height;
-        const scale = Math.min(scaleX, scaleY, 2); // Максимум 2x для качества
+        const baseScale = Math.min(scaleX, scaleY, 2);
 
-        const scaledViewport = page.getViewport({ scale });
+        // Применяем пользовательский зум
+        const finalScale = baseScale * (this.pdfZoom || 1);
+
+        const scaledViewport = page.getViewport({ scale: finalScale });
 
         canvas.width = scaledViewport.width;
         canvas.height = scaledViewport.height;
@@ -673,6 +693,17 @@ window.kanban = {
             this.pdfCurrentPage = newPage;
             document.getElementById('pdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
             this.renderPDFPage(newPage);
+        }
+    },
+
+    // Изменение зума PDF
+    pdfChangeZoom(delta) {
+        const newZoom = (this.pdfZoom || 1) + delta;
+        if (newZoom >= 0.5 && newZoom <= 4) {
+            this.pdfZoom = newZoom;
+            const zoomInfo = document.getElementById('pdfZoomInfo');
+            if (zoomInfo) zoomInfo.textContent = `${Math.round(this.pdfZoom * 100)}%`;
+            this.renderPDFPage(this.pdfCurrentPage);
         }
     },
 

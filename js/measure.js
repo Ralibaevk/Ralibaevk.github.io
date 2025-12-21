@@ -229,6 +229,7 @@ window.measure = {
 
         if (isPDF && window.pdfjsLib) {
             // PDF: Используем PDF.js для рендеринга
+            this.pdfZoom = 1;
             modal.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
                     <span style="font-size:14px;">${fileName}</span>
@@ -238,6 +239,11 @@ window.measure = {
                             <span id="measurePdfPageInfo" style="font-size:12px;">Загрузка...</span>
                             <button id="measurePdfNextPage" style="background:#333; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">&gt;</button>
                         </div>
+                        <div style="display:flex; align-items:center; gap:6px; background:#333; padding:4px 8px; border-radius:4px;">
+                            <button id="measurePdfZoomOut" style="background:none; border:none; color:white; font-size:14px; cursor:pointer; padding:2px 6px;">−</button>
+                            <span id="measurePdfZoomInfo" style="font-size:12px; min-width:40px; text-align:center;">100%</span>
+                            <button id="measurePdfZoomIn" style="background:none; border:none; color:white; font-size:14px; cursor:pointer; padding:2px 6px;">+</button>
+                        </div>
                         <a href="${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px;">
                             <i class="fas fa-download"></i>
                         </a>
@@ -246,11 +252,18 @@ window.measure = {
                         </button>
                     </div>
                 </div>
-                <div style="flex:1; display:flex; justify-content:center; align-items:center; overflow:auto; background:#525659; border-radius:8px;">
+                <div id="measurePdfContainer" style="flex:1; display:flex; justify-content:center; align-items:center; overflow:auto; background:#525659; border-radius:8px;">
                     <canvas id="measurePdfCanvas" style="max-width:100%; max-height:100%;"></canvas>
                 </div>
             `;
             document.body.appendChild(modal);
+
+            // Зум колёсиком
+            document.getElementById('measurePdfContainer').addEventListener('wheel', (e) => {
+                e.preventDefault();
+                this.pdfChangeZoom(e.deltaY < 0 ? 0.1 : -0.1);
+            }, { passive: false });
+
             this.renderPDF(url);
 
         } else if (isExcel && window.XLSX) {
@@ -443,13 +456,17 @@ window.measure = {
             this.pdfDoc = pdf;
             this.pdfCurrentPage = 1;
             this.pdfTotalPages = pdf.numPages;
+            this.pdfZoom = this.pdfZoom || 1;
 
-            // Обновляем информацию о страницах
+            // Обновляем информацию о страницах и зуме
             document.getElementById('measurePdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
+            document.getElementById('measurePdfZoomInfo').textContent = `${Math.round(this.pdfZoom * 100)}%`;
 
-            // Настраиваем кнопки навигации
+            // Настраиваем кнопки навигации и зума
             document.getElementById('measurePdfPrevPage').onclick = () => this.pdfChangePage(-1);
             document.getElementById('measurePdfNextPage').onclick = () => this.pdfChangePage(1);
+            document.getElementById('measurePdfZoomIn').onclick = () => this.pdfChangeZoom(0.25);
+            document.getElementById('measurePdfZoomOut').onclick = () => this.pdfChangeZoom(-0.25);
 
             // Рендерим первую страницу
             await this.renderPDFPage(1);
@@ -490,9 +507,12 @@ window.measure = {
         const viewport = page.getViewport({ scale: 1 });
         const scaleX = containerWidth / viewport.width;
         const scaleY = containerHeight / viewport.height;
-        const scale = Math.min(scaleX, scaleY, 2); // Максимум 2x для качества
+        const baseScale = Math.min(scaleX, scaleY, 2);
 
-        const scaledViewport = page.getViewport({ scale });
+        // Применяем пользовательский зум
+        const finalScale = baseScale * (this.pdfZoom || 1);
+
+        const scaledViewport = page.getViewport({ scale: finalScale });
 
         canvas.width = scaledViewport.width;
         canvas.height = scaledViewport.height;
@@ -510,6 +530,17 @@ window.measure = {
             this.pdfCurrentPage = newPage;
             document.getElementById('measurePdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
             this.renderPDFPage(newPage);
+        }
+    },
+
+    // Изменение зума PDF
+    pdfChangeZoom(delta) {
+        const newZoom = (this.pdfZoom || 1) + delta;
+        if (newZoom >= 0.5 && newZoom <= 4) {
+            this.pdfZoom = newZoom;
+            const zoomInfo = document.getElementById('measurePdfZoomInfo');
+            if (zoomInfo) zoomInfo.textContent = `${Math.round(this.pdfZoom * 100)}%`;
+            this.renderPDFPage(this.pdfCurrentPage);
         }
     },
 
