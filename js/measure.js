@@ -191,7 +191,7 @@ window.measure = {
         }
     },
 
-    // Модальное окно для просмотра PDF
+    // Модальное окно для просмотра PDF с использованием PDF.js
     showDocumentModal(url, fileName) {
         // Извлекаем fileId из URL
         const fileId = url.split('/file/')[1];
@@ -203,21 +203,134 @@ window.measure = {
             background:rgba(0,0,0,0.9); z-index:9999; 
             display:flex; flex-direction:column; padding:10px;
         `;
-        modal.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
-                <span style="font-size:14px;">${fileName}</span>
-                <div>
-                    <a href="${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px; margin-right:15px;">
-                        <i class="fas fa-download"></i>
-                    </a>
-                    <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
-                        <i class="fas fa-times"></i>
-                    </button>
+
+        // Проверяем, PDF ли это
+        const isPDF = fileName.match(/\.pdf$/i);
+
+        if (isPDF && window.pdfjsLib) {
+            // Используем PDF.js для рендеринга
+            modal.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
+                    <span style="font-size:14px;">${fileName}</span>
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button id="measurePdfPrevPage" style="background:#333; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">&lt;</button>
+                            <span id="measurePdfPageInfo" style="font-size:12px;">Загрузка...</span>
+                            <button id="measurePdfNextPage" style="background:#333; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">&gt;</button>
+                        </div>
+                        <a href="${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px;">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <iframe src="${url}" style="flex:1; border:none; border-radius:8px; background:white;"></iframe>
-        `;
-        document.body.appendChild(modal);
+                <div style="flex:1; display:flex; justify-content:center; align-items:center; overflow:auto; background:#525659; border-radius:8px;">
+                    <canvas id="measurePdfCanvas" style="max-width:100%; max-height:100%;"></canvas>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Загружаем и рендерим PDF
+            this.renderPDF(url);
+        } else {
+            // Для других документов или если PDF.js не загружен — fallback на iframe
+            modal.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; color:white;">
+                    <span style="font-size:14px;">${fileName}</span>
+                    <div>
+                        <a href="${FILE_PROXY_URL}/download/${fileId}?name=${encodeURIComponent(fileName)}" target="_blank" style="color:white; font-size:18px; margin-right:15px;">
+                            <i class="fas fa-download"></i>
+                        </a>
+                        <button onclick="this.closest('#docModal').remove()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <iframe src="${url}" style="flex:1; border:none; border-radius:8px; background:white;"></iframe>
+            `;
+            document.body.appendChild(modal);
+        }
+    },
+
+    // Рендер PDF с помощью PDF.js
+    async renderPDF(url) {
+        try {
+            const loadingTask = pdfjsLib.getDocument(url);
+            const pdf = await loadingTask.promise;
+
+            this.pdfDoc = pdf;
+            this.pdfCurrentPage = 1;
+            this.pdfTotalPages = pdf.numPages;
+
+            // Обновляем информацию о страницах
+            document.getElementById('measurePdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
+
+            // Настраиваем кнопки навигации
+            document.getElementById('measurePdfPrevPage').onclick = () => this.pdfChangePage(-1);
+            document.getElementById('measurePdfNextPage').onclick = () => this.pdfChangePage(1);
+
+            // Рендерим первую страницу
+            await this.renderPDFPage(1);
+        } catch (error) {
+            console.error('Ошибка загрузки PDF:', error);
+            document.getElementById('measurePdfPageInfo').textContent = 'Ошибка загрузки';
+
+            // Показываем сообщение об ошибке с кнопкой скачивания
+            const canvas = document.getElementById('measurePdfCanvas');
+            if (canvas) {
+                canvas.style.display = 'none';
+                canvas.parentElement.innerHTML = `
+                    <div style="text-align:center; color:white; padding:40px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size:48px; margin-bottom:20px; color:#f59e0b;"></i>
+                        <p style="margin-bottom:20px;">Не удалось загрузить PDF для предпросмотра</p>
+                        <a href="${url.replace('/file/', '/download/')}?name=document.pdf" target="_blank" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Скачать файл
+                        </a>
+                    </div>
+                `;
+            }
+        }
+    },
+
+    // Рендер конкретной страницы PDF
+    async renderPDFPage(pageNum) {
+        if (!this.pdfDoc) return;
+
+        const page = await this.pdfDoc.getPage(pageNum);
+        const canvas = document.getElementById('measurePdfCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Подбираем масштаб под размер контейнера
+        const container = canvas.parentElement;
+        const containerWidth = container.clientWidth - 40;
+        const containerHeight = container.clientHeight - 40;
+
+        const viewport = page.getViewport({ scale: 1 });
+        const scaleX = containerWidth / viewport.width;
+        const scaleY = containerHeight / viewport.height;
+        const scale = Math.min(scaleX, scaleY, 2); // Максимум 2x для качества
+
+        const scaledViewport = page.getViewport({ scale });
+
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
+
+        await page.render({
+            canvasContext: ctx,
+            viewport: scaledViewport
+        }).promise;
+    },
+
+    // Переключение страниц PDF
+    pdfChangePage(delta) {
+        const newPage = this.pdfCurrentPage + delta;
+        if (newPage >= 1 && newPage <= this.pdfTotalPages) {
+            this.pdfCurrentPage = newPage;
+            document.getElementById('measurePdfPageInfo').textContent = `${this.pdfCurrentPage} / ${this.pdfTotalPages}`;
+            this.renderPDFPage(newPage);
+        }
     },
 
     // Модальное окно для просмотра изображений
