@@ -90,9 +90,18 @@ window.design = {
             // Проверяем можно ли предпросматривать файл (PDF, Excel, Word, изображения)
             const canPreview = f.file_name?.match(/\.(jpg|jpeg|png|gif|webp|pdf|xls|xlsx|doc|docx)$/i);
 
+            // URL для просмотра файла
+            const viewUrl = f.tg_file_id
+                ? `${DESIGN_FILE_PROXY_URL}/file/${f.tg_file_id}`
+                : f.file_url;
+
+            // URL для скачивания файла
             const downloadUrl = f.tg_file_id
                 ? `${DESIGN_FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}`
                 : f.file_url;
+
+            // Можно ли просмотреть файл (нужен tg_file_id или file_url)
+            const hasSource = f.tg_file_id || f.file_url;
 
             return `
                 <div class="design-file-item">
@@ -104,8 +113,8 @@ window.design = {
                         <div class="design-file-date">${utils.formatDate(f.created_at)}</div>
                     </div>
                     <div class="design-file-actions">
-                        ${canPreview && f.tg_file_id ? `
-                            <button class="btn-icon" onclick="design.viewFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}')">
+                        ${canPreview && hasSource ? `
+                            <button class="btn-icon" onclick="design.viewFileByUrl('${viewUrl}', '${f.file_name.replace(/'/g, "\\'")}', '${f.tg_file_id || ''}')">
                                 <i class="fas fa-eye"></i>
                             </button>
                         ` : ''}
@@ -118,21 +127,25 @@ window.design = {
         }).join('');
     },
 
-    // === ПРЕДПРОСМОТР ФАЙЛА ===
-    viewFile(fileId, fileName) {
-        const url = `${DESIGN_FILE_PROXY_URL}/file/${fileId}`;
-
+    // === ПРЕДПРОСМОТР ФАЙЛА (по URL) ===
+    viewFileByUrl(url, fileName, fileId) {
         // Для изображений — показываем в модальном окне
         if (fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
             this.showImageModal(url, fileName);
         }
-        // Для документов — используем showDocumentModal как в kanban.js
+        // Для документов — используем showDocumentModal
         else if (fileName.match(/\.(pdf|doc|docx|xls|xlsx)$/i)) {
             this.showDocumentModal(url, fileName, fileId);
         }
         else {
             window.open(url, '_blank');
         }
+    },
+
+    // === ПРЕДПРОСМОТР ФАЙЛА (старый метод для совместимости) ===
+    viewFile(fileId, fileName) {
+        const url = `${DESIGN_FILE_PROXY_URL}/file/${fileId}`;
+        this.viewFileByUrl(url, fileName, fileId);
     },
 
     // Модальное окно для изображений
