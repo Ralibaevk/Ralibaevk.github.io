@@ -275,8 +275,6 @@
           <div class="design-title-row">
             <h2 id="designTitle">Дизайн проект</h2>
             <div class="design-actions">
-              <button class="btn btn-def" onclick="design.uploadImages()"><i class="fas fa-upload"></i> Загрузить
-                эскизы</button>
               <button class="btn btn-def" onclick="design.openSpecModal()"><i class="fas fa-list"></i>
                 Спецификация</button>
               <button class="btn btn-def" onclick="design.openEditsModal()"><i class="fas fa-comments"></i> Правки из
@@ -293,11 +291,12 @@
               <div class="gallery-thumbs" id="galleryThumbs"></div>
             </div>
 
-            <!-- Правая колонка: Спецификация -->
+            <!-- Правая колонка: Файлы -->
             <div class="design-spec-panel">
-              <h3>Спецификация</h3>
+              <h3><i class="fas fa-folder-open"></i> Файлы</h3>
               <div id="specContent" class="spec-content">
-                <span class="spec-empty">Спецификация пуста</span>
+                <div class="files-empty"><i class="fas fa-folder-open"></i> Файлы не загружены<br><small>Загрузите через
+                    канбан-доску "Дизайн"</small></div>
               </div>
             </div>
           </div>

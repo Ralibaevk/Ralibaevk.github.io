@@ -1,170 +1,192 @@
 // js/design.js
 console.log("✅ design.js file is loading...");
 
+// 🔥 URL нашего file-proxy сервера
+const DESIGN_FILE_PROXY_URL = 'https://files.logiqa.kz';
+
 window.design = {
     currentPositionId: null,
+    files: [],
     images: [],
-    specification: [],
 
     // Инициализация вкладки Дизайн
     async init(positionId) {
+        console.log('📐 design.init:', positionId);
         this.currentPositionId = positionId;
-        await this.loadImages();
-        await this.loadSpecification();
+        await this.loadFiles();
     },
 
-    // === ГАЛЕРЕЯ ИЗОБРАЖЕНИЙ ===
-    async loadImages() {
-        const mainEl = document.getElementById('galleryMain');
-        const thumbsEl = document.getElementById('galleryThumbs');
+    // === ЗАГРУЗКА ФАЙЛОВ (из project_files со stage='design') ===
+    async loadFiles() {
+        const galleryMain = document.getElementById('galleryMain');
+        const galleryThumbs = document.getElementById('galleryThumbs');
+        const specContent = document.getElementById('specContent');
 
         if (!this.currentPositionId) {
-            if (mainEl) mainEl.innerHTML = '<div class="gallery-placeholder"><i class="fas fa-image"></i><span>Нет изображений</span></div>';
+            if (galleryMain) galleryMain.innerHTML = '<div class="gallery-placeholder"><i class="fas fa-image"></i><span>Нет изображений</span></div>';
+            if (specContent) specContent.innerHTML = '<div class="files-empty">Файлы не загружены</div>';
             return;
         }
 
         try {
-            const { data, error } = await supabase
-                .from('design_images')
-                .select('*')
-                .eq('position_id', this.currentPositionId)
-                .order('created_at');
+            // Используем тот же API, что и канбан
+            const files = await api.call('getFiles', {
+                parentId: this.currentPositionId,
+                stage: 'design'
+            });
 
-            if (error) throw error;
-            this.images = data || [];
+            console.log('📂 Design files loaded:', files?.length || 0);
+
+            this.files = files || [];
+
+            // Разделяем на изображения и прочие файлы
+            this.images = this.files.filter(f =>
+                f.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+            );
+            const otherFiles = this.files.filter(f =>
+                !f.file_name?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+            );
+
+            // Рендерим галерею изображений
             this.renderGallery();
+
+            // Рендерим список файлов (PDF, документы и т.д.)
+            this.renderFilesList(otherFiles);
+
         } catch (e) {
-            console.error('Ошибка загрузки изображений:', e);
+            console.error('Ошибка загрузки файлов дизайна:', e);
+            if (galleryMain) galleryMain.innerHTML = '<div class="gallery-placeholder"><i class="fas fa-exclamation-triangle"></i><span>Ошибка загрузки</span></div>';
         }
     },
 
+    // === ГАЛЕРЕЯ ИЗОБРАЖЕНИЙ ===
     renderGallery() {
         const mainEl = document.getElementById('galleryMain');
         const thumbsEl = document.getElementById('galleryThumbs');
 
+        if (!mainEl) return;
+
         if (this.images.length === 0) {
             mainEl.innerHTML = '<div class="gallery-placeholder"><i class="fas fa-image"></i><span>Нет изображений</span></div>';
-            thumbsEl.innerHTML = '';
+            if (thumbsEl) thumbsEl.innerHTML = '';
             return;
         }
 
-        // Показываем главное изображение (первое с is_main или просто первое)
-        const mainImg = this.images.find(i => i.is_main) || this.images[0];
-        mainEl.innerHTML = `<img src="${mainImg.url}" alt="Эскиз">`;
+        // Показываем первое изображение как главное
+        const mainImg = this.images[0];
+        const mainUrl = mainImg.tg_file_id
+            ? `${DESIGN_FILE_PROXY_URL}/file/${mainImg.tg_file_id}`
+            : mainImg.file_url;
+
+        mainEl.innerHTML = `<img src="${mainUrl}" alt="${mainImg.file_name}" onclick="design.openLightbox(0)">`;
 
         // Миниатюры
-        thumbsEl.innerHTML = this.images.map((img, idx) =>
-            `<img src="${img.url}" class="gallery-thumb ${img.id === mainImg.id ? 'active' : ''}" 
-                  onclick="design.selectImage('${img.id}')">`
-        ).join('');
+        if (thumbsEl && this.images.length > 1) {
+            thumbsEl.innerHTML = this.images.map((img, idx) => {
+                const url = img.tg_file_id
+                    ? `${DESIGN_FILE_PROXY_URL}/file/${img.tg_file_id}`
+                    : img.file_url;
+                return `<img src="${url}" class="gallery-thumb ${idx === 0 ? 'active' : ''}" 
+                              onclick="design.selectImage(${idx})">`;
+            }).join('');
+        } else if (thumbsEl) {
+            thumbsEl.innerHTML = '';
+        }
     },
 
-    selectImage(imageId) {
-        const img = this.images.find(i => i.id === imageId);
-        if (!img) return;
+    selectImage(index) {
+        if (index < 0 || index >= this.images.length) return;
 
+        const img = this.images[index];
         const mainEl = document.getElementById('galleryMain');
-        mainEl.innerHTML = `<img src="${img.url}" alt="Эскиз">`;
+        const url = img.tg_file_id
+            ? `${DESIGN_FILE_PROXY_URL}/file/${img.tg_file_id}`
+            : img.file_url;
+
+        mainEl.innerHTML = `<img src="${url}" alt="${img.file_name}" onclick="design.openLightbox(${index})">`;
 
         // Обновляем активную миниатюру
-        document.querySelectorAll('.gallery-thumb').forEach(el => el.classList.remove('active'));
-        event.target.classList.add('active');
-    },
-
-    async uploadImages() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.multiple = true;
-        input.onchange = async (e) => {
-            const files = e.target.files;
-            if (!files.length) return;
-
-            try {
-                for (const file of files) {
-                    // Загружаем в Storage
-                    const fileName = `design/${this.currentPositionId}/${Date.now()}_${file.name}`;
-                    const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from('uploads')
-                        .upload(fileName, file);
-
-                    if (uploadError) throw uploadError;
-
-                    // Получаем публичный URL
-                    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(fileName);
-
-                    // Сохраняем в БД
-                    await supabase.from('design_images').insert({
-                        position_id: this.currentPositionId,
-                        url: urlData.publicUrl,
-                        is_main: this.images.length === 0
-                    });
-                }
-
-                await this.loadImages();
-                alert('Изображения загружены!');
-            } catch (e) {
-                alert('Ошибка загрузки: ' + e.message);
-            }
-        };
-        input.click();
-    },
-
-    // === СПЕЦИФИКАЦИЯ ===
-    async loadSpecification() {
-        const contentEl = document.getElementById('specContent');
-
-        if (!this.currentPositionId) {
-            if (contentEl) contentEl.innerHTML = '<span class="spec-empty">Спецификация пуста</span>';
-            return;
-        }
-
-        try {
-            const { data, error } = await supabase
-                .from('specifications')
-                .select('*')
-                .eq('position_id', this.currentPositionId)
-                .order('row_num');
-
-            if (error) throw error;
-            this.specification = data || [];
-            this.renderSpecification();
-        } catch (e) {
-            console.error('Ошибка загрузки спецификации:', e);
-        }
-    },
-
-    renderSpecification() {
-        const contentEl = document.getElementById('specContent');
-
-        if (this.specification.length === 0) {
-            contentEl.innerHTML = '<span class="spec-empty">Спецификация пуста</span>';
-            return;
-        }
-
-        // Группируем по секциям (можно по material)
-        let html = '';
-        this.specification.forEach(item => {
-            html += `<div class="spec-line">
-                <strong>${item.name}</strong>
-                ${item.material ? ` — ${item.material}` : ''}
-                ${item.color ? ` (${item.color})` : ''}
-                ${item.note1 ? `<br><small>${item.note1}</small>` : ''}
-            </div>`;
+        document.querySelectorAll('.gallery-thumb').forEach((el, i) => {
+            el.classList.toggle('active', i === index);
         });
-
-        contentEl.innerHTML = html;
     },
 
+    // Лайтбокс для просмотра изображения
+    openLightbox(index) {
+        const img = this.images[index];
+        if (!img) return;
+
+        const url = img.tg_file_id
+            ? `${DESIGN_FILE_PROXY_URL}/file/${img.tg_file_id}`
+            : img.file_url;
+
+        const modal = document.createElement('div');
+        modal.id = 'designLightbox';
+        modal.style.cssText = `
+            position:fixed; top:0; left:0; right:0; bottom:0; 
+            background:rgba(0,0,0,0.9); z-index:10000; 
+            display:flex; align-items:center; justify-content:center;
+            padding:20px;
+        `;
+        modal.innerHTML = `
+            <div style="position:relative; max-width:100%; max-height:100%;">
+                <img src="${url}" style="max-width:100%; max-height:90vh; border-radius:8px;" onclick="event.stopPropagation();">
+                <div style="text-align:center; color:white; margin-top:10px; font-size:14px;">${img.file_name}</div>
+            </div>
+            <button onclick="this.parentElement.remove()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:32px; cursor:pointer;">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        modal.onclick = () => modal.remove();
+        document.body.appendChild(modal);
+    },
+
+    // === СПИСОК ФАЙЛОВ (не изображения) ===
+    renderFilesList(files) {
+        const specContent = document.getElementById('specContent');
+        if (!specContent) return;
+
+        if (!files || files.length === 0) {
+            // Показываем информацию о количестве изображений
+            if (this.images.length > 0) {
+                specContent.innerHTML = `<div class="files-info">
+                    <i class="fas fa-images"></i> ${this.images.length} изображений загружено
+                </div>`;
+            } else {
+                specContent.innerHTML = '<div class="files-empty"><i class="fas fa-folder-open"></i> Файлы не загружены<br><small>Загрузите через канбан-доску "Дизайн"</small></div>';
+            }
+            return;
+        }
+
+        specContent.innerHTML = files.map(f => {
+            let icon = 'fa-file';
+            if (f.file_name?.endsWith('.pdf')) icon = 'fa-file-pdf';
+            if (f.file_name?.match(/\.(xls|xlsx)$/i)) icon = 'fa-file-excel';
+            if (f.file_name?.match(/\.(doc|docx)$/i)) icon = 'fa-file-word';
+
+            const downloadUrl = f.tg_file_id
+                ? `${DESIGN_FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}`
+                : f.file_url;
+
+            return `
+                <div class="spec-file-item">
+                    <i class="fas ${icon}"></i>
+                    <span class="spec-file-name">${f.file_name}</span>
+                    <a href="${downloadUrl}" target="_blank" class="spec-file-download">
+                        <i class="fas fa-download"></i>
+                    </a>
+                </div>
+            `;
+        }).join('');
+    },
+
+    // === PLACEHOLDER ACTIONS ===
     openSpecModal() {
-        // TODO: Модалка создания/редактирования спецификации
-        alert('Модалка спецификации — в разработке');
+        alert('Спецификация — в разработке');
     },
 
-    // === ПРАВКИ ИЗ ЧАТА ===
     openEditsModal() {
-        // TODO: Парсинг Telegram — болванка
-        alert('Правки из чата — в разработке (парсинг Telegram)');
+        alert('Правки из чата — в разработке');
     },
 
     // === ДЕЙСТВИЯ ===
@@ -173,7 +195,7 @@ window.design = {
 
         try {
             await supabase.from('positions')
-                .update({ status: 'approved' })
+                .update({ design_approved: true })
                 .eq('id', this.currentPositionId);
 
             alert('Дизайн согласован!');
@@ -186,11 +208,12 @@ window.design = {
         if (!this.currentPositionId) return;
 
         try {
+            // Переводим на следующий этап
             await supabase.from('positions')
-                .update({ status: 'in_production' })
+                .update({ stage: 'measure', kanban_status: 'inbox' })
                 .eq('id', this.currentPositionId);
 
-            alert('Отправлено в работу!');
+            alert('Отправлено на замер!');
             // Переключаемся на следующий таб
             app.switchPipelineTab('measure');
         } catch (e) {

@@ -2179,3 +2179,77 @@ td input:focus {
     height: 120px;
   }
 }
+
+/* === DESIGN TAB FILES === */
+.files-empty {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--text-sec);
+  font-size: 14px;
+}
+
+.files-empty i {
+  font-size: 32px;
+  margin-bottom: 12px;
+  display: block;
+  opacity: 0.5;
+}
+
+.files-empty small {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.files-info {
+  padding: 15px;
+  text-align: center;
+  color: var(--primary);
+  font-size: 14px;
+}
+
+.files-info i {
+  margin-right: 8px;
+}
+
+.spec-file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.spec-file-item:last-child {
+  border-bottom: none;
+}
+
+.spec-file-item i {
+  font-size: 18px;
+  color: var(--text-sec);
+}
+
+.spec-file-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spec-file-download {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  border-radius: 8px;
+  transition: 0.2s;
+}
+
+.spec-file-download:hover {
+  background: var(--bg-hover);
+}
