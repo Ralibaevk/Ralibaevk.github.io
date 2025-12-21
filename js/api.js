@@ -71,6 +71,10 @@ window.api = {
         case 'getPositionsByStage': result = await this._getPositionsByStage(params.stage); break;
         case 'updatePositionStatus': result = await this._updatePositionKanbanStatus(params.positionId, params.status); break;
 
+        // --- COMMENTS ---
+        case 'getComments': result = await this._getComments(params.parentId, params.stage); break;
+        case 'addComment': result = await this._addComment(params); break;
+
         default: console.warn(`Action ${action} not implemented.`); result = {};
       }
       return result;
@@ -572,6 +576,45 @@ window.api = {
       .update({ kanban_status: status })
       .eq('id', positionId);
 
+    if (error) throw error;
+    return { success: true };
+  },
+
+  // === COMMENTS ===
+  async _getComments(parentId, stage) {
+    const { data, error } = await supabase
+      .from('position_comments')
+      .select(`
+        *,
+        users:user_id (
+          id,
+          first_name,
+          last_name,
+          username
+        )
+      `)
+      .eq('position_id', parentId)
+      .eq('stage', stage)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    // Формируем имя для каждого комментария
+    return (data || []).map(c => ({
+      ...c,
+      users: {
+        name: [c.users?.first_name, c.users?.last_name].filter(Boolean).join(' ') || c.users?.username || 'Пользователь'
+      }
+    }));
+  },
+
+  async _addComment(params) {
+    const { error } = await supabase.from('position_comments').insert({
+      position_id: params.parentId,
+      stage: params.stage,
+      text: params.text,
+      user_id: app.user?.id
+    });
     if (error) throw error;
     return { success: true };
   }

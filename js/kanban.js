@@ -168,8 +168,9 @@ window.kanban = {
         // Показываем модал
         document.getElementById('projectCardModal').classList.remove('hidden');
 
-        // Загружаем файлы
+        // Загружаем файлы и комментарии
         await this.loadFiles();
+        await this.loadComments();
     },
 
     // Закрыть модальное окно
@@ -181,8 +182,10 @@ window.kanban = {
     // Открыть полную карточку позиции
     openFullPosition() {
         if (this.currentPosition) {
+            const positionId = this.currentPosition.id; // Сохраняем id до закрытия
+            const positionName = this.currentPosition.name || '';
             this.closeProjectCard();
-            app.openPosition(this.currentPosition.id, '');
+            app.openPosition(positionId, positionName);
         }
     },
 
@@ -406,5 +409,83 @@ window.kanban = {
     async refresh() {
         await this.loadPositions();
         this.render();
+    },
+
+    // === РАБОТА С КОММЕНТАРИЯМИ ===
+
+    async loadComments() {
+        const list = document.getElementById('pcmCommentsList');
+        const countEl = document.getElementById('pcmCommentsCount');
+        if (!this.currentPosition) return;
+
+        try {
+            const comments = await api.call('getComments', {
+                parentId: this.currentPosition.id,
+                stage: this.currentStage
+            });
+
+            console.log('💬 Загружено комментариев:', comments?.length || 0);
+
+            if (!comments || comments.length === 0) {
+                list.innerHTML = `<div style="text-align:center; padding:15px; color:#ccc; font-size:13px;">Нет комментариев</div>`;
+                countEl.textContent = '0';
+                return;
+            }
+
+            countEl.textContent = comments.length;
+            list.innerHTML = comments.map(c => this.renderComment(c)).join('');
+
+            // Прокручиваем вниз к последнему комментарию
+            list.scrollTop = list.scrollHeight;
+
+        } catch (e) {
+            console.error('Ошибка загрузки комментариев:', e);
+            list.innerHTML = `<div style="color:#ef4444; padding:10px; font-size:13px;">Ошибка загрузки</div>`;
+        }
+    },
+
+    renderComment(comment) {
+        const authorName = comment.users?.name || comment.users?.username || 'Пользователь';
+        const date = utils.formatDate(comment.created_at);
+
+        return `
+            <div style="padding:10px 12px; border-bottom:1px solid #f3f4f6; display:flex; gap:10px;">
+                <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:white; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; flex-shrink:0;">
+                    ${authorName.charAt(0).toUpperCase()}
+                </div>
+                <div style="flex:1; min-width:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <span style="font-weight:600; font-size:13px; color:#1f2937;">${authorName}</span>
+                        <span style="font-size:11px; color:#9ca3af;">${date}</span>
+                    </div>
+                    <div style="font-size:13px; color:#4b5563; word-wrap:break-word;">${comment.text}</div>
+                </div>
+            </div>
+        `;
+    },
+
+    async addComment() {
+        const input = document.getElementById('pcmCommentInput');
+        const text = input.value.trim();
+
+        if (!text || !this.currentPosition) return;
+
+        try {
+            await api.call('addComment', {
+                parentId: this.currentPosition.id,
+                stage: this.currentStage,
+                text: text
+            });
+
+            input.value = '';
+            console.log('✅ Комментарий добавлен');
+
+            // Перезагружаем список комментариев
+            await this.loadComments();
+
+        } catch (e) {
+            console.error('Ошибка добавления комментария:', e);
+            alert('Ошибка: ' + e.message);
+        }
     }
 };
