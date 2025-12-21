@@ -1,8 +1,10 @@
+/* === LIGHT THEME (default) === */
 :root {
   --primary: #3b82f6;
   --primary-hover: #2563eb;
   --bg-body: #f3f4f6;
   --bg-card: #ffffff;
+  --bg-card-hover: #f9fafb;
   --text-main: #1f2937;
   --text-sec: #6b7280;
   --border: #e5e7eb;
@@ -13,10 +15,51 @@
   --sidebar-w-open: 260px;
   --sidebar-w-closed: 70px;
   --sidebar-w: var(--sidebar-w-open);
-  /* Default */
 
   --bottom-nav-h: 60px;
   --tg-safe-area-inset-top: 0px;
+
+  /* Theme-specific */
+  --bg-input: #ffffff;
+  --bg-table-header: #f9fafb;
+  --bg-hover: #eff6ff;
+  --text-placeholder: #9ca3af;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+/* === DARK THEME (via attribute or system preference) === */
+[data-theme="dark"],
+html:not([data-theme="light"]):root {
+  --bg-body: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --text-main: #f1f5f9;
+  --text-sec: #94a3b8;
+  --border: #334155;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --bg-input: #1e293b;
+  --bg-table-header: #1e293b;
+  --bg-hover: #334155;
+  --text-placeholder: #64748b;
+}
+
+/* Auto-detect system preference when no explicit theme is set */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) {
+    --bg-body: #f3f4f6;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f9fafb;
+    --text-main: #1f2937;
+    --text-sec: #6b7280;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --bg-input: #ffffff;
+    --bg-table-header: #f9fafb;
+    --bg-hover: #eff6ff;
+    --text-placeholder: #9ca3af;
+  }
 }
 
 * {
@@ -126,7 +169,7 @@ body {
 
 .nav-item:hover,
 .nav-item.active {
-  background: #eff6ff;
+  background: var(--bg-hover);
   color: var(--primary);
 }
 
@@ -155,7 +198,7 @@ body {
   width: 32px;
   height: 32px;
   border: 1px solid var(--border);
-  background: white;
+  background: var(--bg-card);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -284,7 +327,7 @@ body {
 }
 
 .btn-def {
-  background: white;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text-main);
 }
@@ -309,7 +352,7 @@ body {
     left: 0;
     width: 100%;
     height: var(--bottom-nav-h);
-    background: white;
+    background: var(--bg-card);
     border-top: 1px solid var(--border);
     z-index: 100;
     padding-bottom: env(safe-area-inset-bottom);
@@ -363,7 +406,7 @@ body {
 
 /* === ТАБЛИЦЫ И ТУЛБАРЫ (Manager) === */
 .mgr-toolbar {
-  background: white;
+  background: var(--bg-card);
   padding: 12px 20px;
   border-radius: 12px 12px 0 0;
   border: 1px solid var(--border);
@@ -375,7 +418,7 @@ body {
 }
 
 .mgr-grid {
-  background: white;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 12px 12px;
@@ -390,7 +433,7 @@ table {
 }
 
 th {
-  background: #f9fafb;
+  background: var(--bg-card);
   padding: 12px;
   text-align: left;
   font-size: 11px;
@@ -404,7 +447,7 @@ th {
 
 td {
   padding: 0 8px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--border);
   height: 44px;
   font-size: 13px;
   color: var(--text-main);
@@ -416,10 +459,11 @@ td input {
   height: 100%;
   background: transparent;
   outline: none;
+  color: var(--text-main);
 }
 
 td input:focus {
-  background: #eff6ff;
+  background: var(--bg-hover);
 }
 
 /* Loader */
@@ -462,7 +506,7 @@ td input:focus {
 }
 
 .tab-chip {
-  background: white;
+  background: var(--bg-card);
   border: 1px solid var(--border);
   padding: 8px 16px;
   border-radius: 20px;
@@ -493,7 +537,7 @@ td input:focus {
 }
 
 .modal-box {
-  background: white;
+  background: var(--bg-card);
   padding: 24px;
   border-radius: 16px;
   width: 400px;
@@ -512,7 +556,7 @@ td input:focus {
 }
 
 .project-info-section {
-  background: white;
+  background: var(--bg-card);
   border-radius: var(--radius);
   padding: 20px;
   margin-bottom: 16px;
@@ -551,7 +595,7 @@ td input:focus {
 }
 
 .finance-item {
-  background: #f9fafb;
+  background: var(--bg-hover);
   border-radius: 10px;
   padding: 16px;
   text-align: center;
@@ -596,7 +640,7 @@ td input:focus {
   align-items: center;
   gap: 10px;
   padding: 10px;
-  background: #f9fafb;
+  background: var(--bg-hover);
   border-radius: 10px;
 }
 
@@ -652,7 +696,7 @@ td input:focus {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: #eff6ff;
+  background: var(--bg-hover);
   color: var(--primary);
   border-radius: 8px;
   text-decoration: none;
@@ -680,7 +724,7 @@ td input:focus {
 }
 
 .badge.blue {
-  background: #eff6ff;
+  background: var(--bg-hover);
   color: var(--primary);
 }
 
@@ -746,7 +790,7 @@ td input:focus {
 }
 
 .compact-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: var(--radius);
   padding: 12px 16px;
   border: 1px solid var(--border);
@@ -827,7 +871,7 @@ td input:focus {
   align-items: center;
   margin-bottom: 12px;
   padding: 10px 16px;
-  background: white;
+  background: var(--bg-card);
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }
@@ -874,7 +918,7 @@ td input:focus {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #eff6ff;
+  background: var(--bg-hover);
   color: var(--primary);
   display: flex;
   align-items: center;
@@ -897,7 +941,7 @@ td input:focus {
 }
 
 .editable-field:hover {
-  background: #eff6ff;
+  background: var(--bg-hover);
 }
 
 .editable-field:hover::after {
@@ -910,7 +954,7 @@ td input:focus {
 }
 
 .editable-field.editing {
-  background: white;
+  background: var(--bg-card);
   padding: 0;
 }
 
@@ -928,7 +972,7 @@ td input:focus {
   color: var(--text-main);
   width: 100%;
   outline: none;
-  background: white;
+  background: var(--bg-card);
 }
 
 .edit-input:focus {
@@ -968,7 +1012,7 @@ td input:focus {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background: #f9fafb;
+  background: var(--bg-hover);
   border-radius: 10px;
   margin-bottom: 8px;
 }
@@ -1145,7 +1189,7 @@ td input:focus {
   align-items: center;
   gap: 10px;
   padding: 10px;
-  background: #f9fafb;
+  background: var(--bg-hover);
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
@@ -1220,7 +1264,7 @@ td input:focus {
   cursor: pointer;
   white-space: nowrap;
   transition: 0.2s;
-  background: #f9fafb;
+  background: var(--bg-hover);
   margin-right: -10px;
   clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%, 15px 50%);
 }
@@ -1304,7 +1348,7 @@ td input:focus {
 .gallery-main {
   width: 100%;
   aspect-ratio: 16/10;
-  background: #f9fafb;
+  background: var(--bg-hover);
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -1492,7 +1536,7 @@ td input:focus {
 }
 
 .kanban-column {
-  background: #f8fafc;
+  background: var(--bg-hover);
   border-radius: var(--radius);
   padding: 12px;
   display: flex;
@@ -1554,7 +1598,7 @@ td input:focus {
 }
 
 .kanban-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 10px;
   padding: 14px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -1628,7 +1672,7 @@ td input:focus {
   font-size: 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #f9fafb;
+  background: var(--bg-hover);
   color: var(--text-main);
   cursor: pointer;
 }
@@ -1643,7 +1687,7 @@ td input:focus {
 
 .kpi-card {
   flex: 1;
-  background: white;
+  background: var(--bg-card);
   border-radius: var(--radius);
   padding: 16px;
   display: flex;
@@ -1663,7 +1707,7 @@ td input:focus {
 }
 
 .kpi-icon.blue {
-  background: #eff6ff;
+  background: var(--bg-hover);
   color: #3b82f6;
 }
 
@@ -1695,7 +1739,7 @@ td input:focus {
 }
 
 .project-info-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: var(--radius);
   padding: 16px;
   border: 1px solid var(--border);
@@ -1730,7 +1774,7 @@ td input:focus {
 }
 
 .positions-panel {
-  background: white;
+  background: var(--bg-card);
   border-radius: var(--radius);
   padding: 16px;
   border: 1px solid var(--border);
@@ -1751,7 +1795,7 @@ td input:focus {
 }
 
 .position-card {
-  background: #f9fafb;
+  background: var(--bg-hover);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
@@ -1761,7 +1805,7 @@ td input:focus {
 }
 
 .position-card:hover {
-  background: #eff6ff;
+  background: var(--bg-hover);
   border-color: var(--primary);
 }
 
@@ -1784,7 +1828,7 @@ td input:focus {
 .btn-add-position {
   width: 100%;
   padding: 10px;
-  background: #eff6ff;
+  background: var(--bg-hover);
   color: var(--primary);
   border: 1px dashed var(--primary);
   border-radius: 8px;
@@ -1856,7 +1900,7 @@ td input:focus {
 }
 
 .stages-section {
-  background: white;
+  background: var(--bg-card);
   border-radius: var(--radius);
   padding: 16px;
   border: 1px solid var(--border);
@@ -2079,7 +2123,7 @@ td input:focus {
 }
 
 .qr-code {
-  background: white;
+  background: var(--bg-card);
   border-radius: 12px;
   padding: 15px;
   display: inline-block;

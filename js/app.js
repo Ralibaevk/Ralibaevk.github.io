@@ -5,6 +5,9 @@ window.app = {
     catalog: [],
 
     async init() {
+        // 0. Initialize Theme
+        this.initTheme();
+
         // 1. Telegram Init
         const isTelegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
 
@@ -126,6 +129,54 @@ window.app = {
         if (loginScreen) loginScreen.classList.add('hidden');
         if (mainLayout) mainLayout.style.display = '';
         if (bottomNav) bottomNav.style.display = '';
+    },
+
+    // Инициализация темы
+    initTheme() {
+        const savedTheme = localStorage.getItem('logiqa_theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+        // Если тема не сохранена — оставляем auto (системные настройки)
+        this.updateThemeIcon();
+    },
+
+    // Переключение темы
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        let newTheme;
+
+        if (currentTheme === 'dark') {
+            newTheme = 'light';
+        } else if (currentTheme === 'light') {
+            // Переключаем в auto (удаляем атрибут)
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.removeItem('logiqa_theme');
+            this.updateThemeIcon();
+            return;
+        } else {
+            // Auto → Dark
+            newTheme = 'dark';
+        }
+
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('logiqa_theme', newTheme);
+        this.updateThemeIcon();
+    },
+
+    // Обновление иконки темы
+    updateThemeIcon() {
+        const icon = document.getElementById('themeIcon');
+        if (!icon) return;
+
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        if (currentTheme === 'dark') {
+            icon.className = 'fas fa-moon';
+        } else if (currentTheme === 'light') {
+            icon.className = 'fas fa-sun';
+        } else {
+            icon.className = 'fas fa-circle-half-stroke'; // Auto
+        }
     },
 
     // Новый метод
