@@ -22,6 +22,46 @@
     <div class="spinner"></div>
   </div>
 
+  <!-- LOGIN SCREEN (для браузерных пользователей) -->
+  <div id="view-login" class="login-screen hidden">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-icon-big">L</div>
+        <span class="login-brand">Logiqa</span>
+      </div>
+
+      <h1 class="login-title">Вход в аккаунт</h1>
+      <p class="login-subtitle">Войдите через Telegram-бота,<br>чтобы получить доступ к системе</p>
+
+      <a href="https://t.me/logiqa_work_bot?start=login" class="telegram-btn" target="_blank">
+        <i class="fab fa-telegram"></i>
+        Открыть в Telegram
+      </a>
+
+      <div class="login-divider">
+        <span>или</span>
+      </div>
+
+      <div class="qr-block">
+        <div class="qr-title">Сканируйте с телефона</div>
+        <div class="qr-code" id="loginQR">
+          <img
+            src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://t.me/logiqa_work_bot?start=login"
+            alt="QR Code">
+        </div>
+        <div class="qr-hint">
+          <i class="fas fa-spinner fa-spin"></i>
+          Ожидание подтверждения...
+        </div>
+      </div>
+
+      <div class="login-footer">
+        Нажимая "Открыть в Telegram", вы соглашаетесь с<br>
+        <a href="#">условиями использования</a>
+      </div>
+    </div>
+  </div>
+
   <div class="main-layout">
     <!-- SIDEBAR (Desktop) -->
     <div class="sidebar" id="sidebar">

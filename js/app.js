@@ -6,6 +6,8 @@ window.app = {
 
     async init() {
         // 1. Telegram Init
+        const isTelegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+
         if (window.Telegram && window.Telegram.WebApp) {
             window.Telegram.WebApp.ready();
             window.Telegram.WebApp.expand();
@@ -15,6 +17,16 @@ window.app = {
             this.startParam = window.Telegram.WebApp.initDataUnsafe?.start_param || null;
             console.log('📩 Start param (invite code):', this.startParam);
         }
+
+        // 2. Проверка: если НЕ из Telegram — показываем экран входа
+        if (!isTelegramUser) {
+            console.log('🌐 Browser mode detected - showing login screen');
+            this.showLoginScreen();
+            return; // Прекращаем инициализацию до входа через Telegram
+        }
+
+        console.log('📱 Telegram mode detected - proceeding with app');
+        this.hideLoginScreen();
 
         // 2. Auth & Session
         try {
@@ -90,6 +102,30 @@ window.app = {
             }
 
         } catch (e) { console.error(e); }
+    },
+
+    // Показать экран входа (для браузерных пользователей)
+    showLoginScreen() {
+        const loginScreen = document.getElementById('view-login');
+        const mainLayout = document.querySelector('.main-layout');
+        const bottomNav = document.querySelector('.bottom-nav');
+        const fab = document.querySelector('.fab');
+
+        if (loginScreen) loginScreen.classList.remove('hidden');
+        if (mainLayout) mainLayout.style.display = 'none';
+        if (bottomNav) bottomNav.style.display = 'none';
+        if (fab) fab.style.display = 'none';
+    },
+
+    // Скрыть экран входа
+    hideLoginScreen() {
+        const loginScreen = document.getElementById('view-login');
+        const mainLayout = document.querySelector('.main-layout');
+        const bottomNav = document.querySelector('.bottom-nav');
+
+        if (loginScreen) loginScreen.classList.add('hidden');
+        if (mainLayout) mainLayout.style.display = '';
+        if (bottomNav) bottomNav.style.display = '';
     },
 
     // Новый метод
