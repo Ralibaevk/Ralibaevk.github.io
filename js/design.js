@@ -87,21 +87,30 @@ window.design = {
                 iconColor = '#f59e0b';
             }
 
-            // Проверяем можно ли предпросматривать файл (PDF, Excel, Word, изображения)
-            const canPreview = f.file_name?.match(/\.(jpg|jpeg|png|gif|webp|pdf|xls|xlsx|doc|docx)$/i);
+            // Проверяем можно ли предпросматривать файл (явное преобразование в boolean)
+            const canPreview = !!(f.file_name?.match(/\.(jpg|jpeg|png|gif|webp|pdf|xls|xlsx|doc|docx)$/i));
 
             // URL для просмотра файла
             const viewUrl = f.tg_file_id
                 ? `${DESIGN_FILE_PROXY_URL}/file/${f.tg_file_id}`
-                : f.file_url;
+                : (f.file_url || '');
 
             // URL для скачивания файла
             const downloadUrl = f.tg_file_id
-                ? `${DESIGN_FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}`
-                : f.file_url;
+                ? `${DESIGN_FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name || 'file')}`
+                : (f.file_url || '#');
 
             // Можно ли просмотреть файл (нужен tg_file_id или file_url)
-            const hasSource = f.tg_file_id || f.file_url;
+            const hasSource = !!(f.tg_file_id || f.file_url);
+
+            // Показывать кнопку предпросмотра?
+            const showPreviewBtn = canPreview && hasSource;
+
+            console.log(`📄 File: ${f.file_name}, canPreview: ${canPreview}, hasSource: ${hasSource}, showBtn: ${showPreviewBtn}`);
+
+            // Безопасное имя файла для onclick
+            const safeFileName = (f.file_name || 'file').replace(/'/g, "\\'").replace(/"/g, '\\"');
+            const safeFileId = f.tg_file_id || '';
 
             return `
                 <div class="design-file-item">
@@ -109,12 +118,12 @@ window.design = {
                         <i class="fas ${icon}"></i>
                     </div>
                     <div class="design-file-info">
-                        <div class="design-file-name">${f.file_name}</div>
+                        <div class="design-file-name">${f.file_name || 'Без имени'}</div>
                         <div class="design-file-date">${utils.formatDate(f.created_at)}</div>
                     </div>
                     <div class="design-file-actions">
-                        ${canPreview && hasSource ? `
-                            <button class="btn-icon" onclick="design.viewFileByUrl('${viewUrl}', '${f.file_name.replace(/'/g, "\\'")}', '${f.tg_file_id || ''}')">
+                        ${showPreviewBtn ? `
+                            <button class="btn-icon" onclick="design.viewFileByUrl('${viewUrl}', '${safeFileName}', '${safeFileId}')">
                                 <i class="fas fa-eye"></i>
                             </button>
                         ` : ''}
