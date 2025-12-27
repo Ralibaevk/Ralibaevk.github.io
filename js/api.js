@@ -620,6 +620,7 @@ window.api = {
           id,
           name,
           client_name,
+          client_phone,
           deadline,
           address,
           company_id

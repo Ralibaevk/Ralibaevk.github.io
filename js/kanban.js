@@ -332,6 +332,20 @@ window.kanban = {
             : '—';
         document.getElementById('pcmAddress').textContent = project.address || '—';
 
+        // 🔥 Устанавливаем текущий статус в селекторе
+        const currentStatus = this.getStatusForBoard(this.currentPosition);
+        const statusSelect = document.getElementById('pcmStatusSelect');
+        statusSelect.value = currentStatus;
+
+        // Для processing на Design доске - disable select
+        if (board === 'design' && isProcessing) {
+            statusSelect.disabled = true;
+            statusSelect.style.opacity = '0.5';
+        } else {
+            statusSelect.disabled = false;
+            statusSelect.style.opacity = '1';
+        }
+
         // 🔥 Рендерим кнопки в зависимости от доски
         this.renderModalActions(board, isProcessing);
 
@@ -341,6 +355,24 @@ window.kanban = {
         // Загружаем файлы и комментарии
         await this.loadFiles();
         await this.loadComments();
+    },
+
+    // 🔥 Изменение статуса из модалки
+    async changeStatusFromModal(newStatus) {
+        if (!this.currentPosition) return;
+
+        const positionId = this.currentPosition.id;
+
+        try {
+            await this.changeStatus(positionId, newStatus);
+
+            // Обновляем данные текущей позиции
+            this.currentPosition = this.positions.find(p => p.id === positionId);
+
+            console.log(`✅ Статус изменён через модалку: ${positionId} → ${newStatus}`);
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
     },
 
     // Рендер кнопок действий в модалке
