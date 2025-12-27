@@ -232,6 +232,31 @@ window.kanban = {
                 </div>`;
         }
 
+        // 🔥 Индикатор для доски Деталировка — показываем готовность Замера
+        if (board === 'detail' && isProcessing) {
+            let status = {};
+            try {
+                status = JSON.parse(position.kanban_status);
+            } catch {
+                status = {};
+            }
+
+            const measureStatus = status.measure || 'inbox';
+            const measureDone = measureStatus === 'done';
+
+            if (measureDone) {
+                approvalTag = `
+                    <div class="approval-tags" style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+                        <span style="font-size:10px; padding:2px 6px; background:#10b98120; color:#10b981; border-radius:4px;">✅ Замер готов</span>
+                    </div>`;
+            } else {
+                approvalTag = `
+                    <div class="approval-tags" style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+                        <span style="font-size:10px; padding:2px 6px; background:#f59e0b20; color:#f59e0b; border-radius:4px;">⏳ Ожидание замера</span>
+                    </div>`;
+            }
+        }
+
         // Для processing на Design показываем disabled select
         const selectDisabled = (board === 'design' && isProcessing) ? 'disabled style="opacity:0.5;"' : '';
 
@@ -623,6 +648,7 @@ window.kanban = {
             }
 
             // Рендерим секции
+            const self = this;
             list.innerHTML = stages.map(section => `
                 <div class="file-section" style="margin-bottom:15px;">
                     <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:${section.color}10; border-radius:8px; margin-bottom:8px;">
@@ -630,7 +656,7 @@ window.kanban = {
                         <span style="font-weight:600; font-size:13px; color:${section.color};">${section.name}</span>
                         <span style="font-size:11px; color:#999; margin-left:auto;">${section.files.length} файл(ов)</span>
                     </div>
-                    ${section.files.map(f => this.renderFileItem(f)).join('')}
+                    ${section.files.map(f => self.renderFileItem(f)).join('')}
                 </div>
             `).join('');
 

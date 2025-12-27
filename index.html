@@ -599,24 +599,27 @@
     <div class="modal-box"
       style="width:600px; max-width:95%; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column;">
       <!-- Header -->
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px; gap:10px;">
-        <div style="flex:1; min-width:0;">
-          <h3 id="pcmProjectName" style="margin:0 0 5px 0;">Проект</h3>
-          <span id="pcmPositionName" style="font-size:14px; color:#666;"></span>
+      <div style="margin-bottom:15px;">
+        <!-- Title Row -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+          <div style="flex:1; min-width:0;">
+            <h3 id="pcmProjectName" style="margin:0 0 5px 0; font-size:18px;">Проект</h3>
+            <span id="pcmPositionName" style="font-size:14px; color:#666;"></span>
+          </div>
+          <button onclick="kanban.closeProjectCard()"
+            style="background:none; border:none; font-size:20px; cursor:pointer; color:#999; padding:0; margin-left:10px;">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
-        <!-- Status Selector -->
+        <!-- Status Row -->
         <select id="pcmStatusSelect" class="status-mini-select"
-          style="padding:8px 12px; font-size:13px; min-width:130px;"
+          style="width:100%; padding:10px 12px; font-size:14px; border:1px solid #e5e7eb; border-radius:8px; background:white;"
           onchange="kanban.changeStatusFromModal(this.value)">
           <option value="inbox">📥 Входящие</option>
           <option value="active">🔵 В работе</option>
           <option value="done">✅ Выполнено</option>
           <option value="waiting">⏳ Ожидание</option>
         </select>
-        <button onclick="kanban.closeProjectCard()"
-          style="background:none; border:none; font-size:20px; cursor:pointer; color:#999;">
-          <i class="fas fa-times"></i>
-        </button>
       </div>
 
       <!-- Project Info -->
