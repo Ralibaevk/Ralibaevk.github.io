@@ -73,6 +73,8 @@ window.api = {
         case 'updatePositionStatus': result = await this._updatePositionKanbanStatus(params.positionId, params.status); break;
         case 'updateBoardStatus': result = await this._updateBoardStatus(params.positionId, params.board, params.status, params.currentKanbanStatus); break;
         case 'transitionToProcessing': result = await this._transitionToProcessing(params.positionId); break;
+        case 'acceptWork': result = await this._acceptWork(params.positionId, params.board, params.currentKanbanStatus); break;
+        case 'returnForRevision': result = await this._returnForRevision(params.positionId, params.board, params.currentKanbanStatus, params.comment); break;
 
         // --- COMMENTS ---
         case 'getComments': result = await this._getComments(params.parentId, params.stage); break;
@@ -754,6 +756,64 @@ window.api = {
       author_name: authorName
     });
     if (error) throw error;
+    return { success: true };
+  },
+
+  // === ACCEPT / RETURN WORKFLOW ===
+
+  // Принять работу на доске (measure или detail)
+  async _acceptWork(positionId, board, currentKanbanStatus) {
+    let parsed = {};
+    try {
+      parsed = JSON.parse(currentKanbanStatus);
+    } catch {
+      parsed = { measure: 'inbox', detail: 'inbox' };
+    }
+
+    // Ставим accepted для текущей доски
+    parsed[board + '_accepted'] = true;
+    parsed[board] = 'active';  // Переводим в "В работе"
+
+    const { error } = await supabase
+      .from('positions')
+      .update({ kanban_status: JSON.stringify(parsed) })
+      .eq('id', positionId);
+
+    if (error) throw error;
+    return { success: true, bothAccepted: parsed.measure_accepted && parsed.detail_accepted };
+  },
+
+  // Вернуть на доработку дизайнеру
+  async _returnForRevision(positionId, board, currentKanbanStatus, comment) {
+    let parsed = {};
+    try {
+      parsed = JSON.parse(currentKanbanStatus);
+    } catch {
+      parsed = { measure: 'inbox', detail: 'inbox' };
+    }
+
+    // Сбрасываем accepted и помечаем revision
+    parsed[board + '_accepted'] = false;
+    parsed[board + '_revision'] = true;
+    parsed[board + '_revision_at'] = new Date().toISOString();
+    parsed[board] = 'waiting';  // Ожидание
+
+    const { error } = await supabase
+      .from('positions')
+      .update({ kanban_status: JSON.stringify(parsed) })
+      .eq('id', positionId);
+
+    if (error) throw error;
+
+    // Добавляем комментарий если есть
+    if (comment) {
+      await this._addComment({
+        parentId: positionId,
+        stage: board,
+        text: `⚠️ Возврат на доработку: ${comment}`
+      });
+    }
+
     return { success: true };
   }
 };

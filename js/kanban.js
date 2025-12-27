@@ -184,13 +184,51 @@ window.kanban = {
                 </span>`;
         }
 
-        // Метка "На согласовании" для доски Дизайн
+        // Метка "На согласовании" для доски Дизайн (с индикатором возврата)
         let approvalTag = '';
         if (board === 'design' && isProcessing) {
+            // Парсим статус для проверки возврата/принятия
+            let status = {};
+            try {
+                status = JSON.parse(position.kanban_status);
+            } catch {
+                status = {};
+            }
+
+            const measureAccepted = status.measure_accepted;
+            const detailAccepted = status.detail_accepted;
+            const measureRevision = status.measure_revision;
+            const detailRevision = status.detail_revision;
+
+            // Если оба приняты — не показываем карточку (возвращаем пустую строку)
+            if (measureAccepted && detailAccepted) {
+                return ''; // Карточка скрывается
+            }
+
+            // Формируем метки
+            let measureTag = '';
+            let detailTag = '';
+
+            if (measureRevision) {
+                measureTag = `<span style="font-size:10px; padding:2px 6px; background:#ef444420; color:#ef4444; border-radius:4px;">⚠️ Замер: доработка</span>`;
+            } else if (measureAccepted) {
+                measureTag = `<span style="font-size:10px; padding:2px 6px; background:#10b98120; color:#10b981; border-radius:4px;">✅ Замер</span>`;
+            } else {
+                measureTag = `<span style="font-size:10px; padding:2px 6px; background:#3b82f620; color:#3b82f6; border-radius:4px;">🔄 Замер</span>`;
+            }
+
+            if (detailRevision) {
+                detailTag = `<span style="font-size:10px; padding:2px 6px; background:#ef444420; color:#ef4444; border-radius:4px;">⚠️ Деталировка: доработка</span>`;
+            } else if (detailAccepted) {
+                detailTag = `<span style="font-size:10px; padding:2px 6px; background:#10b98120; color:#10b981; border-radius:4px;">✅ Деталировка</span>`;
+            } else {
+                detailTag = `<span style="font-size:10px; padding:2px 6px; background:#8b5cf620; color:#8b5cf6; border-radius:4px;">🔄 Деталировка</span>`;
+            }
+
             approvalTag = `
                 <div class="approval-tags" style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
-                    <span style="font-size:10px; padding:2px 6px; background:#3b82f620; color:#3b82f6; border-radius:4px;">🔄 Замер</span>
-                    <span style="font-size:10px; padding:2px 6px; background:#8b5cf620; color:#8b5cf6; border-radius:4px;">🔄 Деталировка</span>
+                    ${measureTag}
+                    ${detailTag}
                 </div>`;
         }
 
@@ -268,6 +306,8 @@ window.kanban = {
         }
 
         const project = this.currentPosition.projects || {};
+        const board = this.currentStage;
+        const isProcessing = this.currentPosition.stage === 'processing';
 
         // Заполняем модальное окно
         document.getElementById('pcmProjectName').textContent = project.name || 'Проект';
@@ -278,12 +318,128 @@ window.kanban = {
             : '—';
         document.getElementById('pcmAddress').textContent = project.address || '—';
 
+        // 🔥 Рендерим кнопки в зависимости от доски
+        this.renderModalActions(board, isProcessing);
+
         // Показываем модал
         document.getElementById('projectCardModal').classList.remove('hidden');
 
         // Загружаем файлы и комментарии
         await this.loadFiles();
         await this.loadComments();
+    },
+
+    // Рендер кнопок действий в модалке
+    renderModalActions(board, isProcessing) {
+        const footerEl = document.querySelector('#projectCardModal .modal-box > div:last-child');
+        if (!footerEl) return;
+
+        // Парсим текущий статус
+        let status = {};
+        try {
+            status = JSON.parse(this.currentPosition.kanban_status);
+        } catch {
+            status = {};
+        }
+
+        const isAccepted = status[board + '_accepted'];
+        const hasRevision = status[board + '_revision'];
+
+        // Для досок Замер/Деталировка показываем специальные кнопки
+        if ((board === 'measure' || board === 'detail') && isProcessing) {
+            const boardName = board === 'measure' ? 'Замер' : 'Деталировка';
+
+            if (isAccepted) {
+                // Уже принято — показываем кнопку "Вернуть на доработку"
+                footerEl.innerHTML = `
+                    <button class="btn btn-def" style="flex:1;" onclick="kanban.openFullPosition()">
+                        <i class="fas fa-expand"></i> Открыть
+                    </button>
+                    <button class="btn btn-warning" style="flex:1; background:#f59e0b; color:white;" onclick="kanban.returnForRevision()">
+                        <i class="fas fa-undo"></i> На доработку
+                    </button>
+                `;
+            } else {
+                // Ещё не принято — показываем обе кнопки
+                footerEl.innerHTML = `
+                    <button class="btn btn-warning" style="flex:1; background:#f59e0b; color:white;" onclick="kanban.returnForRevision()">
+                        <i class="fas fa-undo"></i> На доработку
+                    </button>
+                    <button class="btn btn-success" style="flex:1; background:#10b981; color:white;" onclick="kanban.acceptWork()">
+                        <i class="fas fa-check"></i> Принять в работу
+                    </button>
+                `;
+            }
+        } else {
+            // Стандартные кнопки для других досок
+            footerEl.innerHTML = `
+                <button class="btn btn-def" style="flex:1;" onclick="kanban.openFullPosition()">
+                    <i class="fas fa-expand"></i> Открыть полностью
+                </button>
+                <button class="btn btn-primary" style="flex:1;" onclick="kanban.closeProjectCard()">
+                    <i class="fas fa-check"></i> Готово
+                </button>
+            `;
+        }
+    },
+
+    // 🔥 Принять в работу
+    async acceptWork() {
+        if (!this.currentPosition) return;
+
+        const board = this.currentStage;
+
+        try {
+            const result = await api.call('acceptWork', {
+                positionId: this.currentPosition.id,
+                board: board,
+                currentKanbanStatus: this.currentPosition.kanban_status
+            });
+
+            console.log(`✅ Принято в работу (${board}):`, this.currentPosition.id);
+
+            if (result.bothAccepted) {
+                alert('🎉 Позиция принята в работу на Замере И Деталировке!');
+            } else {
+                const boardName = board === 'measure' ? 'Замер' : 'Деталировка';
+                alert(`✅ Принято в работу: ${boardName}`);
+            }
+
+            this.closeProjectCard();
+            await this.loadPositions();
+            this.render();
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
+    },
+
+    // 🔥 Вернуть на доработку
+    async returnForRevision() {
+        if (!this.currentPosition) return;
+
+        const board = this.currentStage;
+        const boardName = board === 'measure' ? 'Замер' : 'Деталировка';
+
+        const comment = prompt(`Причина возврата (${boardName}):`);
+        if (comment === null) return; // Отмена
+
+        try {
+            await api.call('returnForRevision', {
+                positionId: this.currentPosition.id,
+                board: board,
+                currentKanbanStatus: this.currentPosition.kanban_status,
+                comment: comment || 'Требуется доработка'
+            });
+
+            console.log(`⚠️ Возвращено на доработку (${board}):`, this.currentPosition.id);
+            alert(`⚠️ Отправлено дизайнеру на доработку`);
+
+            this.closeProjectCard();
+            await this.loadPositions();
+            this.render();
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
     },
 
     // Закрыть модальное окно

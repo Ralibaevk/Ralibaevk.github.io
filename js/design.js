@@ -613,13 +613,13 @@ window.design = {
         if (!this.currentPositionId) return;
 
         try {
-            // Переводим на следующий этап
-            await supabase.from('positions')
-                .update({ stage: 'measure', kanban_status: 'inbox' })
-                .eq('id', this.currentPositionId);
+            // 🔥 Используем новую логику: переход в processing (Замер + Деталировка)
+            await api.call('transitionToProcessing', {
+                positionId: this.currentPositionId
+            });
 
-            alert('Отправлено на замер!');
-            // Переключаемся на следующий таб
+            alert('Отправлено на Замер и Деталировку!');
+            // Переключаемся на вкладку замера
             app.switchPipelineTab('measure');
         } catch (e) {
             alert('Ошибка: ' + e.message);
