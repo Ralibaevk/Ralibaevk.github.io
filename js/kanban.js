@@ -47,15 +47,37 @@ window.kanban = {
 
     async loadPositions() {
         try {
-            // Получаем все позиции компании на этом этапе
-            this.positions = await api.call('getPositionsByStage', {
-                stage: this.currentStage
+            // Используем новый API с поддержкой processing stage
+            this.positions = await api.call('getPositionsForBoard', {
+                board: this.currentStage
             });
             console.log(`📋 Загружено позиций для ${this.currentStage}:`, this.positions.length);
         } catch (e) {
             console.error('Ошибка загрузки канбан:', e);
             this.positions = [];
         }
+    },
+
+    // Хелпер: получить статус для текущей доски (поддержка JSON)
+    getStatusForBoard(position) {
+        const board = this.currentStage;
+        const raw = position.kanban_status;
+
+        // Попробуем распарсить как JSON (для processing stage)
+        try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+                // Для design доски: если stage=processing, показываем как done
+                if (board === 'design' && position.stage === 'processing') {
+                    return 'done';
+                }
+                return parsed[board] || 'inbox';
+            }
+        } catch {
+            // Не JSON — используем как есть
+        }
+
+        return raw || 'inbox';
     },
 
     render() {
@@ -70,12 +92,12 @@ window.kanban = {
             filteredPositions = this.positions.filter(p => p.projects?.id === this.selectedProjectId);
         }
 
-        // Группируем позиции по статусу
+        // Группируем позиции по статусу (с учётом JSON для processing)
         const grouped = {
-            inbox: filteredPositions.filter(p => !p.kanban_status || p.kanban_status === 'inbox'),
-            active: filteredPositions.filter(p => p.kanban_status === 'active'),
-            done: filteredPositions.filter(p => p.kanban_status === 'done'),
-            waiting: filteredPositions.filter(p => p.kanban_status === 'waiting')
+            inbox: filteredPositions.filter(p => this.getStatusForBoard(p) === 'inbox'),
+            active: filteredPositions.filter(p => this.getStatusForBoard(p) === 'active'),
+            done: filteredPositions.filter(p => this.getStatusForBoard(p) === 'done'),
+            waiting: filteredPositions.filter(p => this.getStatusForBoard(p) === 'waiting')
         };
 
         // Генерируем опции для dropdown
@@ -139,9 +161,48 @@ window.kanban = {
             ? new Date(position.projects.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
             : '—';
 
+        const currentStatus = this.getStatusForBoard(position);
+        const isProcessing = position.stage === 'processing';
+        const board = this.currentStage;
+
+        // Индикатор "X из Y" для досок Замер/Деталировка
+        let positionIndicator = '';
+        if ((board === 'measure' || board === 'detail') && isProcessing) {
+            const idx = position._positionIndex || 1;
+            const total = position._totalPositions || 1;
+            const allReady = position._allInProcessing;
+            const indicatorColor = allReady ? '#10b981' : '#ef4444';  // green or red
+            positionIndicator = `
+                <span class="position-indicator" style="
+                    display:inline-flex; align-items:center; gap:4px;
+                    font-size:11px; font-weight:600; padding:2px 8px;
+                    background:${indicatorColor}20; color:${indicatorColor};
+                    border-radius:10px; border:1px solid ${indicatorColor}40;
+                ">
+                    <span style="width:6px; height:6px; background:${indicatorColor}; border-radius:50%;"></span>
+                    ${idx} из ${total}
+                </span>`;
+        }
+
+        // Метка "На согласовании" для доски Дизайн
+        let approvalTag = '';
+        if (board === 'design' && isProcessing) {
+            approvalTag = `
+                <div class="approval-tags" style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+                    <span style="font-size:10px; padding:2px 6px; background:#3b82f620; color:#3b82f6; border-radius:4px;">🔄 Замер</span>
+                    <span style="font-size:10px; padding:2px 6px; background:#8b5cf620; color:#8b5cf6; border-radius:4px;">🔄 Деталировка</span>
+                </div>`;
+        }
+
+        // Для processing на Design показываем disabled select
+        const selectDisabled = (board === 'design' && isProcessing) ? 'disabled style="opacity:0.5;"' : '';
+
         return `
             <div class="kanban-card" onclick="kanban.openProjectCard('${position.id}')">
-                <div class="kanban-card-project">${projectName}</div>
+                <div class="kanban-card-header" style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div class="kanban-card-project">${projectName}</div>
+                    ${positionIndicator}
+                </div>
                 <div class="kanban-card-title">${position.name || 'Без названия'}</div>
                 <div class="kanban-card-meta">
                     <span class="kanban-card-client">
@@ -151,27 +212,45 @@ window.kanban = {
                         <i class="fas fa-calendar"></i> ${deadline}
                     </span>
                 </div>
+                ${approvalTag}
                 <div class="kanban-card-actions">
-                    <select class="status-mini-select" onclick="event.stopPropagation();" onchange="kanban.changeStatus('${position.id}', this.value); event.stopPropagation();">
-                        <option value="inbox" ${position.kanban_status === 'inbox' || !position.kanban_status ? 'selected' : ''}>📥 Входящие</option>
-                        <option value="active" ${position.kanban_status === 'active' ? 'selected' : ''}>🔵 В работе</option>
-                        <option value="done" ${position.kanban_status === 'done' ? 'selected' : ''}>✅ Выполнено</option>
-                        <option value="waiting" ${position.kanban_status === 'waiting' ? 'selected' : ''}>⏳ Ожидание</option>
+                    <select class="status-mini-select" ${selectDisabled} onclick="event.stopPropagation();" onchange="kanban.changeStatus('${position.id}', this.value, '${position.kanban_status?.replace(/'/g, "\\'") || ''}'); event.stopPropagation();">
+                        <option value="inbox" ${currentStatus === 'inbox' ? 'selected' : ''}>📥 Входящие</option>
+                        <option value="active" ${currentStatus === 'active' ? 'selected' : ''}>🔵 В работе</option>
+                        <option value="done" ${currentStatus === 'done' ? 'selected' : ''}>✅ Выполнено</option>
+                        <option value="waiting" ${currentStatus === 'waiting' ? 'selected' : ''}>⏳ Ожидание</option>
                     </select>
                 </div>
             </div>
         `;
     },
 
-    async changeStatus(positionId, newStatus) {
+    async changeStatus(positionId, newStatus, currentKanbanStatus = '') {
         try {
-            await api.call('updatePositionStatus', {
-                positionId: positionId,
-                status: newStatus,
-                stage: this.currentStage
-            });
+            const board = this.currentStage;
+            const position = this.positions.find(p => p.id === positionId);
+
+            // 🔥 КЛЮЧЕВАЯ ЛОГИКА: Design + Done = переход в processing
+            if (board === 'design' && newStatus === 'done' && position?.stage !== 'processing') {
+                console.log('🚀 Переход в processing (Замер + Деталировка):', positionId);
+                await api.call('transitionToProcessing', { positionId });
+            } else if (position?.stage === 'processing') {
+                // Для processing stage — обновляем только статус текущей доски
+                await api.call('updateBoardStatus', {
+                    positionId,
+                    board,
+                    status: newStatus,
+                    currentKanbanStatus: currentKanbanStatus || position.kanban_status
+                });
+            } else {
+                // Обычное обновление статуса
+                await api.call('updatePositionStatus', {
+                    positionId,
+                    status: newStatus
+                });
+            }
+
             console.log(`✅ Статус изменён: ${positionId} → ${newStatus}`);
-            // Перезагружаем данные
             await this.loadPositions();
             this.render();
         } catch (e) {

@@ -69,7 +69,10 @@ window.api = {
 
         // --- KANBAN ---
         case 'getPositionsByStage': result = await this._getPositionsByStage(params.stage); break;
+        case 'getPositionsForBoard': result = await this._getPositionsForBoard(params.board); break;
         case 'updatePositionStatus': result = await this._updatePositionKanbanStatus(params.positionId, params.status); break;
+        case 'updateBoardStatus': result = await this._updateBoardStatus(params.positionId, params.board, params.status, params.currentKanbanStatus); break;
+        case 'transitionToProcessing': result = await this._transitionToProcessing(params.positionId); break;
 
         // --- COMMENTS ---
         case 'getComments': result = await this._getComments(params.parentId, params.stage); break;
@@ -574,6 +577,143 @@ window.api = {
     const { error } = await supabase
       .from('positions')
       .update({ kanban_status: status })
+      .eq('id', positionId);
+
+    if (error) throw error;
+    return { success: true };
+  },
+
+  // === MULTI-STAGE KANBAN ===
+
+  // Переход позиции в обработку (появляется на досках Замер + Деталировка)
+  async _transitionToProcessing(positionId) {
+    const statusJson = JSON.stringify({
+      measure: "inbox",
+      detail: "inbox",
+      design_done_at: new Date().toISOString()
+    });
+
+    const { error } = await supabase
+      .from('positions')
+      .update({
+        stage: 'processing',
+        kanban_status: statusJson
+      })
+      .eq('id', positionId);
+
+    if (error) throw error;
+    return { success: true };
+  },
+
+  // Получение позиций для конкретной Kanban-доски (с поддержкой processing)
+  async _getPositionsForBoard(board) {
+    // board = 'design' | 'measure' | 'detail' | 'supply' | 'production' | 'install' | 'handover'
+
+    let query = supabase
+      .from('positions')
+      .select(`
+        *,
+        projects!inner (
+          id,
+          name,
+          client_name,
+          deadline,
+          address,
+          company_id
+        )
+      `)
+      .eq('projects.company_id', window.CURRENT_COMPANY_ID)
+      .order('created_at', { ascending: false });
+
+    if (board === 'design') {
+      // Для дизайна: stage = 'design' ИЛИ stage = 'processing' (на согласовании)
+      query = query.in('stage', ['design', 'processing']);
+    } else if (board === 'measure' || board === 'detail') {
+      // Для замера/деталировки: только processing (параллельная обработка)
+      query = query.eq('stage', 'processing');
+    } else {
+      // Для остальных этапов: обычная логика
+      query = query.eq('stage', board);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Ошибка загрузки позиций:', error);
+      throw error;
+    }
+
+    // Добавляем информацию о количестве позиций в проекте
+    const projectCounts = {};
+    (data || []).forEach(pos => {
+      const projId = pos.project_id;
+      if (!projectCounts[projId]) {
+        projectCounts[projId] = { total: 0, inProcessing: 0 };
+      }
+    });
+
+    // Подсчёт всех позиций по проектам
+    const projectIds = [...new Set((data || []).map(p => p.project_id))];
+    if (projectIds.length > 0) {
+      const { data: allPositions } = await supabase
+        .from('positions')
+        .select('id, project_id, stage')
+        .in('project_id', projectIds);
+
+      (allPositions || []).forEach(pos => {
+        if (!projectCounts[pos.project_id]) {
+          projectCounts[pos.project_id] = { total: 0, inProcessing: 0 };
+        }
+        projectCounts[pos.project_id].total++;
+        if (pos.stage === 'processing' || ['supply', 'production', 'install', 'handover'].includes(pos.stage)) {
+          projectCounts[pos.project_id].inProcessing++;
+        }
+      });
+    }
+
+    // Обогащаем данные
+    const enriched = (data || []).map((pos, idx, arr) => {
+      // Номер позиции в проекте (по порядку создания)
+      const sameProject = arr.filter(p => p.project_id === pos.project_id);
+      const positionIndex = sameProject.findIndex(p => p.id === pos.id) + 1;
+
+      const counts = projectCounts[pos.project_id] || { total: 1, inProcessing: 0 };
+
+      return {
+        ...pos,
+        _positionIndex: positionIndex,
+        _totalPositions: counts.total,
+        _allInProcessing: counts.inProcessing >= counts.total  // Все позиции перешли в обработку
+      };
+    });
+
+    return enriched;
+  },
+
+  // Обновление статуса на конкретной доске (поддержка JSON для processing)
+  async _updateBoardStatus(positionId, board, newStatus, currentKanbanStatus) {
+    let updateData = {};
+
+    // Проверяем, это processing stage с JSON статусом?
+    let parsed = null;
+    try {
+      parsed = JSON.parse(currentKanbanStatus);
+    } catch {
+      parsed = null;
+    }
+
+    if (parsed && typeof parsed === 'object' && (parsed.measure !== undefined || parsed.detail !== undefined)) {
+      // Это JSON формат для processing stage
+      parsed[board] = newStatus;
+      updateData.kanban_status = JSON.stringify(parsed);
+    } else {
+      // Обычный формат — просто строка
+      updateData.kanban_status = newStatus;
+    }
+
+    const { error } = await supabase
+      .from('positions')
+      .update(updateData)
       .eq('id', positionId);
 
     if (error) throw error;
