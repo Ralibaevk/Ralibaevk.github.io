@@ -313,6 +313,20 @@ window.kanban = {
         document.getElementById('pcmProjectName').textContent = project.name || 'Проект';
         document.getElementById('pcmPositionName').textContent = this.currentPosition.name || 'Изделие';
         document.getElementById('pcmClient').textContent = project.client_name || '—';
+
+        // 🔥 Телефон (кликабельный для звонка с мобилки)
+        const phoneEl = document.getElementById('pcmPhone');
+        const phone = project.client_phone || '';
+        if (phone) {
+            phoneEl.href = `tel:${phone.replace(/\s/g, '')}`;
+            phoneEl.querySelector('span').textContent = phone;
+            phoneEl.style.display = 'flex';
+        } else {
+            phoneEl.querySelector('span').textContent = '—';
+            phoneEl.href = '#';
+            phoneEl.style.pointerEvents = 'none';
+        }
+
         document.getElementById('pcmDeadline').textContent = project.deadline
             ? new Date(project.deadline).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
             : '—';
@@ -531,78 +545,116 @@ window.kanban = {
             const board = this.currentStage;
             const isProcessing = this.currentPosition.stage === 'processing';
 
-            // 🔥 Для Замера/Деталировки загружаем файлы дизайнера (stage='design')
-            const fileStage = (board === 'measure' || board === 'detail') && isProcessing
-                ? 'design'
-                : board;
+            // 🔥 Загружаем файлы из нескольких этапов для processing
+            let allFiles = [];
+            const stages = [];
 
-            const files = await api.call('getFiles', {
-                parentId: this.currentPosition.id,
-                stage: fileStage
-            });
+            if (isProcessing || board === 'design') {
+                // Всегда загружаем файлы дизайна
+                const designFiles = await api.call('getFiles', {
+                    parentId: this.currentPosition.id,
+                    stage: 'design'
+                });
+                if (designFiles?.length > 0) {
+                    stages.push({ name: 'Дизайн', icon: 'fa-pencil-ruler', color: '#6366f1', files: designFiles });
+                }
+            }
 
-            console.log('📂 Загружено файлов:', files.length, 'stage:', fileStage);
+            if ((board === 'measure' || board === 'detail') && isProcessing) {
+                // Загружаем файлы замера
+                const measureFiles = await api.call('getFiles', {
+                    parentId: this.currentPosition.id,
+                    stage: 'measure'
+                });
+                if (measureFiles?.length > 0) {
+                    stages.push({ name: 'Замер', icon: 'fa-ruler-combined', color: '#10b981', files: measureFiles });
+                }
+            }
 
-            if (!files || files.length === 0) {
+            // Если это не processing, загружаем файлы текущего этапа
+            if (!isProcessing && board !== 'design') {
+                const currentFiles = await api.call('getFiles', {
+                    parentId: this.currentPosition.id,
+                    stage: board
+                });
+                const stageInfo = this.STAGE_NAMES[board] || { name: board, icon: 'fa-folder' };
+                if (currentFiles?.length > 0) {
+                    stages.push({ name: stageInfo.name, icon: stageInfo.icon, color: '#3b82f6', files: currentFiles });
+                }
+            }
+
+            console.log('📂 Загружено секций:', stages.length);
+
+            if (stages.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding:30px; color:#ccc;">Нет загруженных файлов</div>`;
                 return;
             }
 
-            list.innerHTML = files.map(f => {
-                let icon = 'fa-file';
-                const isImage = f.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-                if (f.file_name.endsWith('.pdf')) icon = 'fa-file-pdf';
-                if (isImage) icon = 'fa-file-image';
-                if (f.file_name.match(/\.(xls|xlsx)$/i)) icon = 'fa-file-excel';
-                if (f.file_name.match(/\.(doc|docx)$/i)) icon = 'fa-file-word';
-                if (f.file_name.match(/\.(zip|rar|7z)$/i)) icon = 'fa-file-archive';
-
-                // Определяем можно ли просмотреть файл
-                const isPDF = f.file_name.match(/\.pdf$/i);
-                const isExcel = f.file_name.match(/\.(xls|xlsx)$/i);
-                const isWord = f.file_name.match(/\.(doc|docx)$/i);
-                const canPreview = isImage || isPDF || isExcel || isWord;
-
-                // Кнопка просмотра
-                const previewBtn = f.tg_file_id && canPreview
-                    ? `<button onclick="kanban.viewFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}'); event.stopPropagation();" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
-                         <i class="fas fa-eye"></i>
-                       </button>`
-                    : '';
-
-                // Кнопка скачивания
-                const downloadUrl = f.tg_file_id
-                    ? `${KANBAN_FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}`
-                    : null;
-                const downloadBtn = downloadUrl
-                    ? `<button onclick="kanban.openDownload('${downloadUrl}'); event.stopPropagation();" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
-                         <i class="fas fa-download"></i>
-                       </button>`
-                    : '';
-
-                return `
-                <div class="file-item" style="display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid #eee;">
-                    <div style="display:flex; align-items:center; gap:12px; overflow:hidden;">
-                        <div style="width:40px; height:40px; background:#f3f4f6; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#666;">
-                            <i class="fas ${icon}"></i>
-                        </div>
-                        <div style="min-width:0;">
-                            <div style="font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f.file_name}</div>
-                            <div style="font-size:11px; color:#999;">${utils.formatDate(f.created_at)}</div>
-                        </div>
+            // Рендерим секции
+            list.innerHTML = stages.map(section => `
+                <div class="file-section" style="margin-bottom:15px;">
+                    <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:${section.color}10; border-radius:8px; margin-bottom:8px;">
+                        <i class="fas ${section.icon}" style="color:${section.color};"></i>
+                        <span style="font-weight:600; font-size:13px; color:${section.color};">${section.name}</span>
+                        <span style="font-size:11px; color:#999; margin-left:auto;">${section.files.length} файл(ов)</span>
                     </div>
-                    <div style="display:flex; gap:6px;">
-                        ${previewBtn}
-                        ${downloadBtn}
-                        <button class="btn-icon-del" onclick="kanban.deleteFile('${f.id}'); event.stopPropagation();"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>`;
-            }).join('');
+                    ${section.files.map(f => this.renderFileItem(f)).join('')}
+                </div>
+            `).join('');
 
         } catch (e) {
             console.error(e);
             list.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки</div>`;
         }
+    },
+
+    // Рендер одного файла
+    renderFileItem(f) {
+        let icon = 'fa-file';
+        const isImage = f.file_name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+        if (f.file_name.endsWith('.pdf')) icon = 'fa-file-pdf';
+        if (isImage) icon = 'fa-file-image';
+        if (f.file_name.match(/\.(xls|xlsx)$/i)) icon = 'fa-file-excel';
+        if (f.file_name.match(/\.(doc|docx)$/i)) icon = 'fa-file-word';
+        if (f.file_name.match(/\.(zip|rar|7z)$/i)) icon = 'fa-file-archive';
+
+        const isPDF = f.file_name.match(/\.pdf$/i);
+        const isExcel = f.file_name.match(/\.(xls|xlsx)$/i);
+        const isWord = f.file_name.match(/\.(doc|docx)$/i);
+        const canPreview = isImage || isPDF || isExcel || isWord;
+
+        const previewBtn = f.tg_file_id && canPreview
+            ? `<button onclick="kanban.viewFile('${f.tg_file_id}', '${f.file_name.replace(/'/g, "\\'")}'); event.stopPropagation();" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                 <i class="fas fa-eye"></i>
+               </button>`
+            : '';
+
+        const downloadUrl = f.tg_file_id
+            ? `${KANBAN_FILE_PROXY_URL}/download/${f.tg_file_id}?name=${encodeURIComponent(f.file_name)}`
+            : null;
+        const downloadBtn = downloadUrl
+            ? `<button onclick="kanban.openDownload('${downloadUrl}'); event.stopPropagation();" class="btn btn-def" style="padding:6px 12px; font-size:12px;">
+                 <i class="fas fa-download"></i>
+               </button>`
+            : '';
+
+        return `
+        <div class="file-item" style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #f3f4f6;">
+            <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
+                <div style="width:36px; height:36px; background:#f3f4f6; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#666;">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div style="min-width:0;">
+                    <div style="font-weight:500; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f.file_name}</div>
+                    <div style="font-size:10px; color:#999;">${utils.formatDate(f.created_at)}</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:4px;">
+                ${previewBtn}
+                ${downloadBtn}
+                <button class="btn-icon-del" onclick="kanban.deleteFile('${f.id}'); event.stopPropagation();"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>`;
     },
 
     // 🔥 Загрузка файла через прокси
