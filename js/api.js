@@ -807,10 +807,11 @@ window.api = {
 
     // Добавляем комментарий если есть
     if (comment) {
+      const boardName = board === 'measure' ? 'Замер' : 'Деталировка';
       await this._addComment({
         parentId: positionId,
-        stage: board,
-        text: `⚠️ Возврат на доработку: ${comment}`
+        stage: 'design',  // 🔥 Комментарий виден дизайнеру на его вкладке
+        text: `⚠️ Возврат от ${boardName}: ${comment}`
       });
     }
 
