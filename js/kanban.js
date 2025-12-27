@@ -617,8 +617,8 @@ window.kanban = {
                 }
             }
 
-            if ((board === 'measure' || board === 'detail') && isProcessing) {
-                // Загружаем файлы замера
+            // Загружаем файлы замера для всех досок в processing (чтобы все видели)
+            if (isProcessing) {
                 const measureFiles = await api.call('getFiles', {
                     parentId: this.currentPosition.id,
                     stage: 'measure'
@@ -647,18 +647,22 @@ window.kanban = {
                 return;
             }
 
-            // Рендерим секции
-            const self = this;
-            list.innerHTML = stages.map(section => `
-                <div class="file-section" style="margin-bottom:15px;">
-                    <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:${section.color}10; border-radius:8px; margin-bottom:8px;">
-                        <i class="fas ${section.icon}" style="color:${section.color};"></i>
-                        <span style="font-weight:600; font-size:13px; color:${section.color};">${section.name}</span>
-                        <span style="font-size:11px; color:#999; margin-left:auto;">${section.files.length} файл(ов)</span>
+            // Рендерим секции - строим HTML отдельно чтобы избежать проблем с вложенностью
+            let html = '';
+            for (const section of stages) {
+                const filesHtml = section.files.map(f => this.renderFileItem(f)).join('');
+                html += `
+                    <div class="file-section" style="margin-bottom:15px;">
+                        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:${section.color}10; border-radius:8px; margin-bottom:8px;">
+                            <i class="fas ${section.icon}" style="color:${section.color};"></i>
+                            <span style="font-weight:600; font-size:13px; color:${section.color};">${section.name}</span>
+                            <span style="font-size:11px; color:#999; margin-left:auto;">${section.files.length} файл(ов)</span>
+                        </div>
+                        ${filesHtml}
                     </div>
-                    ${section.files.map(f => self.renderFileItem(f)).join('')}
-                </div>
-            `).join('');
+                `;
+            }
+            list.innerHTML = html;
 
         } catch (e) {
             console.error(e);
