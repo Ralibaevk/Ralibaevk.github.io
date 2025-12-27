@@ -370,6 +370,40 @@ window.kanban = {
                     </button>
                 `;
             }
+        } else if (board === 'design' && isProcessing) {
+            // 🔥 Для доски Дизайн с processing — проверяем есть ли запросы на доработку
+            const measureRevision = status.measure_revision;
+            const detailRevision = status.detail_revision;
+
+            if (measureRevision || detailRevision) {
+                // Есть запросы на доработку — показываем кнопки отправки исправлений
+                let buttons = `<button class="btn btn-def" style="flex:1;" onclick="kanban.openFullPosition()">
+                    <i class="fas fa-expand"></i> Открыть
+                </button>`;
+
+                if (measureRevision) {
+                    buttons += `<button class="btn btn-success" style="flex:1; background:#10b981; color:white;" onclick="kanban.resubmitRevision('measure')">
+                        <i class="fas fa-paper-plane"></i> Исправл. → Замер
+                    </button>`;
+                }
+                if (detailRevision) {
+                    buttons += `<button class="btn btn-success" style="flex:1; background:#8b5cf6; color:white;" onclick="kanban.resubmitRevision('detail')">
+                        <i class="fas fa-paper-plane"></i> Исправл. → Детал.
+                    </button>`;
+                }
+
+                footerEl.innerHTML = buttons;
+            } else {
+                // Нет запросов — стандартные кнопки
+                footerEl.innerHTML = `
+                    <button class="btn btn-def" style="flex:1;" onclick="kanban.openFullPosition()">
+                        <i class="fas fa-expand"></i> Открыть полностью
+                    </button>
+                    <button class="btn btn-primary" style="flex:1;" onclick="kanban.closeProjectCard()">
+                        <i class="fas fa-check"></i> Готово
+                    </button>
+                `;
+            }
         } else {
             // Стандартные кнопки для других досок
             footerEl.innerHTML = `
@@ -433,6 +467,34 @@ window.kanban = {
 
             console.log(`⚠️ Возвращено на доработку (${board}):`, this.currentPosition.id);
             alert(`⚠️ Отправлено дизайнеру на доработку`);
+
+            this.closeProjectCard();
+            await this.loadPositions();
+            this.render();
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
+    },
+
+    // 🔥 Отправить исправления (для дизайнера)
+    async resubmitRevision(board) {
+        if (!this.currentPosition) return;
+
+        const boardName = board === 'measure' ? 'Замер' : 'Деталировка';
+
+        const comment = prompt(`Комментарий к исправлениям (${boardName}):`);
+        if (comment === null) return; // Отмена
+
+        try {
+            await api.call('resubmitRevision', {
+                positionId: this.currentPosition.id,
+                board: board,
+                currentKanbanStatus: this.currentPosition.kanban_status,
+                comment: comment || 'Исправлено'
+            });
+
+            console.log(`✅ Исправления отправлены (${board}):`, this.currentPosition.id);
+            alert(`✅ Исправления отправлены: ${boardName}`);
 
             this.closeProjectCard();
             await this.loadPositions();

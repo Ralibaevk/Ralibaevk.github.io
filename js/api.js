@@ -75,6 +75,7 @@ window.api = {
         case 'transitionToProcessing': result = await this._transitionToProcessing(params.positionId); break;
         case 'acceptWork': result = await this._acceptWork(params.positionId, params.board, params.currentKanbanStatus); break;
         case 'returnForRevision': result = await this._returnForRevision(params.positionId, params.board, params.currentKanbanStatus, params.comment); break;
+        case 'resubmitRevision': result = await this._resubmitRevision(params.positionId, params.board, params.currentKanbanStatus, params.comment); break;
 
         // --- COMMENTS ---
         case 'getComments': result = await this._getComments(params.parentId, params.stage); break;
@@ -814,6 +815,38 @@ window.api = {
         text: `⚠️ Возврат от ${boardName}: ${comment}`
       });
     }
+
+    return { success: true };
+  },
+
+  // Отправить исправления (дизайнер закончил доработку)
+  async _resubmitRevision(positionId, board, currentKanbanStatus, comment) {
+    let parsed = {};
+    try {
+      parsed = JSON.parse(currentKanbanStatus);
+    } catch {
+      parsed = { measure: 'inbox', detail: 'inbox' };
+    }
+
+    // Сбрасываем флаг revision и ставим inbox
+    parsed[board + '_revision'] = false;
+    delete parsed[board + '_revision_at'];
+    parsed[board] = 'inbox';  // Возвращаем во "Входящие" для повторного рассмотрения
+
+    const { error } = await supabase
+      .from('positions')
+      .update({ kanban_status: JSON.stringify(parsed) })
+      .eq('id', positionId);
+
+    if (error) throw error;
+
+    // Добавляем комментарий
+    const boardName = board === 'measure' ? 'Замер' : 'Деталировка';
+    await this._addComment({
+      parentId: positionId,
+      stage: 'design',
+      text: `✅ Исправления для ${boardName}: ${comment || 'Готово'}`
+    });
 
     return { success: true };
   }
