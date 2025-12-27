@@ -252,7 +252,7 @@ window.kanban = {
                 </div>
                 ${approvalTag}
                 <div class="kanban-card-actions">
-                    <select class="status-mini-select" ${selectDisabled} onclick="event.stopPropagation();" onchange="kanban.changeStatus('${position.id}', this.value, '${position.kanban_status?.replace(/'/g, "\\'") || ''}'); event.stopPropagation();">
+                    <select class="status-mini-select" ${selectDisabled} data-position-id="${position.id}" onclick="event.stopPropagation();" onchange="kanban.changeStatus('${position.id}', this.value); event.stopPropagation();">
                         <option value="inbox" ${currentStatus === 'inbox' ? 'selected' : ''}>📥 Входящие</option>
                         <option value="active" ${currentStatus === 'active' ? 'selected' : ''}>🔵 В работе</option>
                         <option value="done" ${currentStatus === 'done' ? 'selected' : ''}>✅ Выполнено</option>
@@ -466,12 +466,20 @@ window.kanban = {
         if (!this.currentPosition) return;
 
         try {
+            const board = this.currentStage;
+            const isProcessing = this.currentPosition.stage === 'processing';
+
+            // 🔥 Для Замера/Деталировки загружаем файлы дизайнера (stage='design')
+            const fileStage = (board === 'measure' || board === 'detail') && isProcessing
+                ? 'design'
+                : board;
+
             const files = await api.call('getFiles', {
                 parentId: this.currentPosition.id,
-                stage: this.currentStage
+                stage: fileStage
             });
 
-            console.log('📂 Загружено файлов:', files.length);
+            console.log('📂 Загружено файлов:', files.length, 'stage:', fileStage);
 
             if (!files || files.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding:30px; color:#ccc;">Нет загруженных файлов</div>`;
@@ -1094,12 +1102,21 @@ window.kanban = {
         if (!this.currentPosition) return;
 
         try {
+            const board = this.currentStage;
+            const isProcessing = this.currentPosition.stage === 'processing';
+
+            // 🔥 Для Замера/Деталировки загружаем комментарии дизайнера (stage='design')
+            // чтобы видеть причины возврата и обсуждение
+            const commentStage = (board === 'measure' || board === 'detail') && isProcessing
+                ? 'design'
+                : board;
+
             const comments = await api.call('getComments', {
                 parentId: this.currentPosition.id,
-                stage: this.currentStage
+                stage: commentStage
             });
 
-            console.log('💬 Загружено комментариев:', comments?.length || 0);
+            console.log('💬 Загружено комментариев:', comments?.length || 0, 'stage:', commentStage);
 
             if (!comments || comments.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding:15px; color:#ccc; font-size:13px;">Нет комментариев</div>`;
