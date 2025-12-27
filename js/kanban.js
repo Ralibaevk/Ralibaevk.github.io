@@ -599,64 +599,69 @@ window.kanban = {
         if (!this.currentPosition) return;
 
         try {
-            const board = this.currentStage;
-            const isProcessing = this.currentPosition.stage === 'processing';
-
-            // 🔥 Загружаем файлы из нескольких этапов для processing
-            let allFiles = [];
+            const board = this.currentStage;  // design, measure, detail, etc.
+            const positionId = this.currentPosition.id;
             const stages = [];
 
-            if (isProcessing || board === 'design') {
-                // Всегда загружаем файлы дизайна
-                const designFiles = await api.call('getFiles', {
-                    parentId: this.currentPosition.id,
-                    stage: 'design'
-                });
+            console.log('📂 loadFiles: board=', board, 'positionId=', positionId);
+
+            // 1) Всегда загружаем файлы Дизайна
+            try {
+                const designFiles = await api.call('getFiles', { parentId: positionId, stage: 'design' });
+                console.log('  - design files:', designFiles?.length || 0);
                 if (designFiles?.length > 0) {
                     stages.push({ name: 'Дизайн', icon: 'fa-pencil-ruler', color: '#6366f1', files: designFiles });
                 }
+            } catch (e) { console.error('Error loading design files:', e); }
+
+            // 2) Если мы НЕ на доске Дизайн — загружаем файлы текущей доски
+            if (board !== 'design') {
+                try {
+                    const boardFiles = await api.call('getFiles', { parentId: positionId, stage: board });
+                    console.log(`  - ${board} files:`, boardFiles?.length || 0);
+                    if (boardFiles?.length > 0) {
+                        const boardInfo = {
+                            measure: { name: 'Замер', icon: 'fa-ruler-combined', color: '#10b981' },
+                            detail: { name: 'Деталировка', icon: 'fa-cogs', color: '#8b5cf6' },
+                            supply: { name: 'Закуп', icon: 'fa-shopping-cart', color: '#f59e0b' },
+                            production: { name: 'Изготовление', icon: 'fa-industry', color: '#3b82f6' },
+                            install: { name: 'Монтаж', icon: 'fa-tools', color: '#10b981' },
+                            handover: { name: 'Сдача', icon: 'fa-handshake', color: '#6366f1' }
+                        };
+                        const info = boardInfo[board] || { name: board, icon: 'fa-folder', color: '#666' };
+                        stages.push({ name: info.name, icon: info.icon, color: info.color, files: boardFiles });
+                    }
+                } catch (e) { console.error(`Error loading ${board} files:`, e); }
             }
 
-            // Загружаем файлы замера для всех досок в processing (чтобы все видели)
-            if (isProcessing) {
-                const measureFiles = await api.call('getFiles', {
-                    parentId: this.currentPosition.id,
-                    stage: 'measure'
-                });
-                if (measureFiles?.length > 0) {
-                    stages.push({ name: 'Замер', icon: 'fa-ruler-combined', color: '#10b981', files: measureFiles });
-                }
+            // 3) На доске Detail также загружаем файлы Замера
+            if (board === 'detail') {
+                try {
+                    const measureFiles = await api.call('getFiles', { parentId: positionId, stage: 'measure' });
+                    console.log('  - measure files (for detail):', measureFiles?.length || 0);
+                    if (measureFiles?.length > 0) {
+                        stages.push({ name: 'Замер', icon: 'fa-ruler-combined', color: '#10b981', files: measureFiles });
+                    }
+                } catch (e) { console.error('Error loading measure files:', e); }
             }
 
-            // Если это не processing, загружаем файлы текущего этапа
-            if (!isProcessing && board !== 'design') {
-                const currentFiles = await api.call('getFiles', {
-                    parentId: this.currentPosition.id,
-                    stage: board
-                });
-                const stageInfo = this.STAGE_NAMES[board] || { name: board, icon: 'fa-folder' };
-                if (currentFiles?.length > 0) {
-                    stages.push({ name: stageInfo.name, icon: stageInfo.icon, color: '#3b82f6', files: currentFiles });
-                }
-            }
-
-            console.log('📂 Загружено секций:', stages.length);
+            console.log('📂 Total sections:', stages.length);
 
             if (stages.length === 0) {
-                list.innerHTML = `<div style="text-align:center; padding:30px; color:#ccc;">Нет загруженных файлов</div>`;
+                list.innerHTML = `<div style="text-align:center; padding:20px; color:#ccc; font-size:13px;">Нет загруженных файлов</div>`;
                 return;
             }
 
-            // Рендерим секции - строим HTML отдельно чтобы избежать проблем с вложенностью
+            // Рендерим секции
             let html = '';
             for (const section of stages) {
                 const filesHtml = section.files.map(f => this.renderFileItem(f)).join('');
                 html += `
-                    <div class="file-section" style="margin-bottom:15px;">
-                        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:${section.color}10; border-radius:8px; margin-bottom:8px;">
-                            <i class="fas ${section.icon}" style="color:${section.color};"></i>
-                            <span style="font-weight:600; font-size:13px; color:${section.color};">${section.name}</span>
-                            <span style="font-size:11px; color:#999; margin-left:auto;">${section.files.length} файл(ов)</span>
+                    <div class="file-section" style="margin-bottom:12px;">
+                        <div style="display:flex; align-items:center; gap:8px; padding:6px 10px; background:${section.color}15; border-radius:6px; margin-bottom:6px;">
+                            <i class="fas ${section.icon}" style="color:${section.color}; font-size:12px;"></i>
+                            <span style="font-weight:600; font-size:12px; color:${section.color};">${section.name}</span>
+                            <span style="font-size:10px; color:#999; margin-left:auto;">${section.files.length}</span>
                         </div>
                         ${filesHtml}
                     </div>
@@ -665,8 +670,8 @@ window.kanban = {
             list.innerHTML = html;
 
         } catch (e) {
-            console.error(e);
-            list.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки</div>`;
+            console.error('loadFiles error:', e);
+            list.innerHTML = `<div style="color:red; padding:20px;">Ошибка загрузки файлов</div>`;
         }
     },
 
