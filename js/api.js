@@ -77,6 +77,10 @@ window.api = {
         case 'returnForRevision': result = await this._returnForRevision(params.positionId, params.board, params.currentKanbanStatus, params.comment); break;
         case 'resubmitRevision': result = await this._resubmitRevision(params.positionId, params.board, params.currentKanbanStatus, params.comment); break;
 
+        // --- SECTION FILES (для доски Деталировка) ---
+        case 'acceptSectionFiles': result = await this._acceptSectionFiles(params.positionId, params.source, params.currentKanbanStatus); break;
+        case 'returnSectionForRevision': result = await this._returnSectionForRevision(params.positionId, params.source, params.currentKanbanStatus, params.comment); break;
+
         // --- COMMENTS ---
         case 'getComments': result = await this._getComments(params.parentId, params.stage); break;
         case 'addComment': result = await this._addComment(params); break;
@@ -859,6 +863,72 @@ window.api = {
       stage: 'design',
       text: `✅ Исправления для ${boardName}: ${comment || 'Готово'}`
     });
+
+    return { success: true };
+  },
+
+  // === SECTION FILES WORKFLOW (для доски Деталировка) ===
+
+  // Принять файлы секции (design или measure)
+  async _acceptSectionFiles(positionId, source, currentKanbanStatus) {
+    let parsed = {};
+    try {
+      parsed = JSON.parse(currentKanbanStatus);
+    } catch {
+      parsed = { measure: 'inbox', detail: 'inbox' };
+    }
+
+    // Ставим accepted для файлов этого источника
+    parsed[source + '_files_accepted'] = true;
+    parsed[source + '_files_accepted_at'] = new Date().toISOString();
+
+    // Сбрасываем флаг revision если был
+    delete parsed[source + '_revision'];
+    delete parsed[source + '_revision_at'];
+
+    const { error } = await supabase
+      .from('positions')
+      .update({ kanban_status: JSON.stringify(parsed) })
+      .eq('id', positionId);
+
+    if (error) throw error;
+
+    // Проверяем, приняты ли оба источника
+    const bothAccepted = parsed.design_files_accepted && parsed.measure_files_accepted;
+
+    return { success: true, bothAccepted };
+  },
+
+  // Вернуть файлы секции на доработку
+  async _returnSectionForRevision(positionId, source, currentKanbanStatus, comment) {
+    let parsed = {};
+    try {
+      parsed = JSON.parse(currentKanbanStatus);
+    } catch {
+      parsed = { measure: 'inbox', detail: 'inbox' };
+    }
+
+    // Сбрасываем accepted и помечаем revision
+    parsed[source + '_files_accepted'] = false;
+    parsed[source + '_revision'] = true;
+    parsed[source + '_revision_at'] = new Date().toISOString();
+
+    const { error } = await supabase
+      .from('positions')
+      .update({ kanban_status: JSON.stringify(parsed) })
+      .eq('id', positionId);
+
+    if (error) throw error;
+
+    // Добавляем комментарий для соответствующего специалиста
+    if (comment) {
+      const sourceName = source === 'design' ? 'Дизайн' : 'Замер';
+      await this._addComment({
+        parentId: positionId,
+        stage: source,  // Комментарий виден на этапе дизайна или замера
+        text: `⚠️ Возврат от Деталировки: ${comment}`
+      });
+    }
 
     return { success: true };
   }

@@ -200,6 +200,11 @@ window.kanban = {
             const measureRevision = status.measure_revision;
             const detailRevision = status.detail_revision;
 
+            // 🔥 НОВОЕ: проверка возврата файлов Дизайна от Деталировки
+            const designFilesRevision = status.design_revision;
+            const measureFilesRevision = status.measure_revision;
+            const designFilesAccepted = status.design_files_accepted;
+
             // Если оба приняты — не показываем карточку (возвращаем пустую строку)
             if (measureAccepted && detailAccepted) {
                 return ''; // Карточка скрывается
@@ -225,10 +230,19 @@ window.kanban = {
                 detailTag = `<span style="font-size:10px; padding:2px 6px; background:#8b5cf620; color:#8b5cf6; border-radius:4px;">🔄 Деталировка</span>`;
             }
 
+            // 🔥 НОВОЕ: индикатор возврата файлов на доработку от Деталировки/Замера
+            let filesRevisionTag = '';
+            if (designFilesRevision) {
+                filesRevisionTag = `<span style="font-size:10px; padding:2px 6px; background:#ef444420; color:#ef4444; border-radius:4px; animation: pulse 2s infinite;">📁 Файлы → Исправить!</span>`;
+            } else if (designFilesAccepted) {
+                filesRevisionTag = `<span style="font-size:10px; padding:2px 6px; background:#10b98120; color:#10b981; border-radius:4px;">📁 Файлы приняты</span>`;
+            }
+
             approvalTag = `
                 <div class="approval-tags" style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
                     ${measureTag}
                     ${detailTag}
+                    ${filesRevisionTag}
                 </div>`;
         }
 
@@ -253,6 +267,31 @@ window.kanban = {
                 approvalTag = `
                     <div class="approval-tags" style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
                         <span style="font-size:10px; padding:2px 6px; background:#f59e0b20; color:#f59e0b; border-radius:4px;">⏳ Ожидание замера</span>
+                    </div>`;
+            }
+        }
+
+        // 🔥 НОВОЕ: Индикатор для доски Замер — показываем возврат файлов от Деталировки
+        if (board === 'measure' && isProcessing) {
+            let status = {};
+            try {
+                status = JSON.parse(position.kanban_status);
+            } catch {
+                status = {};
+            }
+
+            const measureFilesRevision = status.measure_revision;
+            const measureFilesAccepted = status.measure_files_accepted;
+
+            if (measureFilesRevision) {
+                approvalTag = `
+                    <div class="approval-tags" style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+                        <span style="font-size:10px; padding:2px 6px; background:#ef444420; color:#ef4444; border-radius:4px; animation: pulse 2s infinite;">📁 Файлы → Исправить!</span>
+                    </div>`;
+            } else if (measureFilesAccepted) {
+                approvalTag = `
+                    <div class="approval-tags" style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+                        <span style="font-size:10px; padding:2px 6px; background:#10b98120; color:#10b981; border-radius:4px;">📁 Файлы приняты</span>
                     </div>`;
             }
         }
@@ -575,6 +614,68 @@ window.kanban = {
         }
     },
 
+    // 🔥 Принять файлы секции (design или measure) на доске Деталировка
+    async acceptSectionWork(source) {
+        if (!this.currentPosition) return;
+
+        const sourceName = source === 'design' ? 'Дизайн' : 'Замер';
+
+        try {
+            await api.call('acceptSectionFiles', {
+                positionId: this.currentPosition.id,
+                source: source,
+                currentKanbanStatus: this.currentPosition.kanban_status
+            });
+
+            console.log(`✅ Файлы ${sourceName} приняты в работу:`, this.currentPosition.id);
+
+            // Обновляем данные и перезагружаем файлы
+            await this.loadPositions();
+            this.currentPosition = this.positions.find(p => p.id === this.currentPosition.id);
+            await this.loadFiles();
+
+            // Обновляем футер модалки
+            this.renderModalActions(this.currentStage, this.currentPosition?.stage === 'processing');
+
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
+    },
+
+    // 🔥 Вернуть файлы секции на доработку (design или measure) на доске Деталировка
+    async returnSectionForRevision(source) {
+        if (!this.currentPosition) return;
+
+        const sourceName = source === 'design' ? 'дизайнеру' : 'замерщику';
+        const sourceTitle = source === 'design' ? 'Дизайн' : 'Замер';
+
+        const comment = prompt(`Причина возврата файлов на доработку (${sourceTitle}):`);
+        if (comment === null) return; // Отмена
+
+        try {
+            await api.call('returnSectionForRevision', {
+                positionId: this.currentPosition.id,
+                source: source,
+                currentKanbanStatus: this.currentPosition.kanban_status,
+                comment: comment || 'Требуется доработка'
+            });
+
+            console.log(`⚠️ Файлы ${sourceTitle} возвращены на доработку:`, this.currentPosition.id);
+            alert(`⚠️ Файлы отправлены ${sourceName} на доработку`);
+
+            // Обновляем данные и перезагружаем файлы
+            await this.loadPositions();
+            this.currentPosition = this.positions.find(p => p.id === this.currentPosition.id);
+            await this.loadFiles();
+
+            // Обновляем футер модалки
+            this.renderModalActions(this.currentStage, this.currentPosition?.stage === 'processing');
+
+        } catch (e) {
+            alert('Ошибка: ' + e.message);
+        }
+    },
+
     // Закрыть модальное окно
     closeProjectCard() {
         document.getElementById('projectCardModal').classList.add('hidden');
@@ -603,6 +704,12 @@ window.kanban = {
             const positionId = this.currentPosition.id;
             const stages = [];
 
+            // Получаем текущий статус для определения состояния принятия
+            let kanbanStatus = {};
+            try {
+                kanbanStatus = JSON.parse(this.currentPosition.kanban_status) || {};
+            } catch { kanbanStatus = {}; }
+
             console.log('📂 loadFiles: board=', board, 'positionId=', positionId);
 
             // 1) Всегда загружаем файлы Дизайна
@@ -610,7 +717,13 @@ window.kanban = {
                 const designFiles = await api.call('getFiles', { parentId: positionId, stage: 'design' });
                 console.log('  - design files:', designFiles?.length || 0);
                 if (designFiles?.length > 0) {
-                    stages.push({ name: 'Дизайн', icon: 'fa-pencil-ruler', color: '#6366f1', files: designFiles });
+                    stages.push({
+                        name: 'Дизайн',
+                        icon: 'fa-pencil-ruler',
+                        color: '#6366f1',
+                        files: designFiles,
+                        source: 'design'  // 🔥 Добавляем source для идентификации
+                    });
                 }
             } catch (e) { console.error('Error loading design files:', e); }
 
@@ -629,7 +742,13 @@ window.kanban = {
                             handover: { name: 'Сдача', icon: 'fa-handshake', color: '#6366f1' }
                         };
                         const info = boardInfo[board] || { name: board, icon: 'fa-folder', color: '#666' };
-                        stages.push({ name: info.name, icon: info.icon, color: info.color, files: boardFiles });
+                        stages.push({
+                            name: info.name,
+                            icon: info.icon,
+                            color: info.color,
+                            files: boardFiles,
+                            source: board  // 🔥 Добавляем source
+                        });
                     }
                 } catch (e) { console.error(`Error loading ${board} files:`, e); }
             }
@@ -640,7 +759,13 @@ window.kanban = {
                     const measureFiles = await api.call('getFiles', { parentId: positionId, stage: 'measure' });
                     console.log('  - measure files (for detail):', measureFiles?.length || 0);
                     if (measureFiles?.length > 0) {
-                        stages.push({ name: 'Замер', icon: 'fa-ruler-combined', color: '#10b981', files: measureFiles });
+                        stages.push({
+                            name: 'Замер',
+                            icon: 'fa-ruler-combined',
+                            color: '#10b981',
+                            files: measureFiles,
+                            source: 'measure'  // 🔥 Добавляем source
+                        });
                     }
                 } catch (e) { console.error('Error loading measure files:', e); }
             }
@@ -656,12 +781,59 @@ window.kanban = {
             let html = '';
             for (const section of stages) {
                 const filesHtml = section.files.map(f => this.renderFileItem(f)).join('');
+
+                // 🔥 Кнопки действий для секций Дизайн и Замер на доске Деталировка
+                let sectionButtons = '';
+                if (board === 'detail' && (section.source === 'design' || section.source === 'measure')) {
+                    const isAccepted = kanbanStatus[section.source + '_files_accepted'];
+                    const isOnRevision = kanbanStatus[section.source + '_revision'];
+
+                    if (isAccepted) {
+                        // Уже принято — показываем зелёную метку
+                        sectionButtons = `
+                            <div style="display:flex; gap:6px; margin-left:auto; align-items:center;">
+                                <span style="padding:4px 10px; font-size:11px; background:#d1fae5; color:#059669; border-radius:4px;">
+                                    <i class="fas fa-check-circle"></i> Принято
+                                </span>
+                                <button onclick="event.stopPropagation(); kanban.returnSectionForRevision('${section.source}')"
+                                        style="padding:4px 8px; font-size:11px; background:#f59e0b; color:white; border:none; border-radius:4px; cursor:pointer;"
+                                        title="Вернуть на доработку">
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                            </div>`;
+                    } else if (isOnRevision) {
+                        // На доработке — показываем жёлтую метку
+                        sectionButtons = `
+                            <div style="display:flex; gap:6px; margin-left:auto; align-items:center;">
+                                <span style="padding:4px 10px; font-size:11px; background:#fef3c7; color:#d97706; border-radius:4px;">
+                                    <i class="fas fa-clock"></i> На доработке
+                                </span>
+                            </div>`;
+                    } else {
+                        // Ещё не принято — показываем обе кнопки
+                        sectionButtons = `
+                            <div style="display:flex; gap:6px; margin-left:auto;">
+                                <button onclick="event.stopPropagation(); kanban.acceptSectionWork('${section.source}')"
+                                        style="padding:4px 10px; font-size:11px; background:#10b981; color:white; border:none; border-radius:4px; cursor:pointer;"
+                                        title="Принять файлы в работу">
+                                    <i class="fas fa-check"></i> Принять
+                                </button>
+                                <button onclick="event.stopPropagation(); kanban.returnSectionForRevision('${section.source}')"
+                                        style="padding:4px 10px; font-size:11px; background:#f59e0b; color:white; border:none; border-radius:4px; cursor:pointer;"
+                                        title="Вернуть на доработку">
+                                    <i class="fas fa-undo"></i> Доработка
+                                </button>
+                            </div>`;
+                    }
+                }
+
                 html += `
                     <div class="file-section" style="margin-bottom:12px;">
                         <div style="display:flex; align-items:center; gap:8px; padding:6px 10px; background:${section.color}15; border-radius:6px; margin-bottom:6px;">
                             <i class="fas ${section.icon}" style="color:${section.color}; font-size:12px;"></i>
                             <span style="font-weight:600; font-size:12px; color:${section.color};">${section.name}</span>
-                            <span style="font-size:10px; color:#999; margin-left:auto;">${section.files.length}</span>
+                            <span style="font-size:10px; color:#999;">${section.files.length}</span>
+                            ${sectionButtons}
                         </div>
                         ${filesHtml}
                     </div>
