@@ -67,15 +67,31 @@ window.router = {
     redirect(userRoles) {
         const page = this.getPageByRoles(userRoles);
         console.log('🔀 Redirecting to:', page);
-        window.location.href = page;
+
+        // Определяем, находимся ли мы уже в папке pages/
+        const currentPath = window.location.pathname;
+        const inPagesFolder = currentPath.includes('/pages/');
+
+        // Корректируем путь в зависимости от текущего расположения
+        let targetUrl;
+        if (inPagesFolder) {
+            // Уже в pages/ — берём только имя файла
+            targetUrl = page.replace('pages/', '');
+        } else {
+            // На корневом уровне — используем полный путь
+            targetUrl = page;
+        }
+
+        console.log('🔀 Final URL:', targetUrl);
+        window.location.href = targetUrl;
     },
 
     // Проверка доступа к текущей странице
     checkAccess(allowedRoles, userRoles) {
         // '*' = доступ для всех
         if (allowedRoles.includes('*')) return true;
-        // manager имеет доступ ко всему
-        if (userRoles.includes('manager')) return true;
+        // owner и manager имеют доступ ко всему
+        if (userRoles.includes('manager') || userRoles.includes('owner')) return true;
         // Проверяем пересечение ролей
         return allowedRoles.some(role => userRoles.includes(role));
     },
