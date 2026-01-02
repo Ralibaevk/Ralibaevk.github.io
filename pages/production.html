@@ -32,10 +32,7 @@
             </div>
 
             <nav class="nav-links">
-                <div class="nav-item active" id="nav-production" onclick="kanban.init('production')"
-                    title="Изготовление">
-                    <i class="fas fa-industry"></i> <span class="nav-text">Изготовление</span>
-                </div>
+                <div id="roleLinks"></div>
 
                 <div style="flex:1"></div>
 
@@ -149,6 +146,7 @@
     <script src="../js/api.js"></script>
     <script src="../js/router.js"></script>
     <script src="../js/auth.js"></script>
+    <script src="../js/sidebar.js"></script>
     <script src="../js/kanban.js"></script>
     <script src="../js/app.js"></script>
     <script>
@@ -164,6 +162,7 @@
                 await api.call('saveTelegramUser', { user: app.user }, 'POST', false);
                 await api.call('initSession', { userId: userId });
                 await auth.init();
+                if (window.sidebar) sidebar.init();
                 if (window.kanban) kanban.init('production');
                 const sidebarState = localStorage.getItem('logiqa_sidebar_state');
                 if (sidebarState === 'closed') app.toggleSidebar(false);
