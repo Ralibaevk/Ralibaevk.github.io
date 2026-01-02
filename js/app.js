@@ -61,6 +61,19 @@ window.app = {
 
             // 3. Load Data
             if (window.CURRENT_COMPANY_ID) {
+                // 🔥 Редирект всех пользователей на страницы по ролям
+                // index.html теперь только для логина — все роли редиректятся
+                const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+                const isMainPage = currentPage === 'index.html' || currentPage === '';
+                const userRoles = window.CURRENT_USER_ROLES || [];
+
+                if (isMainPage && window.router && userRoles.length > 0) {
+                    // Редирект на страницу роли (включая manager/owner)
+                    console.log('🔀 Redirecting by role:', userRoles);
+                    router.redirect(userRoles);
+                    return; // Прекращаем инициализацию, произойдёт редирект
+                }
+
                 // Load Dictionaries
                 const [suppliersData, catalogData] = await Promise.all([
                     api.call('getSuppliers', {}, 'GET', false),

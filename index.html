@@ -4,26 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-  <title>Logiqa Supply</title>
-  <!-- Подключаем библиотеку Excel -->
-  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-  <!-- Подключаем библиотеку Supabase -->
+  <title>Logiqa — Вход</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Подключаем иконки -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-  <!-- Подключаем стили -->
   <link rel="stylesheet" href="style.css">
-  <!-- PDF.js для предпросмотра PDF в браузере -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>
-    // Настройка PDF.js воркера
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-  </script>
-  <!-- Mammoth.js для предпросмотра Word документов -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-  <!-- Telegram Web App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 
@@ -33,7 +17,7 @@
   </div>
 
   <!-- LOGIN SCREEN (для браузерных пользователей) -->
-  <div id="view-login" class="login-screen hidden">
+  <div id="view-login" class="login-screen">
     <div class="login-card">
       <div class="login-logo">
         <div class="logo-icon-big">L</div>
@@ -59,7 +43,7 @@
             src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://t.me/logiqa_work_bot?start=login"
             alt="QR Code">
         </div>
-        <div class="qr-hint">
+        <div class="qr-hint" id="loginStatus">
           <i class="fas fa-spinner fa-spin"></i>
           Ожидание подтверждения...
         </div>
@@ -72,655 +56,79 @@
     </div>
   </div>
 
-  <div class="main-layout">
-    <!-- SIDEBAR (Desktop) -->
-    <div class="sidebar" id="sidebar">
-      <div class="logo-area">
-        <div class="logo-icon">L</div>
-        <div class="logo-text">Logiqa</div>
-      </div>
-
-      <nav class="nav-links">
-        <div class="nav-item active" id="nav-projects" onclick="app.navTo('projects')" title="Проекты">
-          <i class="fas fa-folder"></i> <span class="nav-text">Проекты</span>
-        </div>
-        <div class="nav-item" id="nav-design" onclick="app.navTo('design')" title="Дизайн">
-          <i class="fas fa-pencil-ruler"></i> <span class="nav-text">Дизайн</span>
-        </div>
-        <div class="nav-item" id="nav-measure" onclick="app.navTo('measure')" title="Замер">
-          <i class="fas fa-ruler-combined"></i> <span class="nav-text">Замер</span>
-        </div>
-        <div class="nav-item" id="nav-detail" onclick="app.navTo('detail')" title="Деталировка">
-          <i class="fas fa-cubes"></i> <span class="nav-text">Деталировка</span>
-        </div>
-        <div class="nav-item" id="nav-supply" onclick="app.navTo('supply')" title="Снабжение">
-          <i class="fas fa-shopping-cart"></i> <span class="nav-text">Закуп</span>
-        </div>
-        <div class="nav-item" id="nav-production" onclick="app.navTo('production')" title="Изготовление">
-          <i class="fas fa-industry"></i> <span class="nav-text">Изготовление</span>
-        </div>
-        <div class="nav-item" id="nav-install" onclick="app.navTo('install')" title="Монтаж">
-          <i class="fas fa-hammer"></i> <span class="nav-text">Монтаж</span>
-        </div>
-        <div class="nav-item" id="nav-handover" onclick="app.navTo('handover')" title="Сдача">
-          <i class="fas fa-flag-checkered"></i> <span class="nav-text">Сдача</span>
-        </div>
-
-        <div style="flex:1"></div> <!-- Spacer to push profile down if needed, or just specific margin -->
-
-        <div class="nav-item" id="nav-theme" onclick="app.toggleTheme()" title="Сменить тему">
-          <i class="fas fa-circle-half-stroke" id="themeIcon"></i> <span class="nav-text">Тема</span>
-        </div>
-        <div class="nav-item" id="nav-profile" onclick="app.navTo('profile')" title="Профиль">
-          <i class="fas fa-user-circle"></i> <span class="nav-text">Профиль</span>
-        </div>
-      </nav>
-
-      <!-- Кнопка Toggle (внизу сайдбара) -->
-      <button class="sidebar-toggle" onclick="app.toggleSidebar()">
-        <i class="fas fa-chevron-left" id="sidebarIcon"></i>
-      </button>
-    </div>
-
-    <!-- CONTENT -->
-    <div class="content-area">
-
-      <!-- 1. СПИСОК ПРОЕКТОВ (Главная) -->
-      <div id="view-projects-list" class="screen active">
-        <div class="view-header">
-          <div class="view-title">
-            <h1>Заказы</h1>
-            <p>Активные проекты в работе</p>
-          </div>
-          <!-- Поиск -->
-          <div
-            style="background:white; border:1px solid #e5e7eb; padding:8px 12px; border-radius:10px; display:flex; align-items:center; width:200px;">
-            <i class="fas fa-search" style="color:#9ca3af; margin-right:8px;"></i>
-            <input type="text" placeholder="Поиск..." style="border:none; outline:none; width:100%; font-size:14px;">
-          </div>
-        </div>
-        <!-- Сетка проектов -->
-        <div id="projectsList" class="grid-list">
-          <!-- JS нарисует здесь карточки -->
-        </div>
-        <!-- FAB (Мобильная кнопка создания) -->
-        <button class="fab" onclick="projects.createPrompt()">
-          <i class="fas fa-plus"></i>
-        </button>
-      </div>
-
-      <!-- 2. ДАШБОРД ПРОЕКТА (NEW DESIGN) -->
-      <div id="view-project-detail" class="screen">
-        <!-- HEADER -->
-        <div class="view-header">
-          <div style="display:flex; align-items:center;">
-            <button class="btn-back" onclick="app.goHome()"><i class="fas fa-arrow-left"></i></button>
-            <div class="view-title">
-              <h1 id="pDetailName" class="editable-field" data-field="name">Загрузка...</h1>
-              <p id="pDetailClient" class="editable-field" data-field="client_name">Клиент...</p>
-            </div>
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn btn-def" onclick="positions.openTeamModal()"><i class="fas fa-users"></i></button>
-            <button class="btn btn-primary" id="pDetailChatBtn" onclick="positions.openChat()">
-              <i class="fab fa-telegram"></i> Чат
-            </button>
-          </div>
-        </div>
-
-        <!-- KPI CARDS (2 шт) -->
-        <div class="kpi-row">
-          <div class="kpi-card">
-            <div class="kpi-icon blue"><i class="fas fa-chart-pie"></i></div>
-            <div class="kpi-content">
-              <span class="kpi-label">Прогресс проекта</span>
-              <span class="kpi-value" id="kpiProgress">0%</span>
-            </div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-icon green"><i class="fas fa-calendar-check"></i></div>
-            <div class="kpi-content">
-              <span class="kpi-label">Плановая дата сдачи</span>
-              <span class="kpi-value" id="kpiDeadline">—</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- MAIN: Info + Positions -->
-        <div class="project-main-grid">
-          <!-- LEFT: Info -->
-          <div class="project-info-card">
-            <div class="info-row">
-              <span>Телефон</span>
-              <span id="pDetailPhone" class="editable-field" data-field="client_phone">—</span>
-            </div>
-            <div class="info-row">
-              <span>Адрес</span>
-              <span id="pDetailAddress" class="editable-field" data-field="address">—</span>
-            </div>
-            <div class="info-row">
-              <span>Договор</span>
-              <span id="pDetailContract" class="editable-field" data-field="contract_amount" data-type="number">0
-                ₸</span>
-            </div>
-            <div class="info-row">
-              <span>Предоплата</span>
-              <span id="pDetailPrepay" class="editable-field positive" data-field="prepayment_amount"
-                data-type="number">0 ₸</span>
-            </div>
-            <div class="info-row">
-              <span>Остаток</span>
-              <span id="pDetailBalance" class="negative">0 ₸</span>
-            </div>
-          </div>
-
-          <!-- RIGHT: Positions Grid -->
-          <div class="positions-panel">
-            <h3>ПОЗИЦИИ</h3>
-            <div id="pDetailPositions" class="positions-grid">
-              <!-- JS renders position cards -->
-            </div>
-            <button class="btn-add-position" onclick="positions.createPrompt()">
-              <i class="fas fa-plus"></i> Добавить позицию
-            </button>
-          </div>
-        </div>
-
-        <!-- TEAM -->
-        <div id="pDetailTeamCompact" class="team-row">
-          <!-- JS renders team avatars -->
-        </div>
-
-        <!-- STAGES PIPELINE -->
-        <div class="stages-section">
-          <h3>Лента этапов</h3>
-          <div id="stagesRibbon" class="stages-ribbon">
-            <!-- JS renders stages -->
-          </div>
-        </div>
-
-      </div>
-
-      <!-- 3. КАРТОЧКА ИЗДЕЛИЯ (Pipeline) -->
-      <div id="view-position-detail" class="screen">
-        <!-- Breadcrumb -->
-        <div class="pipeline-header">
-          <button class="btn-back" onclick="app.goToProject()"><i class="fas fa-arrow-left"></i></button>
-          <div class="breadcrumb">
-            <span onclick="app.goHome()">Проекты</span>
-            <span class="sep">>></span>
-            <span id="posDetailProject" onclick="app.goToProject()">Проект</span>
-            <span class="sep">>></span>
-            <span id="posDetailName">Изделие</span>
-          </div>
-        </div>
-
-        <!-- Pipeline Tabs -->
-        <div class="pipeline-tabs">
-          <div class="pipeline-tab active" data-tab="design" onclick="app.switchPipelineTab('design')">
-            <span>Дизайн</span>
-          </div>
-          <div class="pipeline-tab" data-tab="measure" onclick="app.switchPipelineTab('measure')">
-            <span>Замер</span>
-          </div>
-          <div class="pipeline-tab" data-tab="detail" onclick="app.switchPipelineTab('detail')">
-            <span>Деталировка</span>
-          </div>
-          <div class="pipeline-tab" data-tab="supply" onclick="app.switchPipelineTab('supply')">
-            <span>Закуп</span>
-          </div>
-          <div class="pipeline-tab" data-tab="production" onclick="app.switchPipelineTab('production')">
-            <span>Производство</span>
-          </div>
-          <div class="pipeline-tab" data-tab="install" onclick="app.switchPipelineTab('install')">
-            <span>Монтаж</span>
-          </div>
-          <div class="pipeline-tab" data-tab="handover" onclick="app.switchPipelineTab('handover')">
-            <span>Сдача</span>
-          </div>
-        </div>
-
-        <!-- TAB: ДИЗАЙН -->
-        <div id="pipeline-design" class="pipeline-content active">
-          <div class="design-title-row">
-            <h2 id="designTitle">Дизайн проект</h2>
-          </div>
-
-          <div class="design-layout">
-            <!-- Левая колонка: Комментарии -->
-            <div class="design-comments-panel">
-              <div class="design-comments-header">
-                <h3><i class="fas fa-comments"></i> Комментарии</h3>
-                <span id="designCommentsCount" class="comments-count">0</span>
-              </div>
-              <div id="designCommentsList" class="design-comments-list">
-                <div class="comments-empty">Нет комментариев</div>
-              </div>
-              <div class="design-comments-input">
-                <input type="text" id="designCommentInput" placeholder="Написать комментарий..."
-                  onkeypress="if(event.key==='Enter')design.addComment()">
-                <button class="btn btn-primary" onclick="design.addComment()">
-                  <i class="fas fa-paper-plane"></i>
-                </button>
-              </div>
-            </div>
-
-            <!-- Правая колонка: Файлы -->
-            <div class="design-files-panel">
-              <div class="design-files-header">
-                <h3><i class="fas fa-folder-open"></i> Файлы</h3>
-                <span id="designFilesCount" class="files-count">0</span>
-              </div>
-              <div id="designFilesList" class="design-files-list">
-                <div class="files-empty">
-                  <i class="fas fa-folder-open"></i>
-                  Файлы не загружены<br>
-                  <small>Загрузите через канбан-доску "Дизайн"</small>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Нижние кнопки -->
-          <div class="design-footer">
-            <button class="btn btn-primary" onclick="design.approve()"><i class="fas fa-check"></i> Согласовать</button>
-            <button class="btn btn-success" onclick="design.toWork()"><i class="fas fa-play"></i> В работу</button>
-          </div>
-        </div>
-
-        <!-- TAB: ЗАМЕР (заглушка) -->
-        <div id="pipeline-measure" class="pipeline-content">
-          <div class="stub-content">
-            <i class="fas fa-ruler-combined"></i>
-            <h3>Замер</h3>
-            <p>Раздел в разработке</p>
-          </div>
-        </div>
-
-        <!-- TAB: ДЕТАЛИРОВКА (заглушка) -->
-        <div id="pipeline-detail" class="pipeline-content">
-          <div class="stub-content">
-            <i class="fas fa-drafting-compass"></i>
-            <h3>Деталировка</h3>
-            <p>Раздел в разработке</p>
-          </div>
-        </div>
-
-        <!-- TAB: ЗАКУП -->
-        <div id="pipeline-supply" class="pipeline-content">
-          <div class="mgr-toolbar">
-            <button class="btn btn-text" onclick="manager.addRow()"><i class="fas fa-plus"></i> Строка</button>
-            <button class="btn btn-text" onclick="manager.openSup()"><i class="fas fa-truck"></i> Поставщик</button>
-            <button class="btn btn-text" onclick="manager.openBuyer()" style="color:#3b82f6;"><i
-                class="fas fa-shopping-cart"></i> Режим Закупа</button>
-            <div style="flex:1"></div>
-            <span id="mgrTotal" style="font-weight:700;">0 ₸</span>
-          </div>
-          <div class="mgr-grid">
-            <table id="mgrTable">
-              <thead>
-                <tr>
-                  <th style="width:40px;"></th>
-                  <th>Наименование</th>
-                  <th style="width:60px;">Кол</th>
-                  <th>Ед</th>
-                  <th>Цена</th>
-                  <th>Сумма</th>
-                </tr>
-              </thead>
-              <tbody id="mgrBody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- TAB: ПРОИЗВОДСТВО (заглушка) -->
-        <div id="pipeline-production" class="pipeline-content">
-          <div class="stub-content">
-            <i class="fas fa-industry"></i>
-            <h3>Производство</h3>
-            <p>Раздел в разработке</p>
-          </div>
-        </div>
-
-        <!-- TAB: МОНТАЖ (заглушка) -->
-        <div id="pipeline-install" class="pipeline-content">
-          <div class="stub-content">
-            <i class="fas fa-tools"></i>
-            <h3>Монтаж</h3>
-            <p>Раздел в разработке</p>
-          </div>
-        </div>
-
-        <!-- TAB: СДАЧА (заглушка) -->
-        <div id="pipeline-handover" class="pipeline-content">
-          <div class="stub-content">
-            <i class="fas fa-handshake"></i>
-            <h3>Сдача</h3>
-            <p>Раздел в разработке</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ПРОФИЛЬ (Оставляем как был, только ID поправим в JS) -->
-      <div id="view-profile" class="screen">
-        <div id="profileContent"></div>
-      </div>
-
-      <!-- KANBAN VIEW (Рабочее поле команды) -->
-      <div id="view-kanban" class="screen">
-        <div id="kanban-content">
-          <div class="empty-state">
-            <div class="empty-icon"><i class="fas fa-spinner fa-spin"></i></div>
-            <h3>Загрузка...</h3>
-          </div>
-        </div>
-      </div>
-
-      <!-- ЗАГЛУШКА (Для новых разделов) -->
-      <div id="view-stub" class="screen">
-        <div class="empty-state">
-          <div class="empty-icon"><i class="fas fa-hammer"></i></div>
-          <h3>В разработке</h3>
-          <p>Этот раздел появится в ближайших обновлениях Logiqa.</p>
-          <button class="btn btn-primary" onclick="app.goHome()">На главную</button>
-        </div>
-      </div>
-
-      <!-- BUYER VIEW (Режим закупа) -->
-      <div id="view-buyer" class="screen">
-        <div class="view-header">
-          <div style="display:flex; align-items:center;">
-            <button class="btn-back" onclick="buyer.checkClose()"><i class="fas fa-arrow-left"></i></button>
-            <div class="view-title">
-              <h1 id="buyTitle">Режим закупа</h1>
-              <p>Отмечайте купленные позиции</p>
-            </div>
-          </div>
-          <span id="buySaveStatus" style="font-size:12px; color:#10b981;"><i class="fas fa-check-circle"></i>
-            Загружено</span>
-        </div>
-
-        <!-- Табы: К закупу / Куплено -->
-        <div style="display:flex; gap:8px; margin-bottom:10px; padding:0 20px;">
-          <button class="buy-tab active" id="tab-todo" onclick="buyer.setTab('todo')">К закупу</button>
-          <button class="buy-tab" id="tab-done" onclick="buyer.setTab('done')">Куплено</button>
-        </div>
-
-        <!-- Фильтры -->
-        <div class="buy-tools-wrapper" style="padding:0 20px;">
-          <div class="filter-label" style="font-size:11px; color:#999; margin-bottom:5px;">Категория:</div>
-          <div id="buyCategoryFilters" class="filter-chips-scroll"
-            style="display:flex; gap:8px; overflow-x:auto; padding-bottom:10px;"></div>
-          <div class="filter-label" style="font-size:11px; color:#999; margin-bottom:5px; margin-top:10px;">Поставщик:
-          </div>
-          <div id="buyFilters" class="filter-chips-scroll"
-            style="display:flex; gap:8px; overflow-x:auto; padding-bottom:10px;"></div>
-        </div>
-
-        <!-- Список позиций -->
-        <div id="buyList" class="buy-list" style="padding:0 20px; flex:1; overflow-y:auto;"></div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- Mobile Nav -->
-  <div class="bottom-nav">
-    <div class="b-item active" onclick="app.goHome()"><i class="fas fa-folder"></i><span>Проекты</span></div>
-    <div class="b-item" onclick="alert('Скоро')"><i class="fas fa-search"></i><span>Закуп</span></div>
-    <div class="b-item" onclick="alert('Скоро')"><i class="fas fa-hard-hat"></i><span>Цех</span></div>
-    <div class="b-item" onclick="app.navTo('profile')"><i class="fas fa-user"></i><span>Профиль</span></div>
-  </div>
-
-  <!-- Модалки -->
-  <div id="modal" class="hidden">
-    <div class="dash-header">
-      <h2>Импорт</h2>
-      <div>
-        <button class="btn btn-text" onclick="document.getElementById('modal').classList.add('hidden')">Отмена</button>
-        <button class="btn btn-primary" onclick="mapper.apply()">ОК</button>
-      </div>
-    </div>
-    <div style="flex:1; overflow:auto; padding:20px;">
-      <table id="mapTable"></table>
-    </div>
-  </div>
-
-  <div id="supEditModal" class="modal-overlay hidden">
-    <div class="modal-box" style="width:500px; max-width:95%;">
-      <h3>👥 Поставщики</h3>
-
-      <!-- Контейнер для списка -->
-      <div id="supListContainer" class="sup-list"></div>
-
-      <button class="btn-add-sup" onclick="app.addSupplierRow()">
-        <i class="fas fa-plus"></i> Добавить поставщика
-      </button>
-
-      <div style="text-align:right; margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn btn-text" onclick="document.getElementById('supEditModal').classList.add('hidden')">
-          Отмена
-        </button>
-        <button class="btn btn-primary" onclick="app.saveSuppliers()">
-          Сохранить
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div id="mergeModal" class="modal-overlay hidden">
-    <div class="modal-box">
-      <h3>Объединение</h3>
-      <div id="mergeList" style="max-height:300px; overflow:auto;"></div>
-      <div style="text-align:right; margin-top:10px;">
-        <button class="btn btn-text"
-          onclick="document.getElementById('mergeModal').classList.add('hidden')">Отм.</button>
-        <button class="btn btn-w" onclick="manager.applyMerge()">ОК</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="supModal" class="modal-overlay hidden">
-    <div class="modal-box">
-      <h3>Поставщик</h3>
-      <select id="supSelect" style="width:100%; padding:10px; margin:10px 0; border:1px solid #ccc;"></select>
-      <div style="text-align:right;">
-        <button class="btn btn-text" onclick="document.getElementById('supModal').classList.add('hidden')">Отм.</button>
-        <button class="btn btn-primary" onclick="manager.applySup()">ОК</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="teamModal" class="modal-overlay hidden">
-    <div class="modal-box" style="width:450px;">
-      <h3>Команда проекта</h3>
-
-      <!-- Список участников с ролями -->
-      <div id="teamList" class="team-list-modal" style="margin-bottom:15px; min-height:50px;"></div>
-
-      <!-- Добавление сотрудника -->
-      <div class="team-add-section" style="background:#f9fafb; padding:12px; border-radius:10px;">
-        <div style="font-size:12px; color:#999; margin-bottom:8px;">Добавить сотрудника:</div>
-        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
-          <select id="teamSelect" class="status-select" style="width:100%; padding:10px;"></select>
-          <select id="teamRoleSelect" class="status-select" style="width:100%; padding:10px;">
-            <option value="member">Участник</option>
-            <option value="designer">Дизайнер</option>
-            <option value="measurer">Замерщик</option>
-            <option value="technologist">Технолог</option>
-            <option value="supplier">Снабженец</option>
-            <option value="production">Производство</option>
-            <option value="installation">Монтаж</option>
-            <option value="manager">Менеджер</option>
-          </select>
-        </div>
-        <button class="btn btn-primary" style="width:100%;" onclick="manager.addTeamMember()">
-          <i class="fas fa-plus"></i> Добавить
-        </button>
-      </div>
-
-      <div style="text-align:right; margin-top:15px;">
-        <button class="btn btn-def"
-          onclick="document.getElementById('teamModal').classList.add('hidden'); positions.renderTeamCompact(positions.currentProjectId);">Закрыть</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- PRODUCTION TASK MODAL -->
-  <div id="prodModal" class="modal-overlay hidden">
-    <div class="modal-box" style="width:350px;">
-      <h3>Добавить этап</h3>
-
-      <!-- Переключатель -->
-      <div style="display:flex; background:#f3f4f6; padding:4px; border-radius:10px; margin-bottom:15px;">
-        <button class="buy-tab active" id="type-internal" onclick="positions.setTaskType('internal')">🏠 Свой
-          цех</button>
-        <button class="buy-tab" id="type-external" onclick="positions.setTaskType('external')">🚚 Аутсорс</button>
-      </div>
-
-      <input type="text" id="prodTitle" class="search-input" placeholder="Название (напр. Распил)"
-        style="margin-bottom:10px;">
-
-      <!-- Поле цены (только для Аутсорса) -->
-      <div id="prodCostBlock" class="hidden">
-        <input type="number" id="prodCost" class="search-input" placeholder="Стоимость услуги (₸)"
-          style="margin-bottom:10px;">
-      </div>
-
-      <button class="btn btn-primary" style="width:100%; justify-content:center;"
-        onclick="positions.createTask()">Добавить</button>
-      <button class="btn btn-text" style="width:100%; margin-top:5px;"
-        onclick="document.getElementById('prodModal').classList.add('hidden')">Отмена</button>
-    </div>
-  </div>
-
-  <!-- PROJECT CARD MODAL (для Kanban) -->
-  <div id="projectCardModal" class="modal-overlay hidden">
-    <div class="modal-box"
-      style="width:700px; max-width:95%; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column;">
-      <!-- Header -->
-      <div style="margin-bottom:15px;">
-        <!-- Title Row -->
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-          <div style="flex:1; min-width:0;">
-            <h3 id="pcmProjectName" style="margin:0 0 5px 0; font-size:18px;">Проект</h3>
-            <span id="pcmPositionName" style="font-size:14px; color:#666;"></span>
-          </div>
-          <button onclick="kanban.closeProjectCard()"
-            style="background:none; border:none; font-size:20px; cursor:pointer; color:#999; padding:0; margin-left:10px;">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <!-- Status Row -->
-        <select id="pcmStatusSelect" class="status-mini-select"
-          style="width:100%; padding:10px 12px; font-size:14px; border:1px solid #e5e7eb; border-radius:8px; background:white;"
-          onchange="kanban.changeStatusFromModal(this.value)">
-          <option value="inbox">📥 Входящие</option>
-          <option value="active">🔵 В работе</option>
-          <option value="done">✅ Выполнено</option>
-          <option value="waiting">⏳ Ожидание</option>
-        </select>
-      </div>
-
-      <!-- Project Info -->
-      <div class="p-card" style="margin-bottom:15px; padding:15px;">
-        <div class="info-row" style="display:flex; justify-content:space-between; margin-bottom:8px;">
-          <span style="color:#666;">Заказчик</span>
-          <span id="pcmClient" style="font-weight:600;">—</span>
-        </div>
-        <div class="info-row"
-          style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <span style="color:#666;">Телефон</span>
-          <a id="pcmPhone" href="tel:"
-            style="font-weight:600; color:#3b82f6; text-decoration:none; display:flex; align-items:center; gap:6px;">
-            <i class="fas fa-phone"></i> <span>—</span>
-          </a>
-        </div>
-        <div class="info-row" style="display:flex; justify-content:space-between; margin-bottom:8px;">
-          <span style="color:#666;">Дедлайн</span>
-          <span id="pcmDeadline" style="font-weight:600;">—</span>
-        </div>
-        <div class="info-row" style="display:flex; justify-content:space-between;">
-          <span style="color:#666;">Адрес</span>
-          <span id="pcmAddress" style="font-weight:600;">—</span>
-        </div>
-      </div>
-
-      <!-- Files Section -->
-      <div style="display:flex; flex-direction:column;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <h4 style="margin:0;"><i class="fas fa-paperclip"></i> Файлы</h4>
-          <label class="btn btn-primary" style="cursor:pointer; padding:8px 16px;">
-            <i class="fas fa-plus"></i> Добавить
-            <input type="file" id="pcmFileInput" style="display:none;" onchange="kanban.uploadFile(this.files[0])">
-          </label>
-        </div>
-
-        <!-- Upload Progress -->
-        <div id="pcmUploadProgress" style="display:none; margin-bottom:10px;">
-          <div style="background:#e5e7eb; border-radius:8px; overflow:hidden;">
-            <div id="pcmUploadBar" style="height:6px; background:var(--primary); width:0%; transition:width 0.3s;">
-            </div>
-          </div>
-          <div style="font-size:12px; color:#666; margin-top:5px;">Загрузка...</div>
-        </div>
-
-        <!-- Files List -->
-        <div id="pcmFilesList">
-          <div style="text-align:center; padding:20px; color:#ccc;">Загрузка...</div>
-        </div>
-      </div>
-
-      <!-- Comments Section -->
-      <div style="margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <h4 style="margin:0;"><i class="fas fa-comments"></i> Комментарии</h4>
-          <span id="pcmCommentsCount" style="font-size:12px; color:#999;">0</span>
-        </div>
-
-        <!-- Comments List -->
-        <div id="pcmCommentsList" style="max-height:150px; overflow-y:auto; margin-bottom:10px;">
-          <div style="text-align:center; padding:15px; color:#ccc; font-size:13px;">Нет комментариев</div>
-        </div>
-
-        <!-- Add Comment -->
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="pcmCommentInput" placeholder="Написать комментарий..."
-            style="flex:1; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px;"
-            onkeypress="if(event.key==='Enter')kanban.addComment()">
-          <button class="btn btn-primary" onclick="kanban.addComment()" style="padding:10px 16px;">
-            <i class="fas fa-paper-plane"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Footer Actions -->
-      <div style="display:flex; gap:10px; margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
-        <button class="btn btn-def" style="flex:1;" onclick="kanban.openFullPosition()">
-          <i class="fas fa-expand"></i> Открыть полностью
-        </button>
-        <button class="btn btn-primary" style="flex:1;" onclick="kanban.closeProjectCard()">
-          <i class="fas fa-check"></i> Готово
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Скрипты (порядок важен) -->
+  <!-- Scripts -->
   <script src="js/config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/api.js"></script>
-  <script src="js/projects.js"></script>
-  <script src="js/positions.js"></script>
-  <script src="js/manager.js"></script>
-  <script src="js/buyer.js"></script>
-  <script src="js/design.js"></script>
-  <script src="js/measure.js"></script>
-  <script src="js/settings.js"></script>
-  <script src="js/profile.js"></script>
-  <script src="js/mapper.js"></script>
-  <script src="js/kanban.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
+
+  <script>
+    // Упрощённая инициализация только для редиректа
+    (async function () {
+      console.log('🔐 Login page init...');
+
+      // Проверяем, это Telegram?
+      const isTelegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+
+      if (!isTelegramUser) {
+        // Браузер — показываем экран входа
+        console.log('🌐 Browser mode - showing login');
+        document.getElementById('view-login').style.display = 'flex';
+        return;
+      }
+
+      // Telegram — скрываем логин и начинаем редирект
+      document.getElementById('view-login').style.display = 'none';
+      document.getElementById('loader').classList.remove('hidden');
+
+      if (window.Telegram.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+      }
+
+      const user = window.Telegram.WebApp.initDataUnsafe.user;
+      const startParam = window.Telegram.WebApp.initDataUnsafe?.start_param || null;
+
+      try {
+        const userId = String(user.id);
+
+        // Сохраняем пользователя
+        await api.call('saveTelegramUser', { user: user }, 'POST', false);
+
+        // Инициализируем сессию (устанавливает CURRENT_USER_ROLES)
+        const hasCompany = await api.call('initSession', { userId: userId });
+
+        // Обрабатываем код приглашения
+        if (startParam && !window.CURRENT_COMPANY_ID) {
+          try {
+            await api.call('joinCompany', { code: startParam, userId: userId }, 'POST');
+            await api.call('initSession', { userId: userId });
+            alert('Вы успешно присоединились к компании!');
+          } catch (e) {
+            if (!e.message.includes('уже')) alert('Ошибка: ' + e.message);
+          }
+        }
+
+        // Редирект по роли
+        const userRoles = window.CURRENT_USER_ROLES || [];
+        console.log('🔐 User roles:', userRoles);
+
+        if (userRoles.length > 0 && window.router) {
+          router.redirect(userRoles);
+        } else {
+          // Нет ролей — на профиль
+          window.location.href = 'pages/profile.html';
+        }
+
+      } catch (e) {
+        console.error('Init error:', e);
+        document.getElementById('loader').classList.add('hidden');
+        document.getElementById('loginStatus').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Ошибка: ' + e.message;
+      }
+    })();
+  </script>
 </body>
 
 </html>

@@ -253,7 +253,7 @@ window.api = {
   },
 
   async _initSession(userId) {
-    const { data: memberships } = await supabase.from('company_members').select('company_id, role, companies(name)').eq('user_id', userId);
+    const { data: memberships } = await supabase.from('company_members').select('role, roles, company_id, companies(name)').eq('user_id', userId);
     if (memberships && memberships.length > 0) {
       const savedId = localStorage.getItem('preferred_company_id');
       let active = memberships.find(m => m.company_id === savedId);
@@ -261,8 +261,19 @@ window.api = {
       window.CURRENT_COMPANY_ID = active.company_id;
       window.CURRENT_COMPANY_NAME = active.companies?.name || "Моя компания";
       window.CURRENT_USER_ROLE = active.role;
+
+      // 🔥 Роли для роутинга (массив)
+      window.CURRENT_USER_ROLES = active.roles || (active.role ? [active.role] : ['member']);
+
+      // Кешируем для auth.js
+      if (window.auth) {
+        auth.cacheRoles(window.CURRENT_USER_ROLES);
+      }
+
+      console.log('🔐 User roles:', window.CURRENT_USER_ROLES);
       return true;
     }
+    window.CURRENT_USER_ROLES = [];
     return false;
   },
 

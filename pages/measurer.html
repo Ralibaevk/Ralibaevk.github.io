@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <title>Logiqa — Замерщик</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+
+<body data-allowed-roles="measurer,manager" data-page-role="measurer">
+    <div id="loader" class="hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="main-layout">
+        <!-- SIDEBAR -->
+        <div class="sidebar" id="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon">L</div>
+                <div class="logo-text">Logiqa</div>
+            </div>
+
+            <nav class="nav-links">
+                <div class="nav-item active" id="nav-measure" onclick="kanban.init('measure')" title="Замер">
+                    <i class="fas fa-ruler-combined"></i> <span class="nav-text">Замер</span>
+                </div>
+
+                <div style="flex:1"></div>
+
+                <div class="nav-item" id="nav-theme" onclick="app.toggleTheme()" title="Сменить тему">
+                    <i class="fas fa-circle-half-stroke" id="themeIcon"></i> <span class="nav-text">Тема</span>
+                </div>
+                <div class="nav-item" id="nav-profile" onclick="location.href='profile.html'" title="Профиль">
+                    <i class="fas fa-user-circle"></i> <span class="nav-text">Профиль</span>
+                </div>
+            </nav>
+
+            <button class="sidebar-toggle" onclick="app.toggleSidebar()">
+                <i class="fas fa-chevron-left" id="sidebarIcon"></i>
+            </button>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content-area">
+            <div id="view-kanban" class="screen active">
+                <div id="kanban-content">
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="fas fa-spinner fa-spin"></i></div>
+                        <h3>Загрузка...</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Nav -->
+    <div class="bottom-nav">
+        <div class="b-item active" onclick="kanban.init('measure')"><i
+                class="fas fa-ruler-combined"></i><span>Замер</span></div>
+        <div class="b-item" onclick="location.href='profile.html'"><i class="fas fa-user"></i><span>Профиль</span></div>
+    </div>
+
+    <!-- PROJECT CARD MODAL -->
+    <div id="projectCardModal" class="modal-overlay hidden">
+        <div class="modal-box"
+            style="width:700px; max-width:95%; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column;">
+            <div style="margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                    <div style="flex:1; min-width:0;">
+                        <h3 id="pcmProjectName" style="margin:0 0 5px 0; font-size:18px;">Проект</h3>
+                        <span id="pcmPositionName" style="font-size:14px; color:#666;"></span>
+                    </div>
+                    <button onclick="kanban.closeProjectCard()"
+                        style="background:none; border:none; font-size:20px; cursor:pointer; color:#999;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <select id="pcmStatusSelect" class="status-mini-select"
+                    style="width:100%; padding:10px 12px; font-size:14px; border:1px solid #e5e7eb; border-radius:8px; background:white;"
+                    onchange="kanban.changeStatusFromModal(this.value)">
+                    <option value="inbox">📥 Входящие</option>
+                    <option value="active">🔵 В работе</option>
+                    <option value="done">✅ Выполнено</option>
+                    <option value="waiting">⏳ Ожидание</option>
+                </select>
+            </div>
+            <div class="p-card" style="margin-bottom:15px; padding:15px;">
+                <div class="info-row" style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:#666;">Заказчик</span>
+                    <span id="pcmClient" style="font-weight:600;">—</span>
+                </div>
+                <div class="info-row"
+                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="color:#666;">Телефон</span>
+                    <a id="pcmPhone" href="tel:"
+                        style="font-weight:600; color:#3b82f6; text-decoration:none; display:flex; align-items:center; gap:6px;">
+                        <i class="fas fa-phone"></i> <span>—</span>
+                    </a>
+                </div>
+                <div class="info-row" style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:#666;">Дедлайн</span>
+                    <span id="pcmDeadline" style="font-weight:600;">—</span>
+                </div>
+                <div class="info-row" style="display:flex; justify-content:space-between;">
+                    <span style="color:#666;">Адрес</span>
+                    <span id="pcmAddress" style="font-weight:600;">—</span>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h4 style="margin:0;"><i class="fas fa-paperclip"></i> Файлы</h4>
+                    <label class="btn btn-primary" style="cursor:pointer; padding:8px 16px;">
+                        <i class="fas fa-plus"></i> Добавить
+                        <input type="file" id="pcmFileInput" style="display:none;"
+                            onchange="kanban.uploadFile(this.files[0])">
+                    </label>
+                </div>
+                <div id="pcmUploadProgress" style="display:none; margin-bottom:10px;">
+                    <div style="background:#e5e7eb; border-radius:8px; overflow:hidden;">
+                        <div id="pcmUploadBar" style="height:6px; background:var(--primary); width:0%;"></div>
+                    </div>
+                </div>
+                <div id="pcmFilesList">
+                    <div style="text-align:center; padding:20px; color:#ccc;">Загрузка...</div>
+                </div>
+            </div>
+            <div style="margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h4 style="margin:0;"><i class="fas fa-comments"></i> Комментарии</h4>
+                    <span id="pcmCommentsCount" style="font-size:12px; color:#999;">0</span>
+                </div>
+                <div id="pcmCommentsList" style="max-height:150px; overflow-y:auto; margin-bottom:10px;">
+                    <div style="text-align:center; padding:15px; color:#ccc; font-size:13px;">Нет комментариев</div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="pcmCommentInput" placeholder="Написать комментарий..."
+                        style="flex:1; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:14px;"
+                        onkeypress="if(event.key==='Enter')kanban.addComment()">
+                    <button class="btn btn-primary" onclick="kanban.addComment()" style="padding:10px 16px;">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
+                <button class="btn btn-def" style="flex:1;" onclick="kanban.openFullPosition()">
+                    <i class="fas fa-expand"></i> Открыть полностью
+                </button>
+                <button class="btn btn-primary" style="flex:1;" onclick="kanban.closeProjectCard()">
+                    <i class="fas fa-check"></i> Готово
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/router.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/kanban.js"></script>
+    <script src="../js/app.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.log('📏 Measurer page loading...');
+            app.initTheme();
+
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
+            }
+
+            const isTelegramUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+            if (!isTelegramUser) {
+                window.location.href = '../index.html';
+                return;
+            }
+
+            app.user = window.Telegram.WebApp.initDataUnsafe.user;
+
+            try {
+                const userId = String(app.user.id);
+                await api.call('saveTelegramUser', { user: app.user }, 'POST', false);
+                await api.call('initSession', { userId: userId });
+                await auth.init();
+
+                if (window.kanban) kanban.init('measure');
+
+                const sidebarState = localStorage.getItem('logiqa_sidebar_state');
+                if (sidebarState === 'closed') app.toggleSidebar(false);
+
+            } catch (e) { console.error('Init error:', e); }
+        });
+    </script>
+</body>
+
+</html>
