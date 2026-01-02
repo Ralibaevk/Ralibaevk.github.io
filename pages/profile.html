@@ -127,14 +127,17 @@
 
             if (pages.length > 0) {
                 pages.forEach(p => {
-                    html += `<div class="nav-item" onclick="location.href='${p.page}'" title="${p.name}">
+                    // Убираем pages/ т.к. мы уже в папке pages
+                    const relativePage = p.page.replace('pages/', '');
+                    html += `<div class="nav-item" onclick="location.href='${relativePage}'" title="${p.name}">
             <i class="${getRoleIcon(p.role)}"></i> <span class="nav-text">${p.name}</span>
           </div>`;
                 });
 
                 // Мобильная ссылка на первую роль
                 if (mobileLink) {
-                    mobileLink.onclick = () => location.href = pages[0].page;
+                    const firstPage = pages[0].page.replace('pages/', '');
+                    mobileLink.onclick = () => location.href = firstPage;
                 }
             }
 
@@ -143,6 +146,7 @@
 
         function getRoleIcon(role) {
             const icons = {
+                owner: 'fas fa-crown',
                 manager: 'fas fa-folder',
                 designer: 'fas fa-pencil-ruler',
                 measurer: 'fas fa-ruler-combined',

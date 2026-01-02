@@ -52,6 +52,7 @@ window.router = {
     // Название роли на русском
     getRoleName(role) {
         const names = {
+            owner: 'Владелец',
             manager: 'Менеджер',
             designer: 'Дизайнер',
             measurer: 'Замерщик',
