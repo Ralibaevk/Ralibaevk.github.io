@@ -4,12 +4,16 @@
  */
 
 import { router } from './router/router.js';
+import { initAuth } from './api/auth-service.js';
 
 /**
  * Initialize application
  */
-function init() {
+async function init() {
     console.log('LOGiQA Furniture Technologies v5.0 - SPA Architecture');
+
+    // Initialize authentication FIRST (handles Telegram WebApp data)
+    await initAuth();
 
     // Set the app container for page mounting
     router.setContainer('app');
