@@ -55,7 +55,7 @@ async function authenticateWithTelegram() {
     if (!supabase) return;
 
     try {
-        // Call Edge Function to validate Telegram auth and create/get user
+        // Call Edge Function to validate Telegram auth and get token
         const { data, error } = await supabase.functions.invoke('telegram-auth', {
             body: { initData }
         });
@@ -65,9 +65,20 @@ async function authenticateWithTelegram() {
             return;
         }
 
-        if (data?.session) {
-            // Set the session from Edge Function response
-            await supabase.auth.setSession(data.session);
+        if (data?.token_hash && data?.email) {
+            // Verify OTP with the token_hash from Edge Function
+            const { data: sessionData, error: verifyError } = await supabase.auth.verifyOtp({
+                email: data.email,
+                token_hash: data.token_hash,
+                type: 'magiclink',
+            });
+
+            if (verifyError) {
+                console.error('[Auth] OTP verification failed:', verifyError);
+                return;
+            }
+
+            console.log('[Auth] Session created via OTP');
             await loadCurrentUser();
         }
     } catch (e) {

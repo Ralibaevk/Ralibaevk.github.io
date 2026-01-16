@@ -3,7 +3,7 @@
  * Handles caching and offline functionality
  */
 
-const CACHE_NAME = 'logiqa-v10'; // Added Supabase SDK in HTML
+const CACHE_NAME = 'logiqa-v11'; // Fixed auth verifyOtp flow
 const STATIC_ASSETS = [
     '/',
     '/index.html',
