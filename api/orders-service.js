@@ -1,9 +1,16 @@
 /**
- * Orders Service - Mock API for Orders functionality
- * Provides orders, applications, saved orders, and specialists data
+ * Orders Service - API for Orders functionality
+ * Connects to Supabase order_listings table with mock data fallback
  */
 
-// === MOCK DATA ===
+import { getSupabase } from './supabase-client.js';
+
+// Development mode flag - set to true to force mock data
+const USE_MOCK = false;
+
+// Cache for loaded data
+let ordersCache = null;
+let applicationsCached = null;
 
 const MOCK_ORDERS = [
     {
@@ -459,8 +466,191 @@ let savedOrderIds = new Set(['order_2', 'order_4', 'order_8']);
 
 /**
  * Get orders feed with optional filters
+ * Fetches from Supabase order_listings, falls back to mock data
  */
-export function getOrdersFeed(filters = {}) {
+export async function getOrdersFeed(filters = {}) {
+    // Try to fetch from Supabase
+    if (!USE_MOCK) {
+        const supabase = getSupabase();
+        if (supabase) {
+            try {
+                let query = supabase
+                    .from('order_listings')
+                    .select(`
+                        id,
+                        title,
+                        description,
+                        order_type,
+                        work_format,
+                        budget_min,
+                        budget_max,
+                        is_negotiable,
+                        deadline_days,
+                        city,
+                        requirements,
+                        files,
+                        visibility,
+                        status,
+                        views_count,
+                        applications_count,
+                        created_at,
+                        created_by,
+                        creator:profiles!order_listings_created_by_fkey(
+                            id, first_name, last_name, username, avatar_url, average_rating, reviews_count
+                        ),
+                        company:companies(id, name, logo_url)
+                    `)
+                    .eq('status', 'active')
+                    .eq('visibility', 'public')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                // Apply filters
+                if (filters.orderType && filters.orderType !== 'all') {
+                    query = query.eq('order_type', filters.orderType);
+                }
+                if (filters.workFormat && filters.workFormat !== 'all') {
+                    query = query.eq('work_format', filters.workFormat);
+                }
+                if (filters.budgetRange) {
+                    const [min, max] = filters.budgetRange;
+                    query = query.gte('budget_max', min);
+                    if (max !== Infinity) {
+                        query = query.lte('budget_min', max);
+                    }
+                }
+                if (filters.deadline && filters.deadline !== Infinity) {
+                    query = query.lte('deadline_days', filters.deadline);
+                }
+                if (filters.myCity && filters.userCity) {
+                    query = query.eq('city', filters.userCity);
+                }
+
+                const { data, error } = await query;
+
+                if (error) {
+                    console.error('[OrdersService] Supabase error:', error);
+                } else if (data && data.length > 0) {
+                    console.log('[OrdersService] Loaded', data.length, 'orders from database');
+
+                    // Transform to expected format
+                    let orders = data.map(transformOrderFromDb);
+
+                    // Apply client-side filters
+                    if (filters.urgent) {
+                        orders = orders.filter(o => o.deadlineDays <= 3);
+                    }
+                    if (filters.highBudget) {
+                        orders = orders.filter(o => o.budgetMax >= 300000);
+                    }
+                    if (filters.verified) {
+                        orders = orders.filter(o => o.customer?.rating >= 4.5);
+                    }
+                    if (filters.newLast24h) {
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        orders = orders.filter(o => new Date(o.createdAt) > yesterday);
+                    }
+
+                    // Apply sorting
+                    orders = applySorting(orders, filters.sortBy);
+
+                    // Add saved status
+                    orders = orders.map(o => ({
+                        ...o,
+                        isSaved: savedOrderIds.has(o.id)
+                    }));
+
+                    return orders;
+                }
+            } catch (e) {
+                console.error('[OrdersService] Error fetching orders:', e);
+            }
+        }
+    }
+
+    // Fallback to mock data
+    console.log('[OrdersService] Using mock orders data');
+    return getOrdersFeedMock(filters);
+}
+
+/**
+ * Transform database order to UI format
+ */
+function transformOrderFromDb(dbOrder) {
+    const creator = dbOrder.creator || {};
+    const company = dbOrder.company;
+
+    // Determine customer info (prefer company, fallback to creator)
+    const customerName = company?.name ||
+        `${creator.first_name || ''} ${creator.last_name || ''}`.trim() ||
+        'Пользователь';
+
+    const customerAvatar = company?.name ?
+        company.name.substring(0, 2).toUpperCase() :
+        (creator.first_name || 'U').charAt(0).toUpperCase();
+
+    const now = new Date();
+    const created = new Date(dbOrder.created_at);
+    const ageHours = (now - created) / 3600000;
+
+    return {
+        id: dbOrder.id,
+        title: dbOrder.title,
+        description: dbOrder.description || '',
+        orderType: dbOrder.order_type,
+        workFormat: dbOrder.work_format || 'remote',
+        budgetMin: dbOrder.budget_min || 0,
+        budgetMax: dbOrder.budget_max || 0,
+        isNegotiable: dbOrder.is_negotiable || false,
+        deadlineDays: dbOrder.deadline_days || 14,
+        city: dbOrder.city,
+        requirements: dbOrder.requirements || [],
+        files: dbOrder.files || [],
+        visibility: dbOrder.visibility,
+        status: dbOrder.status,
+        createdAt: dbOrder.created_at,
+        viewsCount: dbOrder.views_count || 0,
+        applicationsCount: dbOrder.applications_count || 0,
+        avgProposedPrice: dbOrder.budget_min ? Math.round((dbOrder.budget_min + dbOrder.budget_max) / 2) : 0,
+        isNew: ageHours < 24,
+        isUrgent: dbOrder.deadline_days <= 3,
+        isHighPay: dbOrder.budget_max >= 300000,
+        customer: {
+            id: company?.id || creator.id,
+            name: customerName,
+            avatar: customerAvatar,
+            rating: creator.average_rating || 4.5,
+            reviewsCount: creator.reviews_count || 0,
+            projectsCount: 0,
+            city: dbOrder.city
+        }
+    };
+}
+
+/**
+ * Apply sorting to orders
+ */
+function applySorting(orders, sortBy) {
+    switch (sortBy) {
+        case 'date_asc':
+            return orders.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        case 'budget_desc':
+            return orders.sort((a, b) => b.budgetMax - a.budgetMax);
+        case 'budget_asc':
+            return orders.sort((a, b) => a.budgetMax - b.budgetMax);
+        case 'deadline_urgent':
+            return orders.sort((a, b) => a.deadlineDays - b.deadlineDays);
+        case 'date_desc':
+        default:
+            return orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+}
+
+/**
+ * Get orders from mock data (fallback)
+ */
+function getOrdersFeedMock(filters = {}) {
     let orders = [...MOCK_ORDERS];
 
     // Apply quick filters
@@ -498,23 +688,7 @@ export function getOrdersFeed(filters = {}) {
     }
 
     // Apply sorting
-    switch (filters.sortBy) {
-        case 'date_asc':
-            orders.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-            break;
-        case 'budget_desc':
-            orders.sort((a, b) => b.budgetMax - a.budgetMax);
-            break;
-        case 'budget_asc':
-            orders.sort((a, b) => a.budgetMax - b.budgetMax);
-            break;
-        case 'deadline_urgent':
-            orders.sort((a, b) => a.deadlineDays - b.deadlineDays);
-            break;
-        case 'date_desc':
-        default:
-            orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    }
+    orders = applySorting(orders, filters.sortBy);
 
     // Add saved status
     orders = orders.map(o => ({
@@ -655,9 +829,53 @@ export function getSpecialists(filters = {}) {
 /**
  * Apply to an order
  */
-export function applyToOrder(orderId, applicationData) {
+export async function applyToOrder(orderId, applicationData) {
     console.log('[OrdersService] Applying to order:', orderId, applicationData);
-    // In real app, this would POST to server
+
+    if (!USE_MOCK) {
+        const supabase = getSupabase();
+        if (supabase) {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    return { success: false, error: 'Необходима авторизация' };
+                }
+
+                const { data, error } = await supabase
+                    .from('listing_applications')
+                    .insert({
+                        listing_id: orderId,
+                        user_id: user.id,
+                        cover_letter: applicationData.coverLetter || '',
+                        proposed_price: applicationData.proposedPrice,
+                        proposed_deadline: applicationData.proposedDeadline,
+                        portfolio_projects: applicationData.portfolioProjects || [],
+                        status: 'pending'
+                    })
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('[OrdersService] Apply error:', error);
+                    return { success: false, error: error.message };
+                }
+
+                // Update applications count on the listing
+                await supabase.rpc('increment_applications_count', { listing_id: orderId });
+
+                return {
+                    success: true,
+                    applicationId: data.id,
+                    message: 'Отклик успешно отправлен'
+                };
+            } catch (e) {
+                console.error('[OrdersService] Apply exception:', e);
+                return { success: false, error: e.message };
+            }
+        }
+    }
+
+    // Mock fallback
     return {
         success: true,
         applicationId: 'app_' + Date.now(),
@@ -668,9 +886,58 @@ export function applyToOrder(orderId, applicationData) {
 /**
  * Create a new order
  */
-export function createOrder(orderData) {
+export async function createOrder(orderData) {
     console.log('[OrdersService] Creating order:', orderData);
-    // In real app, this would POST to server
+
+    if (!USE_MOCK) {
+        const supabase = getSupabase();
+        if (supabase) {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    return { success: false, error: 'Необходима авторизация' };
+                }
+
+                const { data, error } = await supabase
+                    .from('order_listings')
+                    .insert({
+                        created_by: user.id,
+                        company_id: orderData.companyId || null,
+                        title: orderData.title,
+                        description: orderData.description,
+                        order_type: orderData.orderType,
+                        work_format: orderData.workFormat || 'remote',
+                        budget_min: orderData.budgetMin,
+                        budget_max: orderData.budgetMax,
+                        is_negotiable: orderData.isNegotiable || false,
+                        deadline_days: orderData.deadlineDays,
+                        city: orderData.city,
+                        requirements: orderData.requirements || [],
+                        files: orderData.files || [],
+                        visibility: orderData.visibility || 'public',
+                        status: 'active'
+                    })
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('[OrdersService] Create error:', error);
+                    return { success: false, error: error.message };
+                }
+
+                return {
+                    success: true,
+                    orderId: data.id,
+                    message: 'Заказ успешно создан'
+                };
+            } catch (e) {
+                console.error('[OrdersService] Create exception:', e);
+                return { success: false, error: e.message };
+            }
+        }
+    }
+
+    // Mock fallback
     return {
         success: true,
         orderId: 'order_' + Date.now(),

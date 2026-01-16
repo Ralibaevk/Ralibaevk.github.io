@@ -46,6 +46,26 @@ let specialistsFilters = {
 
 const USER_CITY = 'Астана'; // Mock current user city
 
+// Orders cache (async loaded)
+let ordersCache = [];
+let isLoadingOrders = false;
+
+/**
+ * Load orders from API (async)
+ */
+async function loadOrders(filters) {
+    if (isLoadingOrders) return ordersCache;
+    isLoadingOrders = true;
+    try {
+        ordersCache = await getOrdersFeed(filters);
+        console.log('[Orders] Loaded', ordersCache.length, 'orders');
+    } catch (e) {
+        console.error('[Orders] Load error:', e);
+    }
+    isLoadingOrders = false;
+    return ordersCache;
+}
+
 /**
  * Render the Orders section
  */
@@ -152,22 +172,9 @@ function renderOrderFeedTab() {
         `;
     }
 
-    // Regular order feed filters
-    const filters = {
-        urgent: quickFilter === 'urgent',
-        highBudget: quickFilter === 'highBudget',
-        myCity: quickFilter === 'myCity',
-        verified: quickFilter === 'verified',
-        newLast24h: quickFilter === 'newLast24h',
-        userCity: USER_CITY,
-        orderType: dropdownFilters.orderType,
-        budgetRange: getBudgetRangeFromValue(dropdownFilters.budgetRange),
-        deadline: getDeadlineDaysFromValue(dropdownFilters.deadline),
-        workFormat: dropdownFilters.workFormat,
-        sortBy: sortBy
-    };
-
-    const orders = getOrdersFeed(filters);
+    // Regular order feed filters - use cached orders (loaded async)
+    // Note: loadOrders() should be called before this render
+    const orders = ordersCache;
 
     return `
         ${renderDropdownFilters()}
@@ -812,9 +819,47 @@ function bindFilterChange(container, id, callback) {
 }
 
 /**
- * Refresh orders section
+ * Refresh orders section (async - loads data then re-renders)
  */
-function refreshOrdersSection(container) {
+async function refreshOrdersSection(container) {
+    // Load orders with current filters before rendering
+    if (activeTab === 'feed' && quickFilter !== 'myApplications' && quickFilter !== 'saved') {
+        const filters = {
+            urgent: quickFilter === 'urgent',
+            highBudget: quickFilter === 'highBudget',
+            myCity: quickFilter === 'myCity',
+            verified: quickFilter === 'verified',
+            newLast24h: quickFilter === 'newLast24h',
+            userCity: USER_CITY,
+            orderType: dropdownFilters.orderType,
+            budgetRange: getBudgetRangeFromValue(dropdownFilters.budgetRange),
+            deadline: getDeadlineDaysFromValue(dropdownFilters.deadline),
+            workFormat: dropdownFilters.workFormat,
+            sortBy: sortBy
+        };
+        await loadOrders(filters);
+    }
+
+    const mainContent = container.querySelector('.profile-main');
+    if (mainContent) {
+        mainContent.innerHTML = renderOrdersSection();
+        bindOrdersEvents(container);
+    }
+}
+
+/**
+ * Initialize orders section (async - must be called on mount)
+ */
+export async function initOrdersSection(container) {
+    // Pre-load orders data
+    const filters = {
+        userCity: USER_CITY,
+        orderType: dropdownFilters.orderType,
+        sortBy: sortBy
+    };
+    await loadOrders(filters);
+
+    // Now render
     const mainContent = container.querySelector('.profile-main');
     if (mainContent) {
         mainContent.innerHTML = renderOrdersSection();
