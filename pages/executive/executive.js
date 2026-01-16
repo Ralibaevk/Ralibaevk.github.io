@@ -3,7 +3,7 @@
  * Визуализация всех проектов, KPI метрик и активности
  */
 
-import { getCurrentUser, getCurrentRole, switchRole, getAvailableRoles, ROLES } from '../../api/auth-service.js';
+import { getCurrentUser, getCurrentProfile, getCurrentRole, switchRole, getAvailableRoles, ROLES } from '../../api/auth-service.js';
 import { router } from '../../router/router.js';
 import { showProjectModal } from '../../components/project-modal.js';
 
@@ -56,7 +56,11 @@ const MOCK_ACTIVITY = [
  */
 export async function mount(parentContainer) {
     container = parentContainer;
-    const user = getCurrentUser() || { name: 'Гость', initials: 'Г' };
+    const profile = getCurrentProfile();
+    const user = profile ? {
+        name: profile.first_name || 'Гость',
+        initials: (profile.first_name || 'Г').charAt(0).toUpperCase()
+    } : { name: 'Гость', initials: 'Г' };
 
     container.innerHTML = `
         <div class="executive-page">

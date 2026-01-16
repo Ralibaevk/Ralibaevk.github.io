@@ -6,7 +6,7 @@
 import { getProjects, generateShareLink } from '../../api/api-client.js';
 import { router } from '../../router/router.js';
 import { showProjectModal } from '../../components/project-modal.js';
-import { getCurrentUser, getCurrentRole, switchRole, getAvailableRoles, ROLES, getKanbanColumnsForRole } from '../../api/auth-service.js';
+import { getCurrentUser, getCurrentProfile, getCurrentRole, switchRole, getAvailableRoles, ROLES, getKanbanColumnsForRole } from '../../api/auth-service.js';
 
 // Store projects for use in card click handler
 let projectsData = [];
@@ -24,8 +24,12 @@ export async function mount(parentContainer) {
     const projects = await getProjects();
     projectsData = projects;
 
-    // Get current user and role
-    const user = getCurrentUser() || { name: 'Гость', initials: 'Г' };
+    // Get current user profile and role
+    const profile = getCurrentProfile();
+    const user = profile ? {
+        name: profile.first_name || 'Гость',
+        initials: (profile.first_name || 'Г').charAt(0).toUpperCase()
+    } : { name: 'Гость', initials: 'Г' };
     const role = getCurrentRole();
     const filterTabs = getFilterTabsForRole(role);
     const roleTitle = getRoleTitleLabel(role);
