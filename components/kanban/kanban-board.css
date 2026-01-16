@@ -1,0 +1,44 @@
+/**
+ * Kanban Board Styles
+ * Placeholder - to be implemented
+ */
+
+.kanban-board {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 16px;
+    padding: 16px;
+    overflow-x: auto;
+}
+
+.kanban-column {
+    flex: 0 0 280px;
+    background: var(--surface-color, #f5f5f5);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.kanban-column-header {
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+.kanban-card {
+    background: var(--card-background, #ffffff);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: grab;
+    transition: box-shadow 0.2s;
+}
+
+.kanban-card:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.kanban-card.dragging {
+    opacity: 0.5;
+}

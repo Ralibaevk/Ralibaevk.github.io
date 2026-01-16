@@ -1,0 +1,25 @@
+/**
+ * Kanban Page Styles
+ * Placeholder - styling for kanban page
+ */
+
+.kanban-page {
+    padding: 20px;
+}
+
+.kanban-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.kanban-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.kanban-filters {
+    display: flex;
+    gap: 12px;
+}

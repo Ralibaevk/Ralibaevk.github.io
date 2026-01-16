@@ -1,0 +1,238 @@
+/**
+ * Supply Page Styles
+ */
+
+.supply-page {
+    min-height: 100vh;
+    background: var(--bg-app);
+}
+
+.supply-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-5) var(--space-7);
+    background: var(--bg-panel);
+    backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.supply-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.supply-logo svg {
+    width: 28px;
+    height: 28px;
+    stroke: var(--text-main);
+}
+
+.supply-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: rgba(33, 150, 243, 0.1);
+    color: #2196F3;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.supply-badge svg {
+    width: 16px;
+    height: 16px;
+}
+
+.supply-main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
+}
+
+.supply-project-info {
+    margin-bottom: var(--space-6);
+}
+
+.supply-project-info h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: var(--space-2);
+}
+
+.supply-project-info .project-id {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-2);
+}
+
+.supply-project-info .project-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.materials-card {
+    background: var(--bg-panel);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-soft);
+}
+
+.materials-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-5);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.materials-header h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.materials-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.progress-text {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.progress-bar-sm {
+    width: 80px;
+    height: 6px;
+    background: var(--color-sand-200);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill-sm {
+    height: 100%;
+    background: #4CAF50;
+    border-radius: 3px;
+}
+
+.materials-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.material-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--color-sand-50);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s;
+}
+
+.material-row.purchased {
+    opacity: 0.6;
+}
+
+.material-row.purchased .material-name {
+    text-decoration: line-through;
+}
+
+.material-checkbox input {
+    width: 18px;
+    height: 18px;
+    cursor: not-allowed;
+}
+
+.material-info {
+    flex: 1;
+}
+
+.material-name {
+    font-size: 14px;
+    color: var(--text-main);
+}
+
+.material-qty {
+    display: flex;
+    gap: var(--space-1);
+    font-size: 13px;
+}
+
+.qty-value {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.qty-unit {
+    color: var(--text-muted);
+}
+
+.material-status {
+    min-width: 100px;
+    text-align: right;
+}
+
+.status-done {
+    color: #4CAF50;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.supply-footer {
+    margin-top: var(--space-6);
+    text-align: center;
+}
+
+.supply-footer p {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.generated-at {
+    margin-top: var(--space-2);
+    font-size: 11px;
+}
+
+/* Access Denied */
+.access-denied {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: var(--space-4);
+    text-align: center;
+}
+
+.access-denied svg {
+    width: 64px;
+    height: 64px;
+    stroke: var(--text-muted);
+}
+
+.access-denied h2 {
+    font-size: 24px;
+    color: var(--text-main);
+}
+
+.access-denied p {
+    color: var(--text-secondary);
+}

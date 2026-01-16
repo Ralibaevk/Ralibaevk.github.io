@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Connection Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { color: #3ECF8E; }
+        .status {
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        .success { background: #0d3320; border: 1px solid #3ECF8E; }
+        .error { background: #3d1f1f; border: 1px solid #EF4444; }
+        .pending { background: #2d2d3d; border: 1px solid #666; }
+        pre {
+            background: #0d0d1a;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .test-item {
+            padding: 15px;
+            background: #2d2d3d;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .test-item.pass { border-left: 4px solid #3ECF8E; }
+        .test-item.fail { border-left: 4px solid #EF4444; }
+    </style>
+</head>
+<body>
+    <h1>🔌 Supabase Connection Test</h1>
+    <div id="status" class="status pending">Загрузка...</div>
+    <div id="results"></div>
+
+    <script type="module">
+        import { initSupabase, getSupabase, getCurrentProfile } from './api/supabase-client.js';
+
+        const statusEl = document.getElementById('status');
+        const resultsEl = document.getElementById('results');
+
+        function addResult(name, success, details = '') {
+            resultsEl.innerHTML += `
+                <div class="test-item ${success ? 'pass' : 'fail'}">
+                    <strong>${success ? '✅' : '❌'} ${name}</strong>
+                    ${details ? `<pre>${JSON.stringify(details, null, 2)}</pre>` : ''}
+                </div>
+            `;
+        }
+
+        async function runTests() {
+            try {
+                // Test 1: Initialize Supabase
+                statusEl.textContent = 'Инициализация Supabase SDK...';
+                const client = await initSupabase();
+                
+                if (client) {
+                    addResult('Supabase SDK загружен', true);
+                } else {
+                    addResult('Supabase SDK не загружен', false);
+                    throw new Error('SDK failed to load');
+                }
+
+                // Test 2: Test connection by fetching roles
+                statusEl.textContent = 'Проверка подключения к БД...';
+                const { data: roles, error: rolesError } = await client
+                    .from('roles')
+                    .select('*')
+                    .limit(5);
+
+                if (rolesError) {
+                    addResult('Чтение таблицы roles', false, rolesError);
+                } else {
+                    addResult('Чтение таблицы roles', true, roles);
+                }
+
+                // Test 3: Check profiles table
+                statusEl.textContent = 'Проверка таблицы profiles...';
+                const { data: profiles, error: profilesError } = await client
+                    .from('profiles')
+                    .select('id, telegram_id, first_name')
+                    .limit(3);
+
+                if (profilesError) {
+                    addResult('Чтение таблицы profiles', false, profilesError);
+                } else {
+                    addResult('Чтение таблицы profiles', true, profiles || []);
+                }
+
+                // Test 4: Check companies table
+                const { data: companies, error: companiesError } = await client
+                    .from('companies')
+                    .select('id, name')
+                    .limit(3);
+
+                if (companiesError) {
+                    addResult('Чтение таблицы companies', false, companiesError);
+                } else {
+                    addResult('Чтение таблицы companies', true, companies || []);
+                }
+
+                // Test 5: Check Storage buckets
+                statusEl.textContent = 'Проверка Storage...';
+                const { data: buckets, error: bucketsError } = await client
+                    .storage
+                    .listBuckets();
+
+                if (bucketsError) {
+                    addResult('Доступ к Storage', false, bucketsError);
+                } else {
+                    addResult('Доступ к Storage', true, buckets?.map(b => b.name) || []);
+                }
+
+                // All done
+                statusEl.className = 'status success';
+                statusEl.textContent = '✅ Подключение к Supabase успешно!';
+
+            } catch (error) {
+                statusEl.className = 'status error';
+                statusEl.textContent = '❌ Ошибка подключения: ' + error.message;
+                console.error(error);
+            }
+        }
+
+        runTests();
+    </script>
+</body>
+</html>

@@ -1,0 +1,334 @@
+/**
+ * Viewer Page Specific Styles
+ */
+
+/* ========================================
+   HEADER BAR
+   ======================================== */
+#viewer-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    border-bottom: 1px solid var(--border-subtle);
+    z-index: 100;
+    gap: 16px;
+}
+
+#viewer-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--texture-noise);
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+.header-left,
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* Header Buttons */
+.header-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--bg-button);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.header-btn:hover {
+    background: var(--bg-button-hover);
+    transform: translateY(-1px);
+}
+
+.header-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.header-btn:hover svg {
+    stroke: var(--text-main);
+}
+
+.header-btn.active {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.header-btn.active svg {
+    stroke: #3b82f6;
+}
+
+/* Primary Header Button (Assembly Guide) */
+.header-btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    border: none;
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.header-btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.35);
+}
+
+.header-btn-primary svg {
+    stroke: white;
+}
+
+.header-btn-primary:hover svg {
+    stroke: white;
+}
+
+/* Icon-only header buttons */
+.header-btn-icon {
+    padding: 8px;
+}
+
+.header-btn-icon span {
+    display: none;
+}
+
+/* Toolbar in Header */
+#viewer-header #top-toolbar {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    flex: 1;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    gap: 4px;
+}
+
+#viewer-header #top-toolbar::before {
+    display: none;
+}
+
+/* ========================================
+   SIDE PANELS - Edge-aligned, Collapsible
+   ======================================== */
+.side-panel {
+    position: absolute;
+    top: 56px;
+    /* Below header */
+    bottom: 0;
+    width: 280px;
+    max-height: calc(100vh - 56px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0;
+    margin: 0;
+    z-index: 50;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Ensure both panels have same semi-transparent styling */
+    background: var(--bg-panel);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+
+.side-panel::before {
+    border-radius: 0;
+}
+
+.left-panel {
+    left: 0;
+    border-right: 1px solid var(--border-subtle);
+    border-left: none;
+    border-top: none;
+    border-bottom: none;
+}
+
+.right-panel {
+    right: 0;
+    border-left: 1px solid var(--border-subtle);
+    border-right: none;
+    border-top: none;
+    border-bottom: none;
+}
+
+.left-panel.collapsed {
+    transform: translateX(-100%);
+}
+
+.right-panel.collapsed {
+    transform: translateX(100%);
+}
+
+/* Override main.css panel positioning */
+#info-panel.side-panel {
+    top: 56px;
+    left: 0;
+    width: 280px;
+    border-radius: 0;
+}
+
+#structure-panel.side-panel {
+    top: 56px;
+    right: 0;
+    width: 300px;
+    border-radius: 0;
+}
+
+/* Panel content area - scrollable */
+.side-panel .panel-content,
+.side-panel>.panel {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+}
+
+/* ========================================
+   PANEL TOGGLE BUTTONS - Outside header, on edges
+   ======================================== */
+.panel-toggle-btn {
+    position: absolute;
+    top: 70px;
+    /* Below header */
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--bg-panel);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 60;
+    box-shadow: var(--shadow-soft);
+}
+
+.panel-toggle-btn:hover {
+    background: var(--bg-button-hover);
+    transform: scale(1.05);
+}
+
+.panel-toggle-btn.active {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.panel-toggle-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--text-secondary);
+    transition: stroke 0.2s;
+}
+
+.panel-toggle-btn:hover svg {
+    stroke: var(--text-main);
+}
+
+.panel-toggle-btn.active svg {
+    stroke: #3b82f6;
+}
+
+/* Left toggle - on left edge */
+.panel-toggle-left {
+    left: 8px;
+}
+
+/* When left panel is open, move toggle to panel edge */
+.panel-toggle-left.active {
+    left: 288px;
+    /* 280px panel width + 8px offset */
+}
+
+/* Right toggle - on right edge */
+.panel-toggle-right {
+    right: 8px;
+}
+
+/* When right panel is open, move toggle to panel edge */
+.panel-toggle-right.active {
+    right: 308px;
+    /* 300px panel width + 8px offset */
+}
+
+/* ========================================
+   CANVAS CONTAINER - Adjust for header
+   ======================================== */
+#canvas-container {
+    top: 56px !important;
+    height: calc(100vh - 56px) !important;
+}
+
+/* ========================================
+   DROP ZONE - Adjust for header
+   ======================================== */
+#drop-zone {
+    top: calc(50% + 28px);
+    /* Offset for header */
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 900px) {
+    .header-btn span {
+        display: none;
+    }
+
+    .header-btn {
+        padding: 8px;
+    }
+
+    .side-panel {
+        width: 260px;
+    }
+
+    #info-panel.side-panel,
+    #structure-panel.side-panel {
+        width: 260px;
+    }
+}
+
+@media (max-width: 600px) {
+    #viewer-header #top-toolbar {
+        display: none !important;
+    }
+
+    .side-panel {
+        width: 100%;
+    }
+
+    #info-panel.side-panel,
+    #structure-panel.side-panel {
+        width: 100%;
+    }
+}

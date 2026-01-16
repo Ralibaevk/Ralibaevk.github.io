@@ -1,0 +1,213 @@
+/**
+ * Assembly Page Styles
+ */
+
+.assembly-page {
+    min-height: 100vh;
+    background: var(--bg-app);
+}
+
+.assembly-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-5) var(--space-7);
+    background: var(--bg-panel);
+    backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.assembly-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.assembly-logo svg {
+    width: 28px;
+    height: 28px;
+    stroke: var(--text-main);
+}
+
+.assembly-badge {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    background: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.assembly-badge svg {
+    width: 16px;
+    height: 16px;
+}
+
+.assembly-main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
+}
+
+.assembly-project-info {
+    margin-bottom: var(--space-6);
+}
+
+.assembly-project-info h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: var(--space-2);
+}
+
+.assembly-project-info .project-id {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-2);
+}
+
+.assembly-project-info .project-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.models-section {
+    margin-bottom: var(--space-6);
+}
+
+.models-section h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: var(--space-2);
+}
+
+.section-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-5);
+}
+
+.models-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+}
+
+.model-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    background: var(--bg-panel);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: var(--shadow-soft);
+}
+
+.model-card:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--border-light);
+}
+
+.model-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.model-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--color-sand-100);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.model-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--text-secondary);
+}
+
+.model-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.model-info h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 2px;
+}
+
+.model-type {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.model-action {
+    flex-shrink: 0;
+}
+
+.view-3d {
+    font-size: 12px;
+    font-weight: 500;
+    color: #4CAF50;
+}
+
+.no-model {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.assembly-footer {
+    margin-top: var(--space-6);
+    text-align: center;
+}
+
+.assembly-footer p {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Access Denied - shared with supply */
+.access-denied {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: var(--space-4);
+    text-align: center;
+}
+
+.access-denied svg {
+    width: 64px;
+    height: 64px;
+    stroke: var(--text-muted);
+}
+
+.access-denied h2 {
+    font-size: 24px;
+    color: var(--text-main);
+}
+
+.access-denied p {
+    color: var(--text-secondary);
+}

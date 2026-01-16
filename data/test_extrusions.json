@@ -1,0 +1,76 @@
+{
+  "version": "3.5",
+  "exportDate": "2026-01-12T18:00:00Z",
+  "format": "bazis-3d-export",
+  "model": {
+    "name": "Test Model with Extrusions",
+    "boundingBox": {
+      "min": {"x": 0, "y": 0, "z": 0},
+      "max": {"x": 1000, "y": 800, "z": 600}
+    }
+  },
+  "panels": [
+    {
+      "id": "panel_1",
+      "type": "panel",
+      "name": "Bottom Panel",
+      "size": {"x": 1000, "y": 16, "z": 600},
+      "center": {"x": 500, "y": 8, "z": 300},
+      "material": {"name": "Test Material", "thickness": 16}
+    }
+  ],
+  "furniture": [],
+  "blocks": [],
+  "extrusions": [
+    {
+      "id": "extr_1",
+      "type": "extrusion",
+      "name": "GOLA L Profile",
+      "thickness": 500,
+      "contour": [
+        {"type": "line", "start": {"x": 0, "y": 0}, "end": {"x": 20, "y": 0}},
+        {"type": "arc", "start": {"x": 20, "y": 0}, "end": {"x": 22, "y": 2}, "center": {"x": 20, "y": 2}, "radius": 2, "direction": -1},
+        {"type": "line", "start": {"x": 22, "y": 2}, "end": {"x": 22, "y": 18}},
+        {"type": "arc", "start": {"x": 22, "y": 18}, "end": {"x": 20, "y": 20}, "center": {"x": 20, "y": 18}, "radius": 2, "direction": -1},
+        {"type": "line", "start": {"x": 20, "y": 20}, "end": {"x": 0, "y": 20}},
+        {"type": "line", "start": {"x": 0, "y": 20}, "end": {"x": 0, "y": 0}}
+      ],
+      "globalOrigin": {"x": 100, "y": 50, "z": 50},
+      "basis": {
+        "origin": {"x": 100, "y": 50, "z": 50},
+        "axisX": {"x": 1, "y": 0, "z": 0},
+        "axisY": {"x": 0, "y": 1, "z": 0},
+        "axisZ": {"x": 0, "y": 0, "z": 1}
+      }
+    },
+    {
+      "id": "extr_2",
+      "type": "extrusion",
+      "name": "T Profile",
+      "thickness": 400,
+      "contour": [
+        {"type": "line", "start": {"x": -15, "y": 0}, "end": {"x": 15, "y": 0}},
+        {"type": "line", "start": {"x": 15, "y": 0}, "end": {"x": 15, "y": 5}},
+        {"type": "line", "start": {"x": 15, "y": 5}, "end": {"x": 2.5, "y": 5}},
+        {"type": "line", "start": {"x": 2.5, "y": 5}, "end": {"x": 2.5, "y": 25}},
+        {"type": "line", "start": {"x": 2.5, "y": 25}, "end": {"x": -2.5, "y": 25}},
+        {"type": "line", "start": {"x": -2.5, "y": 25}, "end": {"x": -2.5, "y": 5}},
+        {"type": "line", "start": {"x": -2.5, "y": 5}, "end": {"x": -15, "y": 5}},
+        {"type": "line", "start": {"x": -15, "y": 5}, "end": {"x": -15, "y": 0}}
+      ],
+      "globalOrigin": {"x": 500, "y": 400, "z": 300},
+      "basis": {
+        "origin": {"x": 500, "y": 400, "z": 300},
+        "axisX": {"x": 0, "y": 0, "z": 1},
+        "axisY": {"x": 0, "y": 1, "z": 0},
+        "axisZ": {"x": -1, "y": 0, "z": 0}
+      }
+    }
+  ],
+  "statistics": {
+    "panelCount": 1,
+    "furnitureCount": 0,
+    "blockCount": 0,
+    "extrusionCount": 2
+  }
+}

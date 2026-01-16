@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGIQA — Вход</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #FAFAFA;
+            color: #1A1A1A;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .logo {
+            margin-bottom: 48px;
+        }
+
+        .logo svg {
+            width: 48px;
+            height: 48px;
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            margin-top: 12px;
+            color: #1A1A1A;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1A1A1A;
+        }
+
+        .subtitle {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 40px;
+        }
+
+        .telegram-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px 32px;
+            background: #1A1A1A;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .telegram-btn:hover {
+            background: #333;
+            transform: translateY(-1px);
+        }
+
+        .telegram-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .platform-hint {
+            font-size: 13px;
+            color: #999;
+            margin-top: 12px;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 32px 0;
+            color: #CCC;
+            font-size: 13px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #E5E5E5;
+        }
+
+        .divider span {
+            padding: 0 16px;
+        }
+
+        .qr-section {
+            background: #fff;
+            border: 1px solid #E5E5E5;
+            border-radius: 16px;
+            padding: 32px;
+        }
+
+        .qr-code {
+            width: 200px;
+            height: 200px;
+            background: #fff;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-code img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .qr-code canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .qr-hint {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 24px;
+            font-size: 14px;
+            color: #999;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #CCC;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.4;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .footer {
+            margin-top: 48px;
+            font-size: 13px;
+            color: #999;
+        }
+
+        .footer a {
+            color: #666;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Mini App detected state */
+        .mini-app-mode .qr-section,
+        .mini-app-mode .divider,
+        .mini-app-mode .platform-hint {
+            display: none;
+        }
+
+        .mini-app-mode .telegram-btn {
+            background: #1A1A1A;
+        }
+
+        .auth-success {
+            display: none;
+        }
+
+        .auth-success.show {
+            display: block;
+        }
+
+        .auth-success .checkmark {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 24px;
+            border: 2px solid #1A1A1A;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-success .checkmark svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .loading {
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .loading .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #E5E5E5;
+            border-top-color: #1A1A1A;
+            border-radius: 50%;
+            margin: 0 auto 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container" id="loginContainer">
+        <!-- Logo -->
+        <div class="logo">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="24" cy="24" r="20" />
+                <path d="M24 12v24M12 24h24" />
+            </svg>
+            <div class="logo-text">LOGIQA</div>
+        </div>
+
+        <!-- Login Form -->
+        <div id="loginForm">
+            <h1>Вход в систему</h1>
+            <p class="subtitle">
+                Авторизуйтесь через Telegram для доступа<br>
+                к управлению проектами
+            </p>
+
+            <!-- Telegram Button -->
+            <a href="https://t.me/logiqa_work_bot?start=auth" class="telegram-btn" id="telegramBtn">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.05-.2s-.16-.05-.23-.03c-.1.03-1.74 1.11-4.91 3.25-.46.32-.88.47-1.25.46-.41-.01-1.21-.23-1.8-.43-.73-.24-1.31-.37-1.26-.79.03-.22.35-.44.97-.67 3.78-1.65 6.3-2.73 7.57-3.25 3.6-1.5 4.35-1.76 4.84-1.77.11 0 .35.03.5.17.13.12.17.28.18.45-.01.06-.01.24-.02.38z" />
+                </svg>
+                Войти через Telegram
+            </a>
+            <p class="platform-hint">для компьютера</p>
+
+            <!-- Divider -->
+            <div class="divider">
+                <span>или</span>
+            </div>
+
+            <!-- QR Code Section -->
+            <div class="qr-section">
+                <div class="qr-code" id="qrCode">
+                    <!-- QR code will be generated here -->
+                </div>
+                <p class="qr-hint">Сканируйте камерой телефона</p>
+            </div>
+
+            <!-- Status -->
+            <div class="status" id="status">
+                <span class="status-dot"></span>
+                <span>Ожидание авторизации</span>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading" id="loadingState">
+            <div class="spinner"></div>
+            <h1>Авторизация</h1>
+            <p class="subtitle">Подождите, проверяем данные...</p>
+        </div>
+
+        <!-- Success State -->
+        <div class="auth-success" id="successState">
+            <div class="checkmark">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12" />
+                </svg>
+            </div>
+            <h1>Добро пожаловать</h1>
+            <p class="subtitle" id="welcomeName">Перенаправление...</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <a href="#">Политика конфиденциальности</a> · <a href="#">Поддержка</a>
+        </div>
+    </div>
+
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+    <script type="module">
+        import { initSupabase, getSupabase } from './api/supabase-client.js';
+
+        const BOT_USERNAME = 'logiqa_work_bot';
+
+        // Generate unique session ID for QR auth
+        const sessionId = crypto.randomUUID();
+
+        // Initialize
+        async function init() {
+            await initSupabase();
+
+            // Check if running in Telegram Mini App
+            if (window.Telegram?.WebApp) {
+                document.body.classList.add('mini-app-mode');
+                handleMiniAppAuth();
+                return;
+            }
+
+            // Generate QR code for mobile auth
+            generateQRCode();
+
+            // Start polling for auth result
+            startAuthPolling();
+        }
+
+        // Handle Telegram Mini App auth
+        async function handleMiniAppAuth() {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+
+            const initData = tg.initData;
+            if (!initData) {
+                console.error('No Telegram init data');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const supabase = getSupabase();
+
+                // Call Edge Function to validate and create session
+                const { data, error } = await supabase.functions.invoke('telegram-auth', {
+                    body: { initData }
+                });
+
+                if (error) throw error;
+
+                if (data?.session) {
+                    await supabase.auth.setSession(data.session);
+                    showSuccess(data.user?.first_name || 'Пользователь');
+
+                    // Redirect to main app
+                    setTimeout(() => {
+                        window.location.href = './index.html';
+                    }, 1500);
+                }
+            } catch (e) {
+                console.error('Auth error:', e);
+                hideLoading();
+            }
+        }
+
+        // Generate QR code linking to bot
+        function generateQRCode() {
+            const qrContainer = document.getElementById('qrCode');
+            const authUrl = `https://t.me/${BOT_USERNAME}?start=auth_${sessionId}`;
+
+            QRCode.toCanvas(authUrl, {
+                width: 200,
+                margin: 0,
+                color: {
+                    dark: '#1A1A1A',
+                    light: '#FFFFFF'
+                }
+            }, (error, canvas) => {
+                if (error) {
+                    console.error('QR generation error:', error);
+                    return;
+                }
+                qrContainer.innerHTML = '';
+                qrContainer.appendChild(canvas);
+            });
+
+            // Also update the button link
+            document.getElementById('telegramBtn').href = authUrl;
+        }
+
+        // Poll Supabase for auth confirmation
+        function startAuthPolling() {
+            const supabase = getSupabase();
+            if (!supabase) return;
+
+            // Subscribe to auth changes
+            supabase.auth.onAuthStateChange((event, session) => {
+                if (event === 'SIGNED_IN' && session) {
+                    showSuccess(session.user?.user_metadata?.first_name || 'Пользователь');
+                    setTimeout(() => {
+                        window.location.href = './index.html';
+                    }, 1500);
+                }
+            });
+
+            // Also poll for external auth (QR code)
+            setInterval(async () => {
+                const { data } = await supabase
+                    .from('auth_sessions')
+                    .select('user_id, confirmed')
+                    .eq('session_id', sessionId)
+                    .single();
+
+                if (data?.confirmed) {
+                    // Session confirmed via bot, sign in
+                    window.location.reload();
+                }
+            }, 2000);
+        }
+
+        function showLoading() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('loadingState').classList.add('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('loadingState').classList.remove('show');
+        }
+
+        function showSuccess(name) {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('loadingState').classList.remove('show');
+            document.getElementById('successState').classList.add('show');
+            document.getElementById('welcomeName').textContent = `Добро пожаловать, ${name}!`;
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+
+</html>
