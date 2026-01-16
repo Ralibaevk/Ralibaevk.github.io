@@ -3,7 +3,7 @@
  * Handles caching and offline functionality
  */
 
-const CACHE_NAME = 'logiqa-v7'; // Incremented for card height and button fixes
+const CACHE_NAME = 'logiqa-v8'; // Fix router handling for Telegram WebApp params
 const STATIC_ASSETS = [
     '/',
     '/index.html',
