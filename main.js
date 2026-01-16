@@ -79,6 +79,9 @@ async function init() {
     router.on('/project/:projectId/assembly-guide', async (params) => {
         return import('./pages/assembly-guide/assembly-guide.js');
     });
+
+    // Start router after auth is ready and routes are registered
+    router.start();
 }
 
 // Start application when DOM is ready

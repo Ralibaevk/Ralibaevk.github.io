@@ -8,10 +8,19 @@ class Router {
         this.routes = [];
         this.currentPage = null;
         this.pageContainer = null;
+        this.started = false;
 
-        // Listen for hash changes
+        // Listen for hash changes (but don't auto-start on load)
         window.addEventListener('hashchange', () => this.handleRoute());
-        window.addEventListener('load', () => this.handleRoute());
+    }
+
+    /**
+     * Start the router (call after auth is ready)
+     */
+    start() {
+        if (this.started) return;
+        this.started = true;
+        this.handleRoute();
     }
 
     /**
