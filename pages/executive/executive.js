@@ -56,7 +56,7 @@ const MOCK_ACTIVITY = [
  */
 export async function mount(parentContainer) {
     container = parentContainer;
-    const user = getCurrentUser();
+    const user = getCurrentUser() || { name: 'Гость', initials: 'Г' };
 
     container.innerHTML = `
         <div class="executive-page">
