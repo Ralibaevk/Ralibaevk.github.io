@@ -25,7 +25,7 @@ export async function mount(parentContainer) {
     projectsData = projects;
 
     // Get current user and role
-    const user = getCurrentUser();
+    const user = getCurrentUser() || { name: 'Гость', initials: 'Г' };
     const role = getCurrentRole();
     const filterTabs = getFilterTabsForRole(role);
     const roleTitle = getRoleTitleLabel(role);
