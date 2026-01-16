@@ -65,7 +65,11 @@ async function authenticateWithTelegram() {
             return;
         }
 
+        console.log('[Auth] Edge Function response:', data);
+
         if (data?.token_hash) {
+            console.log('[Auth] Calling verifyOtp with token_hash:', data.token_hash.substring(0, 20) + '...');
+
             // Verify OTP with the token_hash from Edge Function
             const { data: sessionData, error: verifyError } = await supabase.auth.verifyOtp({
                 token_hash: data.token_hash,

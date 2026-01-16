@@ -3,7 +3,7 @@
  * Handles caching and offline functionality
  */
 
-const CACHE_NAME = 'logiqa-v13'; // Fixed verifyOtp type: email
+const CACHE_NAME = 'logiqa-v14'; // Added debug logging
 const STATIC_ASSETS = [
     '/',
     '/index.html',
