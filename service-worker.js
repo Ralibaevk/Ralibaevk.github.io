@@ -3,7 +3,7 @@
  * Handles caching and offline functionality
  */
 
-const CACHE_NAME = 'logiqa-v9'; // Added Telegram Web App SDK
+const CACHE_NAME = 'logiqa-v10'; // Added Supabase SDK in HTML
 const STATIC_ASSETS = [
     '/',
     '/index.html',

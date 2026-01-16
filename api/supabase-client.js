@@ -17,17 +17,17 @@ let supabase = null;
  * Call this before using any Supabase features
  */
 export async function initSupabase() {
-    if (supabase) return supabase;
-
-    // Dynamic import for CDN version
-    if (typeof window !== 'undefined' && !window.supabase) {
-        await loadSupabaseScript();
+    if (supabase) {
+        console.log('[Supabase] Client already initialized');
+        return supabase;
     }
 
+    // Check if SDK is loaded (should be from index.html)
     if (window.supabase) {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('[Supabase] Client initialized successfully');
     } else {
-        console.error('Supabase SDK not loaded');
+        console.error('[Supabase] SDK not loaded! Check if script is in index.html');
         return null;
     }
 
