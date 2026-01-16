@@ -3,7 +3,7 @@
  * Handles caching and offline functionality
  */
 
-const CACHE_NAME = 'logiqa-v8'; // Fix router handling for Telegram WebApp params
+const CACHE_NAME = 'logiqa-v9'; // Added Telegram Web App SDK
 const STATIC_ASSETS = [
     '/',
     '/index.html',
