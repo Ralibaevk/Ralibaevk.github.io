@@ -77,6 +77,13 @@ class Router {
     async handleRoute() {
         let hash = window.location.hash.slice(1) || '/projects';
 
+        // Check if hash starts with tgWebApp params (Telegram Mini App redirect)
+        // These are NOT routes, they're Telegram initialization data
+        if (hash.startsWith('tgWebAppData=') || hash.startsWith('?tgWebAppData=')) {
+            console.log('[Router] Detected Telegram WebApp data in hash, redirecting to default route');
+            hash = '/projects';
+        }
+
         // Parse query string from hash (e.g., /path?param=value)
         let queryString = '';
         const queryIndex = hash.indexOf('?');
@@ -85,13 +92,20 @@ class Router {
             hash = hash.slice(0, queryIndex);
         }
 
-        // Parse query params
+        // Strip any Telegram-specific params from query string
+        const tgParams = ['tgWebAppData', 'tgWebAppVersion', 'tgWebAppPlatform', 'tgWebAppThemeParams'];
+
+        // Parse query params, filtering out Telegram params
         const queryParams = {};
         if (queryString) {
             queryString.split('&').forEach(pair => {
                 const [key, value] = pair.split('=');
                 if (key) {
-                    queryParams[decodeURIComponent(key)] = decodeURIComponent(value || '');
+                    const decodedKey = decodeURIComponent(key);
+                    // Skip Telegram-specific params
+                    if (!tgParams.includes(decodedKey)) {
+                        queryParams[decodedKey] = decodeURIComponent(value || '');
+                    }
                 }
             });
         }
