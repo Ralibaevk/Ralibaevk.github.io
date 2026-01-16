@@ -65,10 +65,9 @@ async function authenticateWithTelegram() {
             return;
         }
 
-        if (data?.token_hash && data?.email) {
+        if (data?.token_hash) {
             // Verify OTP with the token_hash from Edge Function
             const { data: sessionData, error: verifyError } = await supabase.auth.verifyOtp({
-                email: data.email,
                 token_hash: data.token_hash,
                 type: 'magiclink',
             });

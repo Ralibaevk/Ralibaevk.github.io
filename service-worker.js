@@ -3,7 +3,7 @@
  * Handles caching and offline functionality
  */
 
-const CACHE_NAME = 'logiqa-v11'; // Fixed auth verifyOtp flow
+const CACHE_NAME = 'logiqa-v12'; // Fixed verifyOtp params
 const STATIC_ASSETS = [
     '/',
     '/index.html',
